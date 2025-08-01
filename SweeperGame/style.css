@@ -1,0 +1,35 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(5, 50px);
+    grid-template-rows: repeat(5, 50px);
+    gap: 2px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.cell {
+    width: 50px;
+    height: 50px;
+    border: 1px solid #333;
+    line-height: 50px;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    background-color: #ccc;
+    font-weight: bold;
+}
+
+.cell.revealed {
+    background-color: #eee;
+    cursor: default;
+}
+
+.cell.bomb {
+    background-color: #f00;
+    color: #fff;
+}
