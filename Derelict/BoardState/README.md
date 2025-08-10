@@ -6,7 +6,7 @@ Utilities for representing and mutating grid based board states for the game *De
 
 ```
 npm install
-npm test
+npm test  (or 'node --test' on Windows) 
 ```
 
 ### Scripts
