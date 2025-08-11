@@ -1,0 +1,14 @@
+{
+  "name": "derelict-editor",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/tests"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "@types/node": "^18.0.0",
+    "jsdom": "^22.1.0"
+  }
+}
