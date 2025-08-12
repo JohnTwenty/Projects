@@ -1,6 +1,6 @@
-import * as BoardState from '../dist/boardstate/index.js';
-import { createRenderer } from '../dist/renderer/index.js';
-import { createEditor } from '../dist/editor/index.js';
+import * as BoardState from '../BoardState/dist/api/public.js';
+import { createRenderer } from '../Renderer/dist/renderer.js';
+import { createEditor } from '../Editor/dist/index.js';
 
 async function init() {
   const app = document.getElementById('app');
