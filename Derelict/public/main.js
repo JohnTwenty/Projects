@@ -9,7 +9,7 @@ async function init() {
   const [segLib, tokLib, spriteManifest] = await Promise.all([
     fetch('assets/segments.txt').then((r) => r.text()),
     fetch('assets/tokens.txt').then((r) => r.text()),
-    fetch('assets/sprites.json').then((r) => r.text()),
+    fetch('assets/sprites.manifest.txt').then((r) => r.text()),
   ]);
 
   const renderer = createRenderer();
