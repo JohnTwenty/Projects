@@ -1,0 +1,12 @@
+{
+  "name": "derelict",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "pretest": "npm --prefix BoardState run build && npm --prefix Renderer run build && npm --prefix Editor run build",
+    "test": "node --test tests/main.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^22.1.0"
+  }
+}

@@ -15,7 +15,22 @@ async function init() {
   const renderer = createRenderer();
   renderer.loadSpriteManifestFromText(spriteManifest);
 
+  // Extract minimal metadata for editor palettes
+  const segmentDefs = [];
+  for (const line of segLib.split(/\r?\n/)) {
+    const m = line.match(/^segment\s+(\S+)/);
+    if (m) segmentDefs.push({ segmentId: m[1] });
+  }
+  const tokenTypes = tokLib
+    .split(/\r?\n/)
+    .filter((l) => l.startsWith('type='))
+    .map((l) => l.split('=')[1]);
+
   const state = BoardState.newBoard(40, segLib, tokLib);
+  // Augment state for Editor expectations
+  state.segmentDefs = segmentDefs;
+  state.tokenTypes = tokenTypes.map((t) => ({ type: t }));
+
   const { core, ui } = createEditor(app, renderer, BoardState, state);
 
   const tokenPalette = document.getElementById('token-palette');
