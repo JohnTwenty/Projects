@@ -2,9 +2,18 @@
   "name": "derelict",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "BoardState",
+    "Renderer",
+    "Editor"
+  ],
   "scripts": {
-    "pretest": "npm --prefix BoardState run build && npm --prefix Renderer run build && npm --prefix Editor run build",
-    "test": "node --test tests/main.test.js"
+    "build": "npm run -ws --if-present build",
+    "dev": "npm run -ws --if-present dev",
+    "test": "npm run -ws --if-present test && node --test tests/main.test.js",
+    "clean": "npm run -ws --if-present clean",
+    "start": "node server.mjs",
+    "pretest": "npm run build"
   },
   "devDependencies": {
     "jsdom": "^22.1.0"
