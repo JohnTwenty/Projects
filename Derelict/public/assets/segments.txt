@@ -1,0 +1,19 @@
+legend: 0=wall, 1=corridor
+segment L_room_5x5 5x5
+0 0 1 0 0
+0 1 1 1 0
+1 1 1 1 0
+0 1 1 1 0
+0 0 0 0 0
+endsegment
+
+segment corridor_5 3x5
+0 0 0 0 0
+1 1 1 1 1
+0 0 0 0 0
+endsegment
+
+segment endcap 2x2
+0 0
+0 1
+endsegment
