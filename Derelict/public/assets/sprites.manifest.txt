@@ -4,7 +4,7 @@
 1 assets/images/corridor.png             0  0  64  64   0      0    0
 
 # Tokens
-marine    assets/images/marine.png       0  0  0  0  10      0    0
-blip      assets/images/blip.png         0  0  0  0  12      0    0
-door      assets/images/door.png         0  0  0  0  20      0   -8
-objective assets/images/objective.png    0  0  0  0  15      0    0
+marine    assets/images/marine.png       0  0  64  64  10      0    0
+blip      assets/images/blip.png         0  0  64  64  12      0    0
+door      assets/images/door.png         0  0  64  64  20      0   -8
+objective assets/images/objective.png    0  0  64  64  15      0    0
