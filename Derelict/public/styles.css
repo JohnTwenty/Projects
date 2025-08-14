@@ -66,6 +66,11 @@ html, body {
   gap: 4px;
 }
 
+#token-palette button.selected {
+  background: #444;
+  color: #fff;
+}
+
 #token-palette button img {
   width: 48px;
   height: 48px;

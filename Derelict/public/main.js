@@ -69,6 +69,7 @@ async function init() {
   });
 
   const tokenPalette = document.getElementById('token-palette');
+  let selectedTokenBtn = null;
   if (tokenPalette) {
     for (const t of state.tokenTypes) {
       const btn = document.createElement('button');
@@ -82,10 +83,30 @@ async function init() {
       btn.addEventListener('click', () => {
         core.selectToken(t.type);
         ui.setPaletteSelection(null);
+        if (selectedTokenBtn) selectedTokenBtn.classList.remove('selected');
+        btn.classList.add('selected');
+        selectedTokenBtn = btn;
       });
       tokenPalette.appendChild(btn);
     }
   }
+
+  function clearTokenSelection() {
+    if (selectedTokenBtn) {
+      selectedTokenBtn.classList.remove('selected');
+      selectedTokenBtn = null;
+    }
+  }
+
+  const segPalette = document.getElementById('segment-palette');
+  const viewportEl = document.getElementById('viewport');
+  const unselectBtn = document.getElementById('unselect');
+  segPalette?.addEventListener('click', clearTokenSelection);
+  viewportEl?.addEventListener('click', clearTokenSelection);
+  unselectBtn?.addEventListener('click', clearTokenSelection);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') clearTokenSelection();
+  });
 
   function resize() {
     const vp = document.getElementById('viewport');
