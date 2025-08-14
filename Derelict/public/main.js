@@ -15,11 +15,25 @@ async function init() {
   const renderer = createRenderer();
   renderer.loadSpriteManifestFromText(spriteManifest);
 
-  // Extract minimal metadata for editor palettes
+  // Extract segment definitions for editor palettes and ghost rendering
   const segmentDefs = [];
-  for (const line of segLib.split(/\r?\n/)) {
-    const m = line.match(/^segment\s+(\S+)/);
-    if (m) segmentDefs.push({ segmentId: m[1] });
+  const segLines = segLib.split(/\r?\n/);
+  for (let i = 0; i < segLines.length; i++) {
+    const line = segLines[i];
+    const m = line.match(/^segment\s+(\S+)\s+(\d+)x(\d+)/);
+    if (m) {
+      const id = m[1];
+      const w = parseInt(m[2], 10);
+      const h = parseInt(m[3], 10);
+      const grid = [];
+      for (let r = 0; r < h; r++) {
+        const row = segLines[++i];
+        grid.push(row.trim().split(/\s+/).map(Number));
+      }
+      // skip endsegment line
+      i++;
+      segmentDefs.push({ segmentId: id, width: w, height: h, grid });
+    }
   }
   const tokenTypes = tokLib
     .split(/\r?\n/)
@@ -38,7 +52,10 @@ async function init() {
     for (const t of state.tokenTypes) {
       const btn = document.createElement('button');
       btn.textContent = t.type;
-      btn.addEventListener('click', () => core.selectToken(t.type));
+      btn.addEventListener('click', () => {
+        core.selectToken(t.type);
+        ui.setPaletteSelection(null);
+      });
       tokenPalette.appendChild(btn);
     }
   }

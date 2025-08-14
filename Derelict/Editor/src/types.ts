@@ -15,7 +15,13 @@ export interface Renderer {
 
 export interface BoardState {
   size: number;
-  segmentDefs: { segmentId: string; name: string }[];
+  segmentDefs: {
+    segmentId: string;
+    name?: string;
+    width?: number;
+    height?: number;
+    grid?: number[][];
+  }[];
   tokenTypes: { type: string }[];
   segments: any[];
   tokens: any[];
