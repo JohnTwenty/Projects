@@ -6,14 +6,23 @@ async function init() {
   const app = document.getElementById('app');
   if (!app) return;
 
-  const [segLib, tokLib, spriteManifest] = await Promise.all([
+  const [segLib, tokLib, spriteManifestText] = await Promise.all([
     fetch('assets/segments.txt').then((r) => r.text()),
     fetch('assets/tokens.txt').then((r) => r.text()),
     fetch('assets/sprites.manifest.txt').then((r) => r.text()),
   ]);
 
   const renderer = createRenderer();
-  renderer.loadSpriteManifestFromText(spriteManifest);
+  renderer.loadSpriteManifestFromText(spriteManifestText);
+
+  // Build a simple lookup of sprite file paths for token types
+  const spriteMap = new Map();
+  for (const line of spriteManifestText.split(/\r?\n/)) {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length >= 2 && !line.startsWith('#')) {
+      spriteMap.set(parts[0], parts[1]);
+    }
+  }
 
   // Extract segment definitions for editor palettes and ghost rendering
   const segmentDefs = [];
@@ -47,11 +56,29 @@ async function init() {
 
   const { core, ui } = createEditor(app, renderer, BoardState, state);
 
+  const imageCache = new Map();
+  renderer.setAssetResolver((key) => {
+    let img = imageCache.get(key);
+    if (!img) {
+      img = document.createElement('img');
+      img.src = key;
+      img.addEventListener('load', () => ui.render());
+      imageCache.set(key, img);
+    }
+    return img;
+  });
+
   const tokenPalette = document.getElementById('token-palette');
   if (tokenPalette) {
     for (const t of state.tokenTypes) {
       const btn = document.createElement('button');
-      btn.textContent = t.type;
+      const img = document.createElement('img');
+      const file = spriteMap.get(t.type);
+      if (file) img.src = file;
+      const label = document.createElement('div');
+      label.textContent = t.type;
+      btn.appendChild(img);
+      btn.appendChild(label);
       btn.addEventListener('click', () => {
         core.selectToken(t.type);
         ui.setPaletteSelection(null);
