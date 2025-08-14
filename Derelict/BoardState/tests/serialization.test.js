@@ -22,6 +22,8 @@ describe('serialization', () => {
     addToken(board, { instanceId: 'T1', type: 'door', rot: 0, cells: [{ x: 2, y: 2 }], attrs: { a: 1 } });
     const json = serializeSave(board);
     const board2 = deserializeSave(json, segDefs, tokDefs);
+    delete board.getCellType;
+    delete board2.getCellType;
     assert.deepStrictEqual(board2, board);
   });
 

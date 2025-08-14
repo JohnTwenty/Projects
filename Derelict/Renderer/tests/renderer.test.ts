@@ -97,6 +97,29 @@ test('renderer applies token offsets and rotation', () => {
   );
 });
 
+test('renderer draws terrain and tokens layered', () => {
+  const renderer = createRenderer();
+  const manifest = loadSpriteManifestFromText(
+    `0 wall.png 0 0 0 0 0 0 0\nfoo foo.png 0 0 0 0 1 0 0`
+  );
+  renderer.setSpriteManifest(manifest);
+  renderer.setAssetResolver((key) => ({ width: 1, height: 1, src: key } as any));
+  renderer.resize(64, 64);
+  const state: BoardState = {
+    size: 2,
+    segments: [],
+    tokens: [{ tokenId: 't', type: 'foo', rot: 0, cells: [{ x: 0, y: 0 }] }],
+    getCellType: () => 0,
+  } as any;
+  const { ctx, calls } = makeCtx();
+  renderer.render(ctx as any, state, viewport);
+  // 4 cells + 1 token
+  assert.equal(calls.drawImage.length, 5);
+  // last draw call should be token sprite
+  const last = calls.drawImage[calls.drawImage.length - 1][0];
+  assert.equal(last.src, 'foo.png');
+});
+
 const hasOffscreen = typeof OffscreenCanvas !== 'undefined';
 const offscreenTest = hasOffscreen ? test : test.skip;
 offscreenTest('renderer smoke test with OffscreenCanvas', () => {
