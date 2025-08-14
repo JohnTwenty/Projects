@@ -8,7 +8,9 @@ import { createState, placeSegment, removeSegmentAtCoordInternal, placeToken, re
 export function newBoard(size: number, segmentLibrary: string, tokenLibrary: string): BoardState {
   const segDefs = parseSegmentLibrary(segmentLibrary);
   const tokDefs = parseTokenLibrary(tokenLibrary);
-  return createState(size, segDefs, tokDefs);
+  const state = createState(size, segDefs, tokDefs);
+  (state as any).getCellType = (coord: Coord) => cellTypeAt(state as any, coord);
+  return state;
 }
 
 export function loadBoard(size: number, segmentLibrary: string, tokenLibrary: string, missionFile: string): BoardState {
@@ -16,6 +18,7 @@ export function loadBoard(size: number, segmentLibrary: string, tokenLibrary: st
   const tokDefs = parseTokenLibrary(tokenLibrary);
   const mission = parseMission(missionFile);
   const state = createState(mission.size || size, segDefs, tokDefs);
+  (state as any).getCellType = (coord: Coord) => cellTypeAt(state as any, coord);
   for (const s of mission.segments) {
     placeSegment(state, s);
   }

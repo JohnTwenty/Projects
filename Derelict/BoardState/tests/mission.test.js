@@ -21,6 +21,8 @@ describe('mission import/export', () => {
     const board = loadBoard(40, segLib, tokLib, missionText);
     const text = saveBoard(board, 'Test');
     const board2 = loadBoard(40, segLib, tokLib, text);
+    delete board.getCellType;
+    delete board2.getCellType;
     assert.deepStrictEqual(board2, board);
   });
 

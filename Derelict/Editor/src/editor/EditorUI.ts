@@ -92,7 +92,15 @@ export class EditorUI {
 
   render() {
     const ctx = this.viewport.getContext('2d');
-    if (ctx) this.renderer.render(ctx, this.core.getState(), { x: 0, y: 0 });
+    if (ctx) {
+      const state = this.core.getState();
+      const cellSize = this.viewport.width / state.size;
+      this.renderer.render(ctx, state, {
+        origin: { x: 0, y: 0 },
+        scale: 1,
+        cellSize,
+      });
+    }
     this.drawGhost();
   }
 }
