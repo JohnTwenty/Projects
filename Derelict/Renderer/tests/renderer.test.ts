@@ -37,7 +37,7 @@ function makeCtx() {
   return { ctx, calls };
 }
 
-const manifestText = `foo foo.png 0 0 0 0 0 1 2`;
+const manifestText = `foo foo.png 0 0 64 64 0 1 2`;
 const manifest = loadSpriteManifestFromText(manifestText);
 
 const state: BoardState = {
@@ -59,7 +59,7 @@ const viewport: Viewport = {
 test('renderer handles missing sprites with fallback', () => {
   const renderer = createRenderer();
   renderer.setSpriteManifest(manifest);
-  renderer.setAssetResolver(() => ({ width: 1, height: 1 } as any));
+  renderer.setAssetResolver(() => ({ width: 64, height: 64 } as any));
   renderer.resize(64, 64);
   const { ctx, calls } = makeCtx();
   renderer.render(ctx as any, state, viewport);
@@ -81,20 +81,40 @@ test('renderer culls off-screen cells', () => {
 test('renderer applies token offsets and rotation', () => {
   const renderer = createRenderer();
   renderer.setSpriteManifest(manifest);
-  renderer.setAssetResolver(() => ({ width: 1, height: 1 } as any));
+  renderer.setAssetResolver(() => ({ width: 64, height: 64 } as any));
   renderer.resize(64, 64);
   const { ctx, calls } = makeCtx();
   renderer.render(ctx as any, state, viewport);
   // translate called for cell center and for xoff/yoff
   const translateCalls = calls.translate;
   // second translate for offset
-  const offsetCall = translateCalls.find((c) => c[0] === 1 && c[1] === 2);
+  const offsetCall = translateCalls.find(
+    (c) => Math.abs(c[0] - 0.5) < 1e-6 && Math.abs(c[1] - 1) < 1e-6
+  );
   assert.ok(offsetCall);
   // rotation applied once with 90 degrees
   assert.equal(
     calls.rotate.some((r) => Math.abs(r - Math.PI / 2) < 1e-6),
     true
   );
+});
+
+test('renderer scales tokens to cell size', () => {
+  const renderer = createRenderer();
+  renderer.setSpriteManifest(manifest);
+  renderer.setAssetResolver(() => ({ width: 64, height: 64 } as any));
+  renderer.resize(32, 32);
+  const { ctx, calls } = makeCtx();
+  const vp: Viewport = { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 };
+  const st: BoardState = {
+    size: 1,
+    segments: [],
+    tokens: [{ tokenId: 't', type: 'foo', rot: 0, cells: [{ x: 0, y: 0 }] }],
+  } as any;
+  renderer.render(ctx as any, st, vp);
+  const args = calls.drawImage[0];
+  assert.equal(args[7], 32);
+  assert.equal(args[8], 32);
 });
 
 test('renderer draws terrain and tokens layered', () => {

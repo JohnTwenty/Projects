@@ -117,27 +117,30 @@ export function createRenderer(): Renderer {
         const draw = () => {
           ctx.save();
           ctx.translate(rect.x + rect.width / 2, rect.y + rect.height / 2);
-          if (sprite) {
-            ctx.translate(sprite.xoff, sprite.yoff);
-          }
-          if (token.rot) {
-            ctx.rotate((token.rot * Math.PI) / 180);
-          }
           if (image && sprite) {
             const sw = sprite.w || (image as any).width || rect.width;
             const sh = sprite.h || (image as any).height || rect.height;
+            const scaleX = rect.width / sw;
+            const scaleY = rect.height / sh;
+            ctx.translate((sprite.xoff || 0) * scaleX, (sprite.yoff || 0) * scaleY);
+            if (token.rot) {
+              ctx.rotate((token.rot * Math.PI) / 180);
+            }
             ctx.drawImage(
               image as any,
               sprite.x,
               sprite.y,
               sw,
               sh,
-              -sw / 2,
-              -sh / 2,
-              sw,
-              sh
+              -rect.width / 2,
+              -rect.height / 2,
+              rect.width,
+              rect.height
             );
           } else {
+            if (token.rot) {
+              ctx.rotate((token.rot * Math.PI) / 180);
+            }
             ctx.fillStyle = 'magenta';
             ctx.fillRect(-rect.width / 2, -rect.height / 2, rect.width, rect.height);
           }

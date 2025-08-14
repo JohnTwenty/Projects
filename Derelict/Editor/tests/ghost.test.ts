@@ -16,7 +16,8 @@ describe('GhostOverlay drawing', () => {
     }
     const ctx = new Ctx();
     const canvas: any = { width: 100, height: 100, getContext: () => ctx };
-    const overlay = new GhostOverlay(canvas, 32);
+    const overlay = new GhostOverlay(canvas);
+    overlay.setTileSize(32);
     const state: any = { segmentDefs: [{ segmentId: 's', width: 2, height: 1, grid: [[1, 1]] }] };
     overlay.draw({ kind: 'segment', id: 's', rot: 0, cell: { x: 1, y: 2 } }, state);
     assert.ok(ctx.ops.some((o) => o[0] === 'fillRect' && o[1] === 32 && o[2] === 64));

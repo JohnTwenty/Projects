@@ -22,10 +22,15 @@ function rotate(
 
 export class GhostOverlay {
   private ctx: CanvasRenderingContext2D;
-  constructor(private canvas: HTMLCanvasElement, private tileSize = 32) {
+  private tileSize = 32;
+  constructor(private canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('no ctx');
     this.ctx = ctx;
+  }
+
+  setTileSize(size: number) {
+    this.tileSize = size;
   }
 
   clear() {
