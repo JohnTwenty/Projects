@@ -46,6 +46,10 @@ html, body {
   overflow: auto;
   background: #f5f5f5;
 }
+#segment-palette li.selected {
+  background: #444;
+  color: #fff;
+}
 #token-palette {
   flex: 0 0 80px;
   display: flex;

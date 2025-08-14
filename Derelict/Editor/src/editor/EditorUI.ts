@@ -11,6 +11,7 @@ export class EditorUI {
   private overlay: HTMLCanvasElement;
   private overlayDrawer: GhostOverlay;
   private segPalette: HTMLElement;
+  private segItems: Map<string, HTMLElement> = new Map();
 
   constructor(
     private container: HTMLElement,
@@ -34,9 +35,11 @@ export class EditorUI {
       li.dataset['seg'] = seg.segmentId;
       li.addEventListener('click', () => {
         this.core.selectSegment(seg.segmentId);
+        this.setPaletteSelection(seg.segmentId);
         this.drawGhost();
       });
       this.segPalette.appendChild(li);
+      this.segItems.set(seg.segmentId, li);
     }
   }
 
@@ -50,7 +53,10 @@ export class EditorUI {
     });
     this.viewport.addEventListener('click', () => {
       const res = this.core.placeGhost();
-      if (res.ok) this.render();
+      if (res.ok) {
+        this.setPaletteSelection(null);
+        this.render();
+      }
     });
 
     registerShortcuts(document, {
@@ -60,6 +66,7 @@ export class EditorUI {
       },
       unselect: () => {
         this.core.clearSelection();
+        this.setPaletteSelection(null);
         this.drawGhost();
       },
       delete: () => {
@@ -72,8 +79,15 @@ export class EditorUI {
     });
   }
 
+  setPaletteSelection(segId: string | null) {
+    for (const [id, el] of this.segItems) {
+      if (id === segId) el.classList.add('selected');
+      else el.classList.remove('selected');
+    }
+  }
+
   drawGhost() {
-    this.overlayDrawer.draw(this.core.ui.ghost || null);
+    this.overlayDrawer.draw(this.core.ui.ghost || null, this.core.getState());
   }
 
   render() {
