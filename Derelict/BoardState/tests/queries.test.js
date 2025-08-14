@@ -12,8 +12,8 @@ describe('queries', () => {
   const missionText = fixture('mission.txt');
   const board = loadBoard(40, segLib, tokLib, missionText);
 
-  it('getCellType returns -1 for uncovered and correct for covered', () => {
-    assert.strictEqual(getCellType(board, { x: 0, y: 0 }), -1);
+  it('getCellType returns base cell type and correct for covered', () => {
+    assert.strictEqual(getCellType(board, { x: 0, y: 0 }), 0);
     assert.strictEqual(getCellType(board, { x: 12, y: 12 }), 1);
   });
 

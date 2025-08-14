@@ -30,6 +30,7 @@ export interface BoardState {
   size: number; // board is size x size (square)
   segments: SegmentInstance[];
   tokens: TokenInstance[];
+  getCellType?(coord: Coord): CellType | -1;
 }
 
 export interface TokenDef {

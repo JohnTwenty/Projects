@@ -72,6 +72,30 @@ describe('EditorCore basics', () => {
     assert.deepEqual(added.origin, { x: 1, y: 2 });
   });
 
+  it('placeGhost adds token via API', () => {
+    let added: any = null;
+    const api: BoardStateAPI = {
+      newBoard: () => makeState(),
+      addSegment: () => {},
+      updateSegment: () => {},
+      removeSegment: () => {},
+      addToken: (_s, tok) => {
+        added = tok;
+      },
+      updateToken: () => {},
+      removeToken: () => {},
+      importMission: () => {},
+      exportMission: () => 't',
+      getCellType: () => -1,
+    };
+    const core = new EditorCore(api, makeState());
+    core.selectToken('tokA');
+    core.setGhostCell({ x: 3, y: 4 });
+    const res = core.placeGhost();
+    assert.equal(res.ok, true);
+    assert.deepEqual(added.cells[0], { x: 3, y: 4 });
+  });
+
   it('placeGhost handles API error', () => {
     const api: BoardStateAPI = {
       newBoard: () => makeState(),

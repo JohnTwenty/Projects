@@ -5,6 +5,7 @@ import { createIndices, segmentCells, key, Indices } from './indices.js';
 const SEGMENT_DEFS = Symbol('segmentDefs');
 const TOKEN_DEFS = Symbol('tokenDefs');
 const INDICES = Symbol('indices');
+const BASE_SEGMENT_ID: Id = 'base';
 
 export interface InternalState extends BoardState {
   [SEGMENT_DEFS]: Map<string, SegmentDef>;
@@ -13,13 +14,21 @@ export interface InternalState extends BoardState {
 }
 
 export function createState(size: number, segDefs: Map<string, SegmentDef>, tokDefs: Map<string, TokenDef>): InternalState {
+  const idx = createIndices();
+  // initialize board with base wall cells (cell type 0)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      idx.segCells.set(key({ x, y }), { instanceId: BASE_SEGMENT_ID, cellType: 0 });
+    }
+  }
+
   const state: InternalState = {
     size,
     segments: [],
     tokens: [],
     [SEGMENT_DEFS]: segDefs,
     [TOKEN_DEFS]: tokDefs,
-    [INDICES]: createIndices(),
+    [INDICES]: idx,
   };
   return state;
 }
@@ -38,7 +47,8 @@ export function placeSegment(state: InternalState, inst: SegmentInstance): void 
   const conflicts: Coord[] = [];
   for (const { coord } of cells) {
     assertInBounds(state, coord);
-    if (idx.segCells.has(key(coord))) conflicts.push(coord);
+    const existing = idx.segCells.get(key(coord));
+    if (existing && existing.instanceId !== BASE_SEGMENT_ID) conflicts.push(coord);
   }
   if (conflicts.length) {
     throw new BoardError(ERR_OVERLAP, 'segment overlap', conflicts[0]);
@@ -59,7 +69,7 @@ export function removeSegmentAtCoordInternal(state: InternalState, coord: Coord)
   const def = state[SEGMENT_DEFS].get(inst.type)!;
   const cells = segmentCells(inst, def);
   for (const { coord: c } of cells) {
-    idx.segCells.delete(key(c));
+    idx.segCells.set(key(c), { instanceId: BASE_SEGMENT_ID, cellType: 0 });
   }
   idx.segmentsById.delete(inst.instanceId);
   state.segments = state.segments.filter((s) => s.instanceId !== inst.instanceId);

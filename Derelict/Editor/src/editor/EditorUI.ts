@@ -46,8 +46,13 @@ export class EditorUI {
   private wireEvents() {
     this.viewport.addEventListener('mousemove', (ev) => {
       const rect = this.viewport.getBoundingClientRect();
-      const cell = pixelToCell({ x: ev.clientX - rect.left, y: ev.clientY - rect.top });
-      const clamped = clampCell(cell, this.core.getState().size);
+      const state = this.core.getState();
+      const cellSize = this.getCellSize(state);
+      const cell = pixelToCell(
+        { x: ev.clientX - rect.left, y: ev.clientY - rect.top },
+        cellSize,
+      );
+      const clamped = clampCell(cell, state.size);
       this.core.setGhostCell(clamped);
       this.drawGhost();
     });
@@ -87,12 +92,28 @@ export class EditorUI {
   }
 
   drawGhost() {
-    this.overlayDrawer.draw(this.core.ui.ghost || null, this.core.getState());
+    const state = this.core.getState();
+    const cellSize = this.getCellSize(state);
+    this.overlayDrawer.setTileSize(cellSize);
+    this.overlayDrawer.draw(this.core.ui.ghost || null, state);
   }
 
   render() {
     const ctx = this.viewport.getContext('2d');
-    if (ctx) this.renderer.render(ctx, this.core.getState(), { x: 0, y: 0 });
+    if (ctx) {
+      const state = this.core.getState();
+      const cellSize = this.getCellSize(state);
+      this.renderer.render(ctx, state, {
+        origin: { x: 0, y: 0 },
+        scale: 1,
+        cellSize,
+      });
+    }
     this.drawGhost();
+  }
+
+  private getCellSize(state: BoardState): number {
+    const base = Math.min(this.viewport.width, this.viewport.height) / state.size;
+    return Math.min(base, 64);
   }
 }
