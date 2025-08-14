@@ -51,4 +51,12 @@ test('bootstrap initializes without errors', async () => {
 
   const tokens = document.querySelectorAll('#token-palette button');
   assert.ok(tokens.length > 0, 'token buttons populated');
+
+  const firstToken = tokens[0];
+  firstToken.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  assert.ok(firstToken.classList.contains('selected'), 'token button highlights on select');
+
+  const seg = document.querySelector('#segment-palette li');
+  seg?.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  assert.ok(!firstToken.classList.contains('selected'), 'token highlight clears on segment select');
 });
