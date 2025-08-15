@@ -1,0 +1,14 @@
+mission: Wipe The Floor
+profile: mission
+version: 1
+board: 40
+segments: lib_segments.txt
+tokenlib: lib_tokens.txt
+
+instances:
+  S1: L_room_5x5 pos=(10,10) rot=0
+  S3: endcap      pos=(15,15) rot=180
+
+tokens:
+  D1: door   pos=(13,12) rot=90
+  M1: marine pos=(11,12) rot=180 attrs={"owner":"red"}
