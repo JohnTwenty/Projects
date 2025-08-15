@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
-import { loadBoard, getCellType, getCellsInSameSegment, findById } from '../dist/api/public.js';
+import { newBoard, importBoardText, getCellType, getCellsInSameSegment, findById } from '../dist/api/public.js';
 
 const fixture = (p) => fs.readFileSync(path.join('fixtures', p), 'utf8');
 
@@ -10,7 +10,8 @@ describe('queries', () => {
   const segLib = fixture('lib_segments.txt');
   const tokLib = fixture('lib_tokens.txt');
   const missionText = fixture('mission.txt');
-  const board = loadBoard(40, segLib, tokLib, missionText);
+  const board = newBoard(40, segLib, tokLib);
+  importBoardText(board, missionText);
 
   it('getCellType returns base cell type and correct for covered', () => {
     assert.strictEqual(getCellType(board, { x: 0, y: 0 }), 0);

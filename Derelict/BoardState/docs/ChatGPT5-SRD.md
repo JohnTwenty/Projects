@@ -44,7 +44,7 @@ export interface SegmentInstance {
 
 export interface Token {
   tokenId: Id;
-  type: string;               // must exist in tokenTypes if strict
+  type: string;               // must exist in tokenTypes
   pos: Coord;                 // single cell position
   rot: Rotation;
   attrs?: Record<string, unknown>;
@@ -58,7 +58,6 @@ export interface BoardState {
   tokens: Token[];
   segmentDefs: SegmentDef[];  // embedded segment library
   tokenTypes: TokenTypeDef[]; // embedded token library
-  tokenTypeStrict: boolean;   // default false
 }
 ```
 
@@ -205,18 +204,13 @@ Libraries are **embedded** in the BoardState; callers do not pass them repeatedl
 ```ts
 // Construction
 export function newBoard(size: number, segmentLibraryText: string, tokenLibraryText: string): BoardState;
-export function replaceSegmentLibrary(state: BoardState, segmentLibraryText: string): void; // revalidate instances
-export function replaceTokenLibrary(state: BoardState, tokenLibraryText: string): void;     // revalidate tokens if strict
-export function setTokenTypeStrict(state: BoardState, strict: boolean): void;               // default false
 
 // Segments
 export function addSegment(state: BoardState, seg: SegmentInstance): void;                  // validates non-overlap & bounds
-export function updateSegment(state: BoardState, id: Id, patch: Partial<SegmentInstance>): void;
 export function removeSegment(state: BoardState, id: Id): void;
 
 // Tokens (single-cell)
 export function addToken(state: BoardState, tok: Token): void;                              // bounds only
-export function updateToken(state: BoardState, id: Id, patch: Partial<Token>): void;
 export function removeToken(state: BoardState, id: Id): void;
 
 // Queries
@@ -228,14 +222,13 @@ export function getBoardDimensions(state: BoardState): { width: number; height: 
 
 // Text I/O (single canonical format)
 export function importBoardText(state: BoardState, text: string): void;  // clears & loads using embedded libs
-export function exportBoardText(state: BoardState): string;               // deterministic ordering
+export function exportBoardText(state: BoardState, missionName: string): string; // deterministic ordering; filename from missionName (spaces→dashes)
 ```
 
 **Validation**
 
 * Segment placement rejects overlaps (report conflict cell) and out‑of‑bounds.
-* Token placement checks bounds; overlap allowed.
-* Strict token types: unknown `type` → error; non‑strict → warning/allow.
+* Token placement checks bounds; unknown token types error; overlap allowed.
 
 ---
 
@@ -290,12 +283,9 @@ export function exportBoardText(state: BoardState): string;               // det
 10\. `board: size` honored; out‑of‑bounds rejected.
 11\. `profile: mission|save` round‑trips with default `mission`.
 
-**Strictness**
-12\. Strict mode: unknown token type → error; non‑strict allows and preserves.
-
 **Performance**
-13\. 50 segment placements + 100 token ops under time budget.
-14\. 10k mixed queries remain fast.
+12\. 50 segment placements + 100 token ops under time budget.
+13\. 10k mixed queries remain fast.
 
 ---
 

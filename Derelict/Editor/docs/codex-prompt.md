@@ -103,9 +103,9 @@ File operations (modals)
 
         Load sprite manifest (text) and hand to Renderer adapter
 
-    Load: pick a mission file (text); call BoardState.importMission(text)
+    Load: pick a mission file (text); call BoardState.importBoardText(text)
 
-    Save: call BoardState.exportMission() and download as file
+    Save: call BoardState.exportBoardText(name) and download as file
 
     Play: modal to confirm “switch to play mode”; for now just emit an event/callback (Editor doesn’t implement gameplay)
 
@@ -152,13 +152,11 @@ export interface BoardState {
 export interface BoardStateAPI {
   newBoard(size: number, segLibText: string, tokenLibText: string): BoardState;
   addSegment(state: BoardState, seg: { instanceId:string; segmentId:string; origin:{x:number;y:number}; rot:0|90|180|270 }): void;
-  updateSegment(state: BoardState, id: string, patch: Partial<any>): void;
   removeSegment(state: BoardState, id: string): void;
   addToken(state: BoardState, tok: { tokenId:string; type:string; rot:0|90|180|270; cells:{x:number;y:number}[] }): void;
-  updateToken(state: BoardState, id: string, patch: Partial<any>): void;
   removeToken(state: BoardState, id: string): void;
-  importMission(state: BoardState, text: string): void;
-  exportMission(state: BoardState): string;
+  importBoardText(state: BoardState, text: string): void;
+  exportBoardText(state: BoardState, missionName: string): string;
   getCellType(state: BoardState, coord: {x:number;y:number}): number | -1;
 }
 

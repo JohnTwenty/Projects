@@ -18,13 +18,11 @@ describe('EditorCore basics', () => {
     const api: BoardStateAPI = {
       newBoard: () => makeState(),
       addSegment: () => {},
-      updateSegment: () => {},
       removeSegment: () => {},
       addToken: () => {},
-      updateToken: () => {},
       removeToken: () => {},
-      importMission: () => {},
-      exportMission: () => 'text',
+      importBoardText: () => {},
+      exportBoardText: () => 'text',
       getCellType: () => -1,
     };
     const core = new EditorCore(api, makeState());
@@ -55,13 +53,11 @@ describe('EditorCore basics', () => {
       addSegment: (_s, seg) => {
         added = seg;
       },
-      updateSegment: () => {},
       removeSegment: () => {},
       addToken: () => {},
-      updateToken: () => {},
       removeToken: () => {},
-      importMission: () => {},
-      exportMission: () => 't',
+      importBoardText: () => {},
+      exportBoardText: () => 't',
       getCellType: () => -1,
     };
     const core = new EditorCore(api, makeState());
@@ -77,15 +73,13 @@ describe('EditorCore basics', () => {
     const api: BoardStateAPI = {
       newBoard: () => makeState(),
       addSegment: () => {},
-      updateSegment: () => {},
       removeSegment: () => {},
       addToken: (_s, tok) => {
         added = tok;
       },
-      updateToken: () => {},
       removeToken: () => {},
-      importMission: () => {},
-      exportMission: () => 't',
+      importBoardText: () => {},
+      exportBoardText: () => 't',
       getCellType: () => -1,
     };
     const core = new EditorCore(api, makeState());
@@ -102,13 +96,11 @@ describe('EditorCore basics', () => {
       addSegment: () => {
         throw new Error('bad');
       },
-      updateSegment: () => {},
       removeSegment: () => {},
       addToken: () => {},
-      updateToken: () => {},
       removeToken: () => {},
-      importMission: () => {},
-      exportMission: () => 't',
+      importBoardText: () => {},
+      exportBoardText: () => 't',
       getCellType: () => -1,
     };
     const core = new EditorCore(api, makeState());
@@ -123,15 +115,13 @@ describe('EditorCore basics', () => {
     const api: BoardStateAPI = {
       newBoard: () => makeState(),
       addSegment: () => {},
-      updateSegment: () => {},
       removeSegment: (_s, id) => {
         removed = id;
       },
       addToken: () => {},
-      updateToken: () => {},
       removeToken: () => {},
-      importMission: () => {},
-      exportMission: () => 't',
+      importBoardText: () => {},
+      exportBoardText: () => 't',
       getCellType: () => -1,
     };
     const core = new EditorCore(api, makeState());
