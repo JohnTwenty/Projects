@@ -1,6 +1,6 @@
 import layout from './layout.html.js';
 import { EditorCore } from './EditorCore.js';
-import { qs, createEl } from '../util/dom.js';
+import { qs, createEl, showModal } from '../util/dom.js';
 import { pixelToCell, clampCell } from '../util/geometry.js';
 import { registerShortcuts } from './Shortcuts.js';
 import type { Renderer, BoardState } from '../types.js';
@@ -61,6 +61,11 @@ export class EditorUI {
       }
     });
 
+    const loadBtn = qs<HTMLButtonElement>(this.container, '#btn-load');
+    loadBtn.addEventListener('click', () => {
+      this.openLoadDialog();
+    });
+
     registerShortcuts(document, {
       rotate: (d) => {
         this.core.rotateGhost(d);
@@ -79,6 +84,34 @@ export class EditorUI {
         this.core.saveMission();
       },
     });
+  }
+
+  private async openLoadDialog() {
+    const files = await this.fetchMissionList();
+    const list = createEl('ul');
+    let modalRef: { close(): void };
+    for (const f of files) {
+      const li = createEl('li');
+      li.textContent = f.replace(/\.txt$/i, '');
+      li.addEventListener('click', async () => {
+        const text = await fetch(`missions/${f}`).then((r) => r.text());
+        this.core.loadMission(text);
+        this.setPaletteSelection(null);
+        this.render();
+        modalRef.close();
+      });
+      list.appendChild(li);
+    }
+    modalRef = showModal('Select Mission to Load', list, [
+      { label: 'Cancel', onClick: () => modalRef.close() },
+    ]);
+  }
+
+  private async fetchMissionList(): Promise<string[]> {
+    const res = await fetch('missions/');
+    const text = await res.text();
+    const matches = [...text.matchAll(/href="([^"/]+\.txt)"/g)];
+    return matches.map((m) => m[1]);
   }
 
   setPaletteSelection(segId: string | null) {
