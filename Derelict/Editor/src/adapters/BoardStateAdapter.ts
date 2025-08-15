@@ -20,9 +20,6 @@ export class BoardStateAdapter {
   }) {
     this.api.addSegment(this.state, seg);
   }
-  updateSegment(id: string, patch: Partial<any>) {
-    this.api.updateSegment(this.state, id, patch);
-  }
   removeSegment(id: string) {
     this.api.removeSegment(this.state, id);
   }
@@ -34,17 +31,14 @@ export class BoardStateAdapter {
   }) {
     this.api.addToken(this.state, tok);
   }
-  updateToken(id: string, patch: Partial<any>) {
-    this.api.updateToken(this.state, id, patch);
-  }
   removeToken(id: string) {
     this.api.removeToken(this.state, id);
   }
-  importMission(text: string) {
-    this.api.importMission(this.state, text);
+  importBoardText(text: string) {
+    this.api.importBoardText(this.state, text);
   }
-  exportMission() {
-    return this.api.exportMission(this.state);
+  exportBoardText(missionName = 'Untitled') {
+    return this.api.exportBoardText(this.state, missionName);
   }
   getCellType(coord: { x: number; y: number }) {
     return this.api.getCellType(this.state, coord);

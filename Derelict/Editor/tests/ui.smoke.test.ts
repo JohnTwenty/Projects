@@ -46,13 +46,11 @@ describe('EditorUI smoke test', () => {
       addSegment: () => {
         added = true;
       },
-      updateSegment: () => {},
       removeSegment: () => {},
       addToken: () => {},
-      updateToken: () => {},
       removeToken: () => {},
-      importMission: () => {},
-      exportMission: () => '',
+      importBoardText: () => {},
+      exportBoardText: () => '',
       getCellType: () => -1,
     };
     const renderer: Renderer = {
@@ -122,13 +120,11 @@ describe('EditorUI smoke test', () => {
     const api: BoardStateAPI = {
       newBoard: () => state,
       addSegment: () => {},
-      updateSegment: () => {},
       removeSegment: () => {},
       addToken: () => {},
-      updateToken: () => {},
       removeToken: () => {},
-      importMission: () => {},
-      exportMission: () => '',
+      importBoardText: () => {},
+      exportBoardText: () => '',
       getCellType: () => -1,
     };
     const renderer: Renderer = {

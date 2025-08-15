@@ -96,11 +96,11 @@ export class EditorCore {
   }
 
   loadMission(text: string): void {
-    this.api.importMission(this.state, text);
+    this.api.importBoardText(this.state, text);
     this.clearSelection();
   }
 
-  saveMission(): string {
-    return this.api.exportMission(this.state);
+  saveMission(name = 'Untitled'): string {
+    return this.api.exportBoardText(this.state, name);
   }
 }

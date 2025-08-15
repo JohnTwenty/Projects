@@ -38,7 +38,6 @@ export interface BoardStateAPI {
       rot: 0 | 90 | 180 | 270;
     },
   ): void;
-  updateSegment(state: BoardState, id: string, patch: Partial<any>): void;
   removeSegment(state: BoardState, id: string): void;
   addToken(
     state: BoardState,
@@ -49,10 +48,9 @@ export interface BoardStateAPI {
       cells: { x: number; y: number }[];
     },
   ): void;
-  updateToken(state: BoardState, id: string, patch: Partial<any>): void;
   removeToken(state: BoardState, id: string): void;
-  importMission(state: BoardState, text: string): void;
-  exportMission(state: BoardState): string;
+  importBoardText(state: BoardState, text: string): void;
+  exportBoardText(state: BoardState, missionName: string): string;
   getCellType(state: BoardState, coord: { x: number; y: number }): number | -1;
 }
 
