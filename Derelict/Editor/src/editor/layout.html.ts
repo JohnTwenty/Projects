@@ -7,8 +7,10 @@ const layout = `
   <button id="btn-play">Play</button>
 </div>
 <div id="main">
-  <canvas id="viewport" width="640" height="480"></canvas>
-  <canvas id="overlay" width="640" height="480" style="position:absolute;left:0;top:0;"></canvas>
+  <div id="viewport-wrap">
+    <canvas id="viewport" width="640" height="640"></canvas>
+    <canvas id="overlay" width="640" height="640"></canvas>
+  </div>
   <ul id="segment-palette"></ul>
 </div>
 <div id="buttons2">

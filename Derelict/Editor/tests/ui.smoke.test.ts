@@ -28,7 +28,7 @@ describe('EditorUI smoke test', () => {
       left: 0,
       top: 0,
       width: 640,
-      height: 480,
+      height: 640,
     });
 
     const state: BoardState = {
@@ -84,7 +84,7 @@ describe('EditorUI smoke test', () => {
     );
     assert.ok(added);
     assert.ok(rendered);
-    assert.equal(lastCellSize, 24);
+    assert.equal(lastCellSize, 32);
     void ui;
   });
 
