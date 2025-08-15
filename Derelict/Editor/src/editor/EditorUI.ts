@@ -1,6 +1,5 @@
 import layout from './layout.html.js';
 import { EditorCore } from './EditorCore.js';
-import { GhostOverlay } from './GhostOverlay.js';
 import { qs, createEl } from '../util/dom.js';
 import { pixelToCell, clampCell } from '../util/geometry.js';
 import { registerShortcuts } from './Shortcuts.js';
@@ -9,7 +8,6 @@ import type { Renderer, BoardState } from '../types.js';
 export class EditorUI {
   private viewport: HTMLCanvasElement;
   private overlay: HTMLCanvasElement;
-  private overlayDrawer: GhostOverlay;
   private segPalette: HTMLElement;
   private segItems: Map<string, HTMLElement> = new Map();
 
@@ -22,7 +20,6 @@ export class EditorUI {
     this.viewport = qs<HTMLCanvasElement>(container, '#viewport');
     this.overlay = qs<HTMLCanvasElement>(container, '#overlay');
     this.segPalette = qs<HTMLElement>(container, '#segment-palette');
-    this.overlayDrawer = new GhostOverlay(this.overlay);
     this.populatePalettes();
     this.wireEvents();
   }
@@ -92,10 +89,15 @@ export class EditorUI {
   }
 
   drawGhost() {
+    const ctx = this.overlay.getContext('2d');
+    if (!ctx) return;
     const state = this.core.getState();
     const cellSize = this.getCellSize(state);
-    this.overlayDrawer.setTileSize(cellSize);
-    this.overlayDrawer.draw(this.core.ui.ghost || null, state);
+    this.renderer.drawGhost(ctx, this.core.ui.ghost || null, state, {
+      origin: { x: 0, y: 0 },
+      scale: 1,
+      cellSize,
+    });
   }
 
   render() {

@@ -25,7 +25,6 @@ Project layout under Projects/Derelict/Editor:
   /editor
     EditorCore.ts           // pure state machine & commands (no DOM)
     EditorUI.ts             // DOM wiring (palettes, buttons, modals)
-    GhostOverlay.ts         // ghost drawing on a transparent overlay canvas
     Shortcuts.ts            // keyboard shortcut registration
     layout.html             // minimal HTML skeleton (export string or template fn)
     styles.css              // minimal styling (optional)
@@ -42,7 +41,6 @@ Project layout under Projects/Derelict/Editor:
   core.test.ts              // node:test — EditorCore behaviors (no DOM)
   geometry.test.ts          // node:test — helpers
   ui.smoke.test.ts          // node:test + jsdom — basic DOM wiring works
-  ghost.test.ts             // node:test — GhostOverlay math & alpha ops
 package.json
 tsconfig.json
 README.md

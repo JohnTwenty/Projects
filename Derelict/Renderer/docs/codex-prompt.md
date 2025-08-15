@@ -56,6 +56,12 @@ export interface SpriteEntry {
   xoff: number; yoff: number; // pixel offsets from cell center BEFORE rotation
 }
 export interface SpriteManifest { entries: SpriteEntry[]; }
+export interface Ghost {
+  kind: 'segment' | 'token';
+  id: string;
+  rot: 0 | 90 | 180 | 270;
+  cell: { x: number; y: number } | null;
+}
 
 export interface Renderer {
   setSpriteManifest(manifest: SpriteManifest): void;
@@ -67,6 +73,12 @@ export interface Renderer {
     state: BoardState,
     viewport: Viewport,
     options?: RenderOptions
+  ): void;
+  drawGhost(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    ghost: Ghost | null,
+    state: BoardState,
+    viewport: Viewport,
   ): void;
 
   // Pure helpers:

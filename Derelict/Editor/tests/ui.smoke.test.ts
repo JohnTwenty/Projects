@@ -62,6 +62,7 @@ describe('EditorUI smoke test', () => {
         rendered = true;
         lastCellSize = vp.cellSize;
       },
+      drawGhost: () => {},
     };
 
     const core = new EditorCore(api, state);
@@ -135,6 +136,7 @@ describe('EditorUI smoke test', () => {
       render: (_ctx: any, _state: any, vp) => {
         lastCellSize2 = vp.cellSize;
       },
+      drawGhost: () => {},
     };
     const core = new EditorCore(api, state);
     const container = window.document.getElementById('app')!;
