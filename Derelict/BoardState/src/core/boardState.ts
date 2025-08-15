@@ -33,6 +33,19 @@ export function createState(size: number, segDefs: Map<string, SegmentDef>, tokD
   return state;
 }
 
+export function resetBoard(state: InternalState, size: number): void {
+  const idx = createIndices();
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      idx.segCells.set(key({ x, y }), { instanceId: BASE_SEGMENT_ID, cellType: 0 });
+    }
+  }
+  state.size = size;
+  state.segments = [];
+  state.tokens = [];
+  state[INDICES] = idx;
+}
+
 function assertInBounds(state: InternalState, c: Coord) {
   if (c.x < 0 || c.y < 0 || c.x >= state.size || c.y >= state.size) {
     throw new BoardError(ERR_BAD_COORD, `Coord out of bounds (${c.x},${c.y})`, c);

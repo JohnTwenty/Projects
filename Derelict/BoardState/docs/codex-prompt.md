@@ -127,8 +127,9 @@ Use `Error` subclasses or tagged objects. Suggested codes:
 ```ts
 // Construction / configuration
 export function newBoard(size: number, segmentLibrary: string, tokenLibrary : string): BoardState;
-export function loadBoard(size: number, segmentLibrary: string, tokenLibrary : string, missionFile: string): BoardState;
-export function saveBoard(state: BoardState, missionFile: string): string;
+export function newBoard(size: number, segmentLibraryText: string, tokenLibraryText: string): BoardState;
+export function importBoardText(state: BoardState, text: string): void;
+export function exportBoardText(state: BoardState, missionName: string): string;
 
 
 // Mutations

@@ -3,7 +3,7 @@ import { parseSegmentLibrary } from '../io/segmentLib.parse.js';
 import { parseTokenLibrary } from '../io/tokenLib.parse.js';
 import { parseMission } from '../io/mission.parse.js';
 import { serializeMission } from '../io/mission.serialize.js';
-import { createState, placeSegment, removeSegmentAtCoordInternal, placeToken, removeTokenInternal, cellTypeAt, cellsInSameSegment, tokensAt, findByIdInternal } from '../core/boardState.js';
+import { createState, resetBoard, placeSegment, removeSegmentAtCoordInternal, placeToken, removeTokenInternal, cellTypeAt, cellsInSameSegment, tokensAt, findByIdInternal } from '../core/boardState.js';
 
 export function newBoard(size: number, segmentLibrary: string, tokenLibrary: string): BoardState {
   const segDefs = parseSegmentLibrary(segmentLibrary);
@@ -13,22 +13,18 @@ export function newBoard(size: number, segmentLibrary: string, tokenLibrary: str
   return state;
 }
 
-export function loadBoard(size: number, segmentLibrary: string, tokenLibrary: string, missionFile: string): BoardState {
-  const segDefs = parseSegmentLibrary(segmentLibrary);
-  const tokDefs = parseTokenLibrary(tokenLibrary);
-  const mission = parseMission(missionFile);
-  const state = createState(mission.size || size, segDefs, tokDefs);
-  (state as any).getCellType = (coord: Coord) => cellTypeAt(state as any, coord);
+export function importBoardText(state: BoardState, text: string): void {
+  const mission = parseMission(text);
+  resetBoard(state as any, mission.size || state.size);
   for (const s of mission.segments) {
-    placeSegment(state, s);
+    placeSegment(state as any, s);
   }
   for (const t of mission.tokens) {
-    placeToken(state, t);
+    placeToken(state as any, t);
   }
-  return state;
 }
 
-export function saveBoard(state: BoardState, missionName: string): string {
+export function exportBoardText(state: BoardState, missionName: string): string {
   return serializeMission(state, missionName);
 }
 
@@ -37,8 +33,11 @@ export function addSegment(state: BoardState, seg: SegmentInstance): void {
   placeSegment(state as any, seg);
 }
 
-export function removeSegmentAtCoord(state: BoardState, coord: Coord): void {
-  removeSegmentAtCoordInternal(state as any, coord);
+export function removeSegment(state: BoardState, id: Id): void {
+  const inst = findByIdInternal(state as any, id) as SegmentInstance | undefined;
+  if (inst) {
+    removeSegmentAtCoordInternal(state as any, inst.origin);
+  }
 }
 
 export function addToken(state: BoardState, tok: TokenInstance): void {
@@ -64,14 +63,6 @@ export function getTokensAt(state: BoardState, coord: Coord): TokenInstance[] {
 
 export function getBoardDimensions(state: BoardState): { width: number; height: number } {
   return { width: state.size, height: state.size };
-}
-
-export function getSegmentInstances(state: BoardState): SegmentInstance[] {
-  return state.segments;
-}
-
-export function getTokens(state: BoardState): TokenInstance[] {
-  return state.tokens;
 }
 
 export function findById(state: BoardState, id: Id): SegmentInstance | TokenInstance | undefined {

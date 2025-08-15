@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
-import { loadBoard, saveBoard } from '../dist/api/public.js';
+import { newBoard, importBoardText, exportBoardText } from '../dist/api/public.js';
 
 const fixture = (p) => fs.readFileSync(path.join('fixtures', p), 'utf8');
 
@@ -12,24 +12,28 @@ describe('mission import/export', () => {
   const missionText = fixture('mission.txt');
 
   it('import mission builds expected BoardState', () => {
-    const board = loadBoard(40, segLib, tokLib, missionText);
+    const board = newBoard(40, segLib, tokLib);
+    importBoardText(board, missionText);
     assert.strictEqual(board.segments.length, 3);
     assert.strictEqual(board.tokens.length, 2);
   });
 
   it('export -> import preserves IDs', () => {
-    const board = loadBoard(40, segLib, tokLib, missionText);
-    const text = saveBoard(board, 'Test');
-    const board2 = loadBoard(40, segLib, tokLib, text);
+    const board = newBoard(40, segLib, tokLib);
+    importBoardText(board, missionText);
+    const text = exportBoardText(board, 'Test');
+    const board2 = newBoard(40, segLib, tokLib);
+    importBoardText(board2, text);
     delete board.getCellType;
     delete board2.getCellType;
     assert.deepStrictEqual(board2, board);
   });
 
   it('deterministic export ordering', () => {
-    const board = loadBoard(40, segLib, tokLib, missionText);
-    const text1 = saveBoard(board, 'Test');
-    const text2 = saveBoard(board, 'Test');
+    const board = newBoard(40, segLib, tokLib);
+    importBoardText(board, missionText);
+    const text1 = exportBoardText(board, 'Test');
+    const text2 = exportBoardText(board, 'Test');
     assert.strictEqual(text1, text2);
   });
 });
