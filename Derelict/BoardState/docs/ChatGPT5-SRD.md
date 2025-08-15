@@ -1,132 +1,305 @@
-# Board State Module — Software Requirements Specification (SRS)
+# BoardState — Combined Specification (SRS+SDD) v2.0
 
-## 1. Overview
-### 1.1 Purpose
-Define complete, testable requirements for the **Board State** module that maintains and serializes the game’s abstract tabletop state, supports map editing workflows, and exposes a clear API for rules, GUI, and players. This SRS is implementation-agnostic and sufficient to derive a Software Design Document (SDD).
+## 1. Purpose & Scope
 
-### 1.2 Scope in System
-- Central source of truth for: **segments**, **cells**, **connectors**, **doors**, **pieces** (miniatures and markers), **mission metadata**.
-- Consumed by: GUI (rendering), Rules Engine (legal moves & mutations), Players (queries), Tools (editor, save/load).
-- Produces: serialized **mission files**, **savegame files**, **event stream** for observers, **query responses**.
+Single, authoritative specification for the **BoardState** module: data model, file formats, and APIs. BoardState models a square-grid board with **non-overlapping segments** (terrain) and **tokens** (pieces/markers). It is rendering‑ and rules‑agnostic.
 
-### 1.3 Out of Scope
-- No enforcement of Space-Hulk-specific legality (that is the Rules Engine’s job).
-- No networking or persistence beyond local (e.g., browser storage / file export).
-- No audio assets.
-- No screen coordinate system — only abstract X-Y tabletop coordinates.
+This document consolidates previous SRS/SDD, removes the separate JSON savegame format, and standardizes the **single text format** for both authored missions and saved states.
 
 ---
 
-## 2. Stakeholders & Interfaces
-### 2.1 Stakeholders
-- **Game Rules Engine:** reads state, proposes/executes mutations.
-- **GUI:** queries state and subscribes to state change events; forwards editor commands.
-- **Player Implementations (Human/AI):** read-only queries; send commands via Rules or Editor.
-- **Tools:** map editor, test harness, import/export utilities.
+## 2. Core Concepts & Invariants
 
-### 2.2 External Interfaces (Capabilities)
-The module **shall** expose capabilities in three classes:
-- **Mutation API** (apply validated changes): e.g., place/remove segment, add/remove doors, add/set/remove pieces.
-- **Query API** (pure reads): state snapshots, lookups, spatial queries.
-- **Serialization API**: load/save mission and savegame formats; import/export segment libraries.
+* **Board:** square grid with integer coordinates `(x,y)`, `0 ≤ x,y < size`.
+* **Segment:** rectangular template (from a Segment Library) placed at an origin with one of four rotations. Segments **must not overlap**; each cell is covered by **at most one** segment.
+* **Token:** a piece/marker on a **single cell** with a rotation; tokens may overlap and do not affect segment occupancy. (Multi‑cell tokens may be added later.)
+* **Rotation:** `0 | 90 | 180 | 270` (clockwise). Segment rotation changes which template cell covers which board cell; token rotation is purely metadata for render/rules.
 
 ---
 
-## 3. Definitions
-- **Segment:** A reusable tile layout defined by a glyph grid and metadata. Instances are placed/rotated on the global grid.
-- **Cell:** The smallest addressable board location inside a segment.
-- **Connector:** A cell-edge or special glyph indicating a possible corridor connection between segments.
-- **Door:** An object at an edge between two adjacent cells; has state {open, closed}.
-- **Piece:** Any object occupying or covering one or more cells — includes miniatures, tokens, and markers.
-- **Mission:** A layout plus starting pieces and victory metadata.
-- **Global Grid:** Integer coordinate space for all placed cells after segment rotation/translation in an abstract X-Y plane.
+## 3. Data Model (TypeScript types)
+
+```ts
+export type Rotation = 0 | 90 | 180 | 270;
+export type CellType = number; // e.g., 0=wall, 1=corridor (library-defined)
+export interface Coord { x: number; y: number; }
+export type Id = string;
+
+export interface SegmentDef {
+  segmentId: Id;              // stable key used by missions
+  name: string;               // human-friendly
+  width: number;              // in cells
+  height: number;             // in cells
+  grid: CellType[][];         // [row][col], rectangular
+  legend?: Record<string, CellType>; // provenance only
+  metadata?: Record<string, unknown>; // opaque
+}
+
+export interface SegmentInstance {
+  instanceId: Id;             // unique within board
+  segmentId: Id;              // must exist in state.segmentDefs
+  origin: Coord;              // top-left before rotation
+  rot: Rotation;              // 0/90/180/270
+}
+
+export interface Token {
+  tokenId: Id;
+  type: string;               // must exist in tokenTypes if strict
+  pos: Coord;                 // single cell position
+  rot: Rotation;
+  attrs?: Record<string, unknown>;
+}
+
+export interface TokenTypeDef { type: string; notes?: string; }
+
+export interface BoardState {
+  size: number;               // board is size x size
+  segments: SegmentInstance[];
+  tokens: Token[];
+  segmentDefs: SegmentDef[];  // embedded segment library
+  tokenTypes: TokenTypeDef[]; // embedded token library
+  tokenTypeStrict: boolean;   // default false
+}
+```
+
+**Invariants**
+
+* Segment coverage never overlaps.
+* All `origin` and `pos` are within bounds.
+* Rotations are in `{0,90,180,270}`.
 
 ---
 
-## 4. Functional Requirements (FR)
-### 4.1 Lifecycle
-- **BS-FR-001** The module shall initialize to an empty map state with no segments or pieces.
-- **BS-FR-002** The module shall support reset/clear to the initial empty state.
-- **BS-FR-003** The module shall maintain a monotonically increasing **state version** and **event sequence number**.
+## 4. Libraries (Text Formats)
 
-### 4.2 Segment Library
-- **BS-FR-010** The module shall load one or more **segment libraries** from plaintext and/or JSON representations.
-- **BS-FR-011** Each segment definition shall include: **segmentId**, **glyph grid**, and optional metadata (name, tags, default connectors).
-- **BS-FR-012** Glyph legend shall be defined in the library and may use any intuitive symbols, but must clearly indicate at least: blocked space, walkable space, and connector points.
-- **BS-FR-013** The module shall validate segment grids to be rectangular and non-empty; all glyphs must be declared in the legend.
+Both formats are **line‑oriented**, hand‑editable; `#` starts a comment; blank lines are ignored.
 
-### 4.3 Mission Layout (Segments on Map)
-- **BS-FR-020** The module shall place **segment instances** on the global grid using parameters: {segmentId, instanceId, position (x,y), orientation ∈ {0,1,2,3}}.
-- **BS-FR-021** The module shall support **rotate**, **translate**, and **remove** operations on segment instances by `instanceId`.
-- **BS-FR-022** The module shall prevent **overlapping walkable cells** from different segments; overlapping blocked cells are allowed if they do not conflict.
-- **BS-FR-023** The module shall record explicit attachments between connectors.
-- **BS-FR-024** The module shall expose a validation method to check map consistency.
+### 4.1 Segment Library (numeric grid)
 
-### 4.4 Cells & Coordinates
-- **BS-FR-030** The module shall support mapping between local cell coordinates and global (x,y) after rotation/translation.
-- **BS-FR-031** The module shall provide **cell lookup** by global coordinates.
-- **BS-FR-032** The module shall expose **adjacency** per cell considering walls, doors, and connectors.
+**Grammar (EBNF)**
 
-### 4.5 Doors
-- **BS-FR-040** The module shall allow **door objects** to be added/removed between two adjacent global cells.
-- **BS-FR-041** Each door shall have state: **open** or **closed**.
-- **BS-FR-042** Door placement must be consistent with terrain.
+```
+File        := Legend? SegmentBlock+
+Legend      := 'legend:' WS LegendEntry (',' WS LegendEntry)* NEWLINE
+LegendEntry := Int '=' Label
 
-### 4.6 Pieces (Unified Units/Markers)
-- **BS-FR-050** The module shall support **piece** creation with attributes at minimum: `{pieceId, type, owner?, facing?, attributes?}`.
-- **BS-FR-051** Each piece shall define a **footprint** as a non-empty set of global cells `{(x,y)+}`; single-cell pieces are a special case.
-- **BS-FR-052** The module shall provide **add/set/remove** operations for pieces, including updating the footprint atomically.
-- **BS-FR-053** The board state shall **not** enforce exclusive occupancy; multiple pieces may reference the same cell. Optional configuration may set per-type overlap constraints, but default allows overlaps (stacking) for both "miniatures" and "markers".
+SegmentBlock:= 'segment' WS SegmentId WS Size [WS 'name="' Text '"'] NEWLINE
+               Row{height} 'endsegment' NEWLINE?
+Row         := Int (WS Int){width-1} NEWLINE
+Size        := Int 'x' Int
+SegmentId   := [A-Za-z0-9_\-]+
+Int         := -?[0-9]+
+Label       := [^,\n]+
+Text        := [^"]*
+WS          := ' '+
+NEWLINE     := '\n'
+```
 
-### 4.7 Queries
-- **BS-FR-060** The module shall provide queries for segments, instances, walkability, objects at coordinates, neighbors, and attachments.
-- **BS-FR-061** The module shall provide a **bounding box** of all placed walkable cells.
+**Semantics**
 
-### 4.8 Serialization
-- **BS-FR-070** The module shall export/import mission and savegame formats.
-- **BS-FR-071** The module shall preserve stable **IDs** across save/load.
-- **BS-FR-072** Formats shall be human-readable and diff-friendly.
-- **BS-FR-073** Must support round-trip fidelity.
+* Grid integers are authoritative cell types (legend is documentation/provenance only).
+* All rows must have `width` integers; number of rows equals `height`.
 
-### 4.9 Undo/Redo & Command Log
-- **BS-FR-080** The module shall support undo/redo of atomic mutations.
-- **BS-FR-081** Mutations shall emit structured events with diffs.
+**Example**
 
-### 4.10 Validation
-- **BS-FR-090** The module shall validate inputs and reject invalid mutations.
+```
+legend: 0=wall, 1=corridor
+segment L_room_5x5 5x5 name="L Room 5x5"
+0 0 1 0 0
+0 1 1 1 0
+1 1 1 1 0
+0 1 1 1 0
+0 0 0 0 0
+endsegment
+```
 
-### 4.11 Modes
-- **BS-FR-100** The module shall accept mutations from Editor or Rules.
-- **BS-FR-101** The module shall allow a read-only preview mode.
+### 4.2 Token Library (flat list)
 
----
+**Grammar (EBNF)**
 
-## 5. Data Models & Identifiers
-- **Identifiers:** `segmentId` (library scope), `instanceId` (map scope), `pieceId`, `doorId`. IDs must be unique within their scope.
-- **Coordinate System:** Global coordinates are integer `(x, y)` on an abstract tabletop plane. No screen or compass semantics. Let `x` increase to the right and `y` increase upward. Rotations are defined in degrees `{0, 90, 180, 270}` relative to this abstract frame.
-- **Piece:** A generic object representing anything placed on the board (miniatures, blips, markers, objectives, area effects). A piece may:
-  - have a **type** (free text), **owner/side** (optional), **attributes** (free-form key–value), and an optional **facing** (`0,90,180,270`) if consumers care.
-  - occupy **one or more cells** (a **footprint**: set of global `(x,y)` cells). Overlaps between pieces are permitted unless configuration forbids it; legality is a Rules concern.
-- **Object Graph:**
-  - Map contains SegmentInstances
-  - SegmentInstance contains transformed Cells
-  - Cells may be referenced by any number of Piece footprints
-  - Doors exist between two adjacent cells
+```
+File     := ('version:' WS Int NEWLINE)? Line*
+Line     := ( 'type=' TypeId (WS 'notes="' Text '"')? )? (COMMENT|NEWLINE)
+TypeId   := [A-Za-z0-9_\-]+
+Text     := [^"]*
+COMMENT  := '#' [^\n]* NEWLINE
+WS       := ' '+
+Int      := -?[0-9]+
+```
 
----
+**Semantics**
 
-## 6. Non-Functional Requirements (NFR)
-- Deterministic state progression.
-- Performance: ≤ 50 ms per mutation for maps up to 10,000 walkable cells.
-- Memory efficiency within browser limits.
-- Headless operation for testing.
-- Stable, text-first formats for AI tooling.
+* `type` identifiers must be unique; last‑write‑wins on duplicates.
+* No rendering info here; visuals live in the Renderer’s sprite manifest.
+
+**Example**
+
+```
+version: 1
+type=door        notes="standard door token"
+type=marine      notes="armored miniature"
+type=blip
+type=objective   notes="mission objective"
+```
 
 ---
 
-## 7. Open Questions Resolved
-- Coordinates are abstract X-Y, no concept of screen or north.
-- No LOS helpers — delegated to Rules.
-- Pieces cover both miniatures and markers; may span multiple cells and overlap.
-- Glyphs are flexible; legend is part of each segment library and can be designed for clarity.
+## 5. Unified Board Text Format (Mission or Save)
 
+A single, line‑oriented text format for both authored missions and mid‑game snapshots.
+
+**Header**
+
+```
+mission: <Name>
+profile: mission | save     # default: mission
+version: 1
+board: <size>
+segments: <path-to-segment-library>
+tokenlib: <path-to-token-library>
+```
+
+**Bodies**
+
+```
+instances:
+  <instanceId>: <segmentId> pos=(x,y) rot=<0|90|180|270>
+
+tokens:
+  <tokenId>: <typeName> pos=(x,y) rot=<0|90|180|270> [attrs=<json>]
+```
+
+**Notes**
+
+* `board:` uses a **single integer** (square board).
+* `profile:` lets tools distinguish authored vs saved; BoardState treats both identically.
+* `attrs=<json>` is a single‑line JSON object; unknown keys are preserved on round‑trip.
+* Token positions are **single‑cell**; multi‑cell tokens are a future extension.
+
+**Example**
+
+```
+mission: Cleanse the Corridor
+profile: mission
+version: 1
+board: 40
+segments: assets/lib_segments.txt
+tokenlib: assets/lib_tokens.txt
+
+instances:
+  S1: L_room_5x5 pos=(10,10) rot=0
+  S2: corridor_5 pos=(14,10) rot=90
+  S3: endcap     pos=(14,15) rot=180
+
+tokens:
+  D1: door   pos=(13,12) rot=90
+  M1: marine pos=(11,12) rot=180 attrs={"owner":"red","name":"Sergeant"}
+```
+
+---
+
+## 6. APIs (embedded libraries model)
+
+Libraries are **embedded** in the BoardState; callers do not pass them repeatedly.
+
+```ts
+// Construction
+export function newBoard(size: number, segmentLibraryText: string, tokenLibraryText: string): BoardState;
+export function replaceSegmentLibrary(state: BoardState, segmentLibraryText: string): void; // revalidate instances
+export function replaceTokenLibrary(state: BoardState, tokenLibraryText: string): void;     // revalidate tokens if strict
+export function setTokenTypeStrict(state: BoardState, strict: boolean): void;               // default false
+
+// Segments
+export function addSegment(state: BoardState, seg: SegmentInstance): void;                  // validates non-overlap & bounds
+export function updateSegment(state: BoardState, id: Id, patch: Partial<SegmentInstance>): void;
+export function removeSegment(state: BoardState, id: Id): void;
+
+// Tokens (single-cell)
+export function addToken(state: BoardState, tok: Token): void;                              // bounds only
+export function updateToken(state: BoardState, id: Id, patch: Partial<Token>): void;
+export function removeToken(state: BoardState, id: Id): void;
+
+// Queries
+export function getCellType(state: BoardState, coord: Coord): CellType | -1;
+export function getCellsInSameSegment(state: BoardState, coord: Coord): Coord[];            // [] if none
+export function getTokensAt(state: BoardState, coord: Coord): Token[];                      // possibly empty
+export function findById(state: BoardState, id: Id): SegmentInstance | Token | undefined;
+export function getBoardDimensions(state: BoardState): { width: number; height: number };
+
+// Text I/O (single canonical format)
+export function importBoardText(state: BoardState, text: string): void;  // clears & loads using embedded libs
+export function exportBoardText(state: BoardState): string;               // deterministic ordering
+```
+
+**Validation**
+
+* Segment placement rejects overlaps (report conflict cell) and out‑of‑bounds.
+* Token placement checks bounds; overlap allowed.
+* Strict token types: unknown `type` → error; non‑strict → warning/allow.
+
+---
+
+## 7. Algorithms & Mappings
+
+**Rotation mapping** (local `(r,c)` within `h×w` grid → rotated index):
+
+```
+0°   : (r,c) → (r,c)
+90°  : (r,c) → (c, h-1-r)
+180° : (r,c) → (h-1-r, w-1-c)
+270° : (r,c) → (w-1-c, r)
+```
+
+**Overlap check**
+
+* Maintain occupancy index for segments. When placing/updating, iterate the rotated template’s footprint, test/set occupancy; fail on first conflict.
+
+**Indices**
+
+* `cell → {instanceId, cellType}` for O(1) `getCellType`.
+* `cell → tokenId[]` for O(1) `getTokensAt`.
+
+---
+
+## 8. Determinism & Performance
+
+* Deterministic export ordering: segments by `instanceId` ascending, then tokens by `tokenId` ascending (or insertion order; choose and document; tests enforce).
+* Ops target ≤ 50ms for boards up to ≈10k cells.
+
+---
+
+## 9. Unit Tests (must‑have)
+
+**Libraries**
+
+1. Segment library parses; ragged rows → error; unknown integers allowed (renderer decides visuals).
+2. Token library parses; duplicate `type` last‑write‑wins.
+
+**Placement & Rotation**
+3\. Non‑overlapping placement succeeds.
+4\. Overlap is rejected with conflict coordinate.
+5\. Rotation mapping correct for 0/90/180/270.
+
+**Queries**
+6\. `getCellType` returns `-1` for uncovered; correct value when covered.
+7\. `getCellsInSameSegment` returns all and only the owner’s cells.
+8\. `getTokensAt` returns all tokens at a cell in stable order.
+
+**Text I/O (single format)**
+9\. Import → Export → Import round‑trip preserves IDs, coords, rotations, attrs.
+10\. `board: size` honored; out‑of‑bounds rejected.
+11\. `profile: mission|save` round‑trips with default `mission`.
+
+**Strictness**
+12\. Strict mode: unknown token type → error; non‑strict allows and preserves.
+
+**Performance**
+13\. 50 segment placements + 100 token ops under time budget.
+14\. 10k mixed queries remain fast.
+
+---
+
+## 10. Non‑Normative Notes
+
+* IDs are caller‑assigned and preserved; BoardState does not auto‑rename.
+* BoardState remains agnostic to LOS/pathfinding/game rules.
