@@ -28,6 +28,19 @@ export interface BoardState {
     cells: { x: number; y: number }[];
     attrs?: Record<string, unknown>;
   }[];
+  segmentDefs?: {
+    segmentId: string;
+    width?: number;
+    height?: number;
+    grid?: number[][];
+  }[];
+}
+
+export interface Ghost {
+  kind: 'segment' | 'token';
+  id: string;
+  rot: 0 | 90 | 180 | 270;
+  cell: { x: number; y: number } | null;
 }
 
 export interface Renderer {
@@ -40,6 +53,13 @@ export interface Renderer {
     state: BoardState,
     viewport: Viewport,
     options?: RenderOptions
+  ): void;
+
+  drawGhost(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    ghost: Ghost | null,
+    state: BoardState,
+    viewport: Viewport,
   ): void;
 
   boardToScreen(

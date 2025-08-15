@@ -11,6 +11,12 @@ export interface Renderer {
     vp: any,
     opt?: any,
   ): void;
+  drawGhost(
+    ctx: CanvasRenderingContext2D,
+    ghost: EditorState['ghost'] | null,
+    state: BoardState,
+    vp: any,
+  ): void;
 }
 
 export interface BoardState {
