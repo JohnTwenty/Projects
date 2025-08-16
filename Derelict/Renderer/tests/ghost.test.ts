@@ -20,4 +20,27 @@ describe('Renderer.drawGhost', () => {
     r.drawGhost(ctx as any, { kind: 'segment', id: 's', rot: 0, cell: { x: 1, y: 2 } }, state, { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 });
     assert.ok(ctx.ops.some(o => o[0] === 'fillRect' && o[1] === 32 && o[2] === 64));
   });
+
+  it('uses grid dimensions for non-square segments', () => {
+    const ctx = new Ctx();
+    const r = createRenderer();
+    const grid = [
+      [1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1],
+    ];
+    const state: any = {
+      size: 10,
+      segments: [],
+      tokens: [],
+      segmentDefs: [{ segmentId: 's', width: 3, height: 5, grid }],
+    };
+    r.drawGhost(
+      ctx as any,
+      { kind: 'segment', id: 's', rot: 0, cell: { x: 0, y: 0 } },
+      state,
+      { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 }
+    );
+    assert.ok(ctx.ops.some(o => o[0] === 'fillRect' && o[1] === 128 && o[2] === 64));
+  });
 });

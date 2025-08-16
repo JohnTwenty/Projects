@@ -73,6 +73,13 @@ describe('EditorUI smoke test', () => {
     li.dispatchEvent(new window.Event('click', { bubbles: true }));
     assert.equal(core.ui.ghost?.kind, 'segment');
 
+    const rotRight = container.querySelector('#rot-right') as HTMLElement;
+    rotRight.dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(core.ui.ghost?.rot, 90);
+    const rotLeft = container.querySelector('#rot-left') as HTMLElement;
+    rotLeft.dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(core.ui.ghost?.rot, 0);
+
     const canvas = container.querySelector('#viewport') as HTMLCanvasElement;
     canvas.dispatchEvent(
       new window.MouseEvent('mousemove', { clientX: 40, clientY: 40, bubbles: true }),
