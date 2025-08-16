@@ -32,8 +32,8 @@ html, body {
 #viewport-wrap {
   position: relative;
   flex: none;
-  width: 640px;
-  height: 640px;
+  width: 2560px;
+  height: 2560px;
 }
 #viewport {
   width: 100%;
