@@ -39,7 +39,7 @@ export interface BoardStateAPI {
     state: BoardState,
     seg: {
       instanceId: string;
-      segmentId: string;
+      type: string;
       origin: { x: number; y: number };
       rot: 0 | 90 | 180 | 270;
     },

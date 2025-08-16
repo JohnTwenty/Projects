@@ -66,6 +66,17 @@ export class EditorUI {
       this.openLoadDialog();
     });
 
+    const rotL = qs<HTMLButtonElement>(this.container, '#rot-left');
+    rotL.addEventListener('click', () => {
+      this.core.rotateGhost(-1);
+      this.drawGhost();
+    });
+    const rotR = qs<HTMLButtonElement>(this.container, '#rot-right');
+    rotR.addEventListener('click', () => {
+      this.core.rotateGhost(1);
+      this.drawGhost();
+    });
+
     registerShortcuts(document, {
       rotate: (d) => {
         this.core.rotateGhost(d);
