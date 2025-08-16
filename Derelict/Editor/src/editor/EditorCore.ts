@@ -61,7 +61,7 @@ export class EditorCore {
         const id = `seg-${Date.now()}`;
         this.api.addSegment(this.state, {
           instanceId: id,
-          segmentId: g.id,
+          type: g.id,
           origin: g.cell,
           rot: g.rot,
         });
