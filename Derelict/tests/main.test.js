@@ -4,6 +4,7 @@ import { JSDOM } from 'jsdom';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import url from 'node:url';
+import { parseSegmentDefs } from '../public/segments.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
@@ -59,4 +60,13 @@ test('bootstrap initializes without errors', async () => {
   const seg = document.querySelector('#segment-palette li');
   seg?.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
   assert.ok(!firstToken.classList.contains('selected'), 'token highlight clears on segment select');
+});
+
+test('segment parser preserves rectangular dimensions', async () => {
+  const text = await readFile(path.join(publicDir, 'assets', 'segments.txt'), 'utf8');
+  const defs = parseSegmentDefs(text);
+  const seg = defs.find((d) => d.segmentId === 'corridor_5');
+  assert.ok(seg, 'corridor_5 found');
+  assert.equal(seg.height, 3);
+  assert.equal(seg.width, 5);
 });

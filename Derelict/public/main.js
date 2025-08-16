@@ -1,6 +1,7 @@
 import * as BoardState from '../BoardState/dist/api/public.js';
 import { createRenderer } from '../Renderer/dist/src/renderer.js';
 import { createEditor } from '../Editor/dist/src/index.js';
+import { parseSegmentDefs } from './segments.js';
 
 async function init() {
   const app = document.getElementById('app');
@@ -25,25 +26,7 @@ async function init() {
   }
 
   // Extract segment definitions for editor palettes and ghost rendering
-  const segmentDefs = [];
-  const segLines = segLib.split(/\r?\n/);
-  for (let i = 0; i < segLines.length; i++) {
-    const line = segLines[i];
-    const m = line.match(/^segment\s+(\S+)\s+(\d+)x(\d+)/);
-    if (m) {
-      const id = m[1];
-      const w = parseInt(m[2], 10);
-      const h = parseInt(m[3], 10);
-      const grid = [];
-      for (let r = 0; r < h; r++) {
-        const row = segLines[++i];
-        grid.push(row.trim().split(/\s+/).map(Number));
-      }
-      // skip endsegment line
-      i++;
-      segmentDefs.push({ segmentId: id, width: w, height: h, grid });
-    }
-  }
+  const segmentDefs = parseSegmentDefs(segLib);
   const tokenTypes = tokLib
     .split(/\r?\n/)
     .filter((l) => l.startsWith('type='))
