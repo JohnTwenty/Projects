@@ -47,40 +47,36 @@ export function createRenderer(): Renderer {
     ctx.globalAlpha = 0.5;
     if (ghost.kind === 'segment') {
       const def = state.segmentDefs?.find((s) => s.segmentId === ghost.id);
-      if (def) {
-        const width = def.grid?.[0]?.length ?? def.width ?? 0;
-        const height = def.grid?.length ?? def.height ?? 0;
-        if (width && height) {
-          const rotate = (
-            local: { x: number; y: number },
-            rot: 0 | 90 | 180 | 270,
-          ) => {
-            const x = local.x;
-            const y = local.y;
-            switch (rot) {
-              case 0:
-                return { x, y };
-              case 90:
-                return { x: height - 1 - y, y: x };
-              case 180:
-                return { x: width - 1 - x, y: height - 1 - y };
-              case 270:
-                return { x: y, y: width - 1 - x };
-            }
-          };
-          for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-              const rc = rotate({ x, y }, ghost.rot);
-              const gx = (ghost.cell.x + rc.x - vp.origin.x) * ts;
-              const gy = (ghost.cell.y + rc.y - vp.origin.y) * ts;
-              ctx.fillStyle = 'rgba(0,0,255,0.5)';
-              ctx.fillRect(gx, gy, ts, ts);
-            }
-          }
-          ctx.restore();
-          return;
+      const width = def?.grid?.[0]?.length ?? def?.width ?? 1;
+      const height = def?.grid?.length ?? def?.height ?? 1;
+      const rotate = (
+        local: { x: number; y: number },
+        rot: 0 | 90 | 180 | 270,
+      ) => {
+        const x = local.x;
+        const y = local.y;
+        switch (rot) {
+          case 0:
+            return { x, y };
+          case 90:
+            return { x: height - 1 - y, y: x };
+          case 180:
+            return { x: width - 1 - x, y: height - 1 - y };
+          case 270:
+            return { x: y, y: width - 1 - x };
+        }
+      };
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const rc = rotate({ x, y }, ghost.rot);
+          const gx = (ghost.cell.x + rc.x - vp.origin.x) * ts;
+          const gy = (ghost.cell.y + rc.y - vp.origin.y) * ts;
+          ctx.fillStyle = 'rgba(0,0,255,0.5)';
+          ctx.fillRect(gx, gy, ts, ts);
         }
       }
+      ctx.restore();
+      return;
     }
     const gx = (ghost.cell.x - vp.origin.x) * ts;
     const gy = (ghost.cell.y - vp.origin.y) * ts;
@@ -218,11 +214,10 @@ export function createRenderer(): Renderer {
       ctx.lineWidth = 2;
       ctx.strokeStyle = 'gray';
       for (const seg of state.segments) {
-        const def = state.segmentDefs?.find((s) => s.segmentId === seg.segmentId);
-        if (!def) continue;
-        const width = def.grid?.[0]?.length ?? def.width ?? 0;
-        const height = def.grid?.length ?? def.height ?? 0;
-        if (!width || !height) continue;
+        const segId = (seg as any).segmentId ?? (seg as any).type;
+        const def = state.segmentDefs?.find((s) => s.segmentId === segId);
+        const width = def?.grid?.[0]?.length ?? def?.width ?? 1;
+        const height = def?.grid?.length ?? def?.height ?? 1;
         let w = width;
         let h = height;
         if (seg.rot === 90 || seg.rot === 270) {

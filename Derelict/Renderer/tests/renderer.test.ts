@@ -178,7 +178,7 @@ test('renderer draws segment bounds before tokens', () => {
   const state: BoardState = {
     size: 4,
     segments: [
-      { instanceId: 's1', segmentId: 'seg', origin: { x: 0, y: 0 }, rot: 0 },
+      { instanceId: 's1', type: 'seg', origin: { x: 0, y: 0 }, rot: 0 },
     ],
     tokens: [
       { tokenId: 't', type: 'foo', rot: 0, cells: [{ x: 0, y: 0 }] },
@@ -195,6 +195,23 @@ test('renderer draws segment bounds before tokens', () => {
   const strokeIndex = calls.log.indexOf('strokeRect');
   const tokenIndex = calls.log.lastIndexOf('drawImage');
   assert.ok(strokeIndex < tokenIndex);
+});
+
+test('renderer draws bounds for segments without defs', () => {
+  const renderer = createRenderer();
+  renderer.setSpriteManifest(manifest);
+  renderer.setAssetResolver(() => ({ width: 1, height: 1 } as any));
+  renderer.resize(64, 64);
+  const state: BoardState = {
+    size: 4,
+    segments: [
+      { instanceId: 's1', type: 'unknown', origin: { x: 0, y: 0 }, rot: 0 },
+    ],
+    tokens: [],
+  } as any;
+  const { ctx, calls } = makeCtx();
+  renderer.render(ctx as any, state, viewport, { showSegmentBounds: true });
+  assert.equal(calls.strokeRect.length, 1);
 });
 
 const hasOffscreen = typeof OffscreenCanvas !== 'undefined';
