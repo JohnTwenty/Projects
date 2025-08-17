@@ -209,31 +209,29 @@ export function createRenderer(): Renderer {
     terrainCalls.sort((a, b) => a.layer - b.layer);
     for (const d of terrainCalls) d.fn();
 
-    if (options?.showSegmentBounds) {
-      ctx.save();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'gray';
-      for (const seg of state.segments) {
-        const segId = (seg as any).segmentId ?? (seg as any).type;
-        const def = state.segmentDefs?.find((s) => s.segmentId === segId);
-        const width = def?.grid?.[0]?.length ?? def?.width ?? 1;
-        const height = def?.grid?.length ?? def?.height ?? 1;
-        let w = width;
-        let h = height;
-        if (seg.rot === 90 || seg.rot === 270) {
-          [w, h] = [h, w];
-        }
-        const rect = boardToScreen(seg.origin, viewport);
-        const px = rect.x;
-        const py = rect.y;
-        const pw = rect.width * w;
-        const ph = rect.height * h;
-        if (px + pw <= 0 || py + ph <= 0 || px >= canvasPx.w || py >= canvasPx.h)
-          continue;
-        ctx.strokeRect(px, py, pw, ph);
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'gray';
+    for (const seg of state.segments) {
+      const segId = (seg as any).segmentId ?? (seg as any).type;
+      const def = state.segmentDefs?.find((s) => s.segmentId === segId);
+      const width = def?.grid?.[0]?.length ?? def?.width ?? 1;
+      const height = def?.grid?.length ?? def?.height ?? 1;
+      let w = width;
+      let h = height;
+      if (seg.rot === 90 || seg.rot === 270) {
+        [w, h] = [h, w];
       }
-      ctx.restore();
+      const rect = boardToScreen(seg.origin, viewport);
+      const px = rect.x;
+      const py = rect.y;
+      const pw = rect.width * w;
+      const ph = rect.height * h;
+      if (px + pw <= 0 || py + ph <= 0 || px >= canvasPx.w || py >= canvasPx.h)
+        continue;
+      ctx.strokeRect(px, py, pw, ph);
     }
+    ctx.restore();
 
     tokenCalls.sort((a, b) => a.layer - b.layer);
     for (const d of tokenCalls) d.fn();

@@ -10,7 +10,6 @@ export interface Viewport {
 export interface RenderOptions {
   clear?: boolean;
   background?: string | null;
-  showSegmentBounds?: boolean;
 }
 
 export interface BoardState {

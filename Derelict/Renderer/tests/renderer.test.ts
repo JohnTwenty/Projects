@@ -188,7 +188,7 @@ test('renderer draws segment bounds before tokens', () => {
     ],
   } as any;
   const { ctx, calls } = makeCtx();
-  renderer.render(ctx as any, state, viewport, { showSegmentBounds: true });
+  renderer.render(ctx as any, state, viewport);
   assert.equal(calls.strokeRect.length, 1);
   assert.ok(calls.lineWidth.includes(2));
   assert.ok(calls.strokeStyle.includes('gray'));
@@ -210,7 +210,7 @@ test('renderer draws bounds for segments without defs', () => {
     tokens: [],
   } as any;
   const { ctx, calls } = makeCtx();
-  renderer.render(ctx as any, state, viewport, { showSegmentBounds: true });
+  renderer.render(ctx as any, state, viewport);
   assert.equal(calls.strokeRect.length, 1);
 });
 
