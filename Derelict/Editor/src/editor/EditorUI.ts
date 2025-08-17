@@ -3,6 +3,7 @@ import { EditorCore } from './EditorCore.js';
 import { qs, createEl, showModal } from '../util/dom.js';
 import { pixelToCell, clampCell } from '../util/geometry.js';
 import { registerShortcuts } from './Shortcuts.js';
+import { downloadText } from '../util/files.js';
 import type { Renderer, BoardState } from '../types.js';
 
 export class EditorUI {
@@ -103,21 +104,42 @@ export class EditorUI {
   }
 
   private async openLoadDialog() {
-    const files = await this.fetchMissionList();
+    const server = await this.fetchMissionList();
+    const local = this.getLocalMissionNames();
     const list = createEl('ul');
     let modalRef: { close(): void };
-    for (const f of files) {
+
+    const addItem = (label: string, loader: () => void | Promise<void>) => {
       const li = createEl('li');
-      li.textContent = f.replace(/\.txt$/i, '');
+      li.textContent = label.replace(/\.txt$/i, '');
       li.addEventListener('click', async () => {
-        const text = await fetch(`missions/${f}`).then((r) => r.text());
-        this.core.loadMission(text);
+        await loader();
         this.setPaletteSelection(null);
         this.render();
         modalRef.close();
       });
       list.appendChild(li);
+    };
+
+    for (const f of server) {
+      addItem(f, async () => {
+        const text = await fetch(`missions/${f}`).then((r) => r.text());
+        this.core.loadMission(text);
+      });
     }
+
+    if (local.length) {
+      const sep = createEl('li', 'section');
+      sep.textContent = 'Local Missions';
+      list.appendChild(sep);
+      for (const f of local) {
+        addItem(f, () => {
+          const text = localStorage.getItem('mission:' + f) || '';
+          this.core.loadMission(text);
+        });
+      }
+    }
+
     modalRef = showModal('Select Mission to Load', list, [
       { label: 'Cancel', onClick: () => modalRef.close() },
     ]);
@@ -146,15 +168,8 @@ export class EditorUI {
 
   private async performSave(name: string): Promise<boolean> {
     const fileName = name.replace(/\s+/g, '-') + '.txt';
-    const url = `missions/${encodeURIComponent(fileName)}`;
-    let exists = false;
-    try {
-      const res = await fetch(url, { method: 'HEAD' });
-      exists = res.ok;
-    } catch {
-      exists = false;
-    }
-    if (exists) {
+    const key = 'mission:' + fileName;
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(key)) {
       const proceed = await new Promise<boolean>((resolve) => {
         const body = createEl('div');
         body.textContent = `${fileName} exists. Overwrite?`;
@@ -167,7 +182,14 @@ export class EditorUI {
       if (!proceed) return false;
     }
     const text = this.core.saveMission(name);
-    await fetch(url, { method: 'PUT', body: text });
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(key, text);
+      } catch {
+        /* ignore */
+      }
+    }
+    downloadText(fileName, text);
     return true;
   }
 
@@ -176,6 +198,16 @@ export class EditorUI {
     const text = await res.text();
     const matches = [...text.matchAll(/href="([^"/]+\.txt)"/g)];
     return matches.map((m) => m[1]);
+  }
+
+  private getLocalMissionNames(): string[] {
+    if (typeof localStorage === 'undefined') return [];
+    const names: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('mission:')) names.push(k.slice(8));
+    }
+    return names;
   }
 
   setPaletteSelection(segId: string | null) {
