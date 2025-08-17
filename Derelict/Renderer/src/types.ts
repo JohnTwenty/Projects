@@ -10,14 +10,14 @@ export interface Viewport {
 export interface RenderOptions {
   clear?: boolean;
   background?: string | null;
-  showSegmentBounds?: boolean;
 }
 
 export interface BoardState {
   size: number;
   segments: {
     instanceId: string;
-    segmentId: string;
+    segmentId?: string;
+    type?: string;
     origin: { x: number; y: number };
     rot: 0 | 90 | 180 | 270;
   }[];

@@ -9,7 +9,7 @@ Provide a **pure rendering library** that draws a `BoardState` onto a `Canvas2D`
 * Consume: **BoardState** (read-only) and a **Sprite Manifest**.
 * Output: pixels on a provided canvas context.
 * Support camera/viewport transforms (pan/zoom) supplied by the caller.
-* Optional overlays for debug (segment bounds) provided via flags.
+* Segment bounds are always drawn as 2px gray outlines after terrain and before tokens.
 
 ## 3. External Interfaces
 
@@ -27,7 +27,7 @@ Provide a **pure rendering library** that draws a `BoardState` onto a `Canvas2D`
 
 * **R-001** Render visible **cell terrain** based on `getCellType(x,y)` across the viewport’s bounds.
 * **R-002** Render **tokens** by iterating `getTokens()`; for each `token.cells` draw the token sprite with rotation `token.rot` (0/90/180/270) around a pixel offset defined by the manifest.
-* **R-003** Optional **segment bounds overlay**: draw axis-aligned rectangles for each `SegmentInstance` when `options.showSegmentBounds` is true.
+* **R-003** Draw **segment bounds overlay**: stroke axis-aligned rectangles for each `SegmentInstance` using 2px gray lines.
 * **R-004** **HiDPI**: respect `devicePixelRatio` (provided by caller) to avoid blur.
 * **R-005** **Culling**: skip drawing cells/tokens outside the viewport.
 * **R-006** **Layering**: draw terrain, then tokens in ascending **layer** order from the manifest, then stable insertion order.
@@ -89,7 +89,6 @@ export interface Viewport {
 export interface RenderOptions {
   clear?: boolean;                  // clear before draw (default true)
   background?: string | null;       // CSS color or null for transparent
-  showSegmentBounds?: boolean;
 }
 
 export type AssetResolver = (key: string) => HTMLImageElement | ImageBitmap | undefined;
@@ -137,7 +136,7 @@ export function createRenderer(): Renderer;
 1. With a given BoardState and manifest, repeated `render` calls are pixel-identical.
 2. Viewport pan/zoom updates translate/scale output correctly with HiDPI crispness.
 3. Culling ensures no draw calls for fully off-screen cells/tokens.
-4. Segment bounds overlay appears when enabled and aligns with terrain.
+4. Segment bounds overlay aligns with terrain.
 5. Fallback visuals appear for missing sprites without errors.
 
 ## 12. Notes on JSON vs Text Manifests

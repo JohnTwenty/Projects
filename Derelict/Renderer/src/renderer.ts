@@ -47,40 +47,36 @@ export function createRenderer(): Renderer {
     ctx.globalAlpha = 0.5;
     if (ghost.kind === 'segment') {
       const def = state.segmentDefs?.find((s) => s.segmentId === ghost.id);
-      if (def) {
-        const width = def.grid?.[0]?.length ?? def.width ?? 0;
-        const height = def.grid?.length ?? def.height ?? 0;
-        if (width && height) {
-          const rotate = (
-            local: { x: number; y: number },
-            rot: 0 | 90 | 180 | 270,
-          ) => {
-            const x = local.x;
-            const y = local.y;
-            switch (rot) {
-              case 0:
-                return { x, y };
-              case 90:
-                return { x: height - 1 - y, y: x };
-              case 180:
-                return { x: width - 1 - x, y: height - 1 - y };
-              case 270:
-                return { x: y, y: width - 1 - x };
-            }
-          };
-          for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-              const rc = rotate({ x, y }, ghost.rot);
-              const gx = (ghost.cell.x + rc.x - vp.origin.x) * ts;
-              const gy = (ghost.cell.y + rc.y - vp.origin.y) * ts;
-              ctx.fillStyle = 'rgba(0,0,255,0.5)';
-              ctx.fillRect(gx, gy, ts, ts);
-            }
-          }
-          ctx.restore();
-          return;
+      const width = def?.grid?.[0]?.length ?? def?.width ?? 1;
+      const height = def?.grid?.length ?? def?.height ?? 1;
+      const rotate = (
+        local: { x: number; y: number },
+        rot: 0 | 90 | 180 | 270,
+      ) => {
+        const x = local.x;
+        const y = local.y;
+        switch (rot) {
+          case 0:
+            return { x, y };
+          case 90:
+            return { x: height - 1 - y, y: x };
+          case 180:
+            return { x: width - 1 - x, y: height - 1 - y };
+          case 270:
+            return { x: y, y: width - 1 - x };
+        }
+      };
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const rc = rotate({ x, y }, ghost.rot);
+          const gx = (ghost.cell.x + rc.x - vp.origin.x) * ts;
+          const gy = (ghost.cell.y + rc.y - vp.origin.y) * ts;
+          ctx.fillStyle = 'rgba(0,0,255,0.5)';
+          ctx.fillRect(gx, gy, ts, ts);
         }
       }
+      ctx.restore();
+      return;
     }
     const gx = (ghost.cell.x - vp.origin.x) * ts;
     const gy = (ghost.cell.y - vp.origin.y) * ts;
@@ -121,7 +117,8 @@ export function createRenderer(): Renderer {
     const entryMap = new Map<string, typeof manifest.entries[number]>();
     for (const e of manifest.entries) entryMap.set(e.key, e);
 
-    const drawCalls: { layer: number; fn: () => void }[] = [];
+    const terrainCalls: { layer: number; fn: () => void }[] = [];
+    const tokenCalls: { layer: number; fn: () => void }[] = [];
 
     // Terrain drawing omitted unless getCellType available.
     const getCellType = (state as any).getCellType as
@@ -162,7 +159,7 @@ export function createRenderer(): Renderer {
             }
             ctx.restore();
           };
-          drawCalls.push({ layer: sprite.layer, fn: draw });
+          terrainCalls.push({ layer: sprite.layer, fn: draw });
         }
       }
     }
@@ -205,12 +202,39 @@ export function createRenderer(): Renderer {
           }
           ctx.restore();
         };
-        drawCalls.push({ layer: sprite?.layer ?? 0, fn: draw });
+        tokenCalls.push({ layer: sprite?.layer ?? 0, fn: draw });
       }
     }
 
-    drawCalls.sort((a, b) => a.layer - b.layer);
-    for (const d of drawCalls) d.fn();
+    terrainCalls.sort((a, b) => a.layer - b.layer);
+    for (const d of terrainCalls) d.fn();
+
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'gray';
+    for (const seg of state.segments) {
+      const segId = (seg as any).segmentId ?? (seg as any).type;
+      const def = state.segmentDefs?.find((s) => s.segmentId === segId);
+      const width = def?.grid?.[0]?.length ?? def?.width ?? 1;
+      const height = def?.grid?.length ?? def?.height ?? 1;
+      let w = width;
+      let h = height;
+      if (seg.rot === 90 || seg.rot === 270) {
+        [w, h] = [h, w];
+      }
+      const rect = boardToScreen(seg.origin, viewport);
+      const px = rect.x;
+      const py = rect.y;
+      const pw = rect.width * w;
+      const ph = rect.height * h;
+      if (px + pw <= 0 || py + ph <= 0 || px >= canvasPx.w || py >= canvasPx.h)
+        continue;
+      ctx.strokeRect(px, py, pw, ph);
+    }
+    ctx.restore();
+
+    tokenCalls.sort((a, b) => a.layer - b.layer);
+    for (const d of tokenCalls) d.fn();
 
     ctx.restore();
   }

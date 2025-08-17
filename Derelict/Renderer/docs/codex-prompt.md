@@ -41,7 +41,6 @@ export interface Viewport {
 export interface RenderOptions {
   clear?: boolean;
   background?: string | null;
-  showSegmentBounds?: boolean;
 }
 
 export type AssetResolver = (key: string) =>
@@ -161,7 +160,7 @@ Rendering rules
 
     Culling: skip cells/tokens whose cell rect is fully outside the canvas (use isCellVisible).
 
-    segment bounds overlay: when options.showSegmentBounds, stroke axis-aligned rectangles for each SegmentInstance based on its width/height after rotation (hint: ask caller for a helper OR compute from segment defs if available; for MVP you can omit exact bounds and simply draw a rect per occupied cell to form the outline).
+    segment bounds overlay: stroke axis-aligned rectangles for each SegmentInstance based on its width/height after rotation using 2px gray lines.
 
 API design notes
 

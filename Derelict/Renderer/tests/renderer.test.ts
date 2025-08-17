@@ -13,8 +13,14 @@ function makeCtx() {
     restore: [],
     fillRect: [],
     clearRect: [],
+    strokeRect: [],
+    lineWidth: [],
+    strokeStyle: [],
+    log: [],
   };
   let _fillStyle = '';
+  let _strokeStyle = '';
+  let _lineWidth = 0;
   const ctx: any = {
     canvas: { width: 0, height: 0 },
     get fillStyle() {
@@ -25,13 +31,34 @@ function makeCtx() {
       calls.fillStyle = calls.fillStyle || [];
       calls.fillStyle.push(v);
     },
+    get strokeStyle() {
+      return _strokeStyle;
+    },
+    set strokeStyle(v: string) {
+      _strokeStyle = v;
+      calls.strokeStyle.push(v);
+    },
+    get lineWidth() {
+      return _lineWidth;
+    },
+    set lineWidth(v: number) {
+      _lineWidth = v;
+      calls.lineWidth.push(v);
+    },
     save: () => calls.save.push([]),
     restore: () => calls.restore.push([]),
     translate: (...a: any[]) => calls.translate.push(a),
     rotate: (r: number) => calls.rotate.push(r),
-    drawImage: (...a: any[]) => calls.drawImage.push(a),
+    drawImage: (...a: any[]) => {
+      calls.drawImage.push(a);
+      calls.log.push('drawImage');
+    },
     fillRect: (...a: any[]) => calls.fillRect.push(a),
     clearRect: (...a: any[]) => calls.clearRect.push(a),
+    strokeRect: (...a: any[]) => {
+      calls.strokeRect.push(a);
+      calls.log.push('strokeRect');
+    },
     scale: () => {},
   };
   return { ctx, calls };
@@ -138,6 +165,53 @@ test('renderer draws terrain and tokens layered', () => {
   // last draw call should be token sprite
   const last = calls.drawImage[calls.drawImage.length - 1][0];
   assert.equal(last.src, 'foo.png');
+});
+
+test('renderer draws segment bounds before tokens', () => {
+  const renderer = createRenderer();
+  const manifest = loadSpriteManifestFromText(
+    `foo foo.png 0 0 0 0 0 0 0`
+  );
+  renderer.setSpriteManifest(manifest);
+  renderer.setAssetResolver((key) => ({ width: 1, height: 1, src: key } as any));
+  renderer.resize(64, 64);
+  const state: BoardState = {
+    size: 4,
+    segments: [
+      { instanceId: 's1', type: 'seg', origin: { x: 0, y: 0 }, rot: 0 },
+    ],
+    tokens: [
+      { tokenId: 't', type: 'foo', rot: 0, cells: [{ x: 0, y: 0 }] },
+    ],
+    segmentDefs: [
+      { segmentId: 'seg', width: 2, height: 1, grid: [[1, 1]] },
+    ],
+  } as any;
+  const { ctx, calls } = makeCtx();
+  renderer.render(ctx as any, state, viewport);
+  assert.equal(calls.strokeRect.length, 1);
+  assert.ok(calls.lineWidth.includes(2));
+  assert.ok(calls.strokeStyle.includes('gray'));
+  const strokeIndex = calls.log.indexOf('strokeRect');
+  const tokenIndex = calls.log.lastIndexOf('drawImage');
+  assert.ok(strokeIndex < tokenIndex);
+});
+
+test('renderer draws bounds for segments without defs', () => {
+  const renderer = createRenderer();
+  renderer.setSpriteManifest(manifest);
+  renderer.setAssetResolver(() => ({ width: 1, height: 1 } as any));
+  renderer.resize(64, 64);
+  const state: BoardState = {
+    size: 4,
+    segments: [
+      { instanceId: 's1', type: 'unknown', origin: { x: 0, y: 0 }, rot: 0 },
+    ],
+    tokens: [],
+  } as any;
+  const { ctx, calls } = makeCtx();
+  renderer.render(ctx as any, state, viewport);
+  assert.equal(calls.strokeRect.length, 1);
 });
 
 const hasOffscreen = typeof OffscreenCanvas !== 'undefined';
