@@ -82,7 +82,7 @@ export class EditorCore {
       } else if (g.kind === 'token') {
         const id = `tok-${Date.now()}`;
         this.api.addToken(this.state, {
-          tokenId: id,
+          instanceId: id,
           type: g.id,
           rot: g.rot,
           cells: [g.cell],

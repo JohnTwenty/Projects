@@ -36,5 +36,12 @@ describe('mission import/export', () => {
     const text2 = exportBoardText(board, 'Test');
     assert.strictEqual(text1, text2);
   });
+
+  it('export skips tokens missing instanceId', () => {
+    const board = newBoard(40, segLib, tokLib);
+    importBoardText(board, missionText);
+    board.tokens.push({ type: 'door', rot: 0, cells: [{ x: 0, y: 0 }] });
+    assert.doesNotThrow(() => exportBoardText(board, 'Test'));
+  });
 });
 
