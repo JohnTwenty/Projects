@@ -111,7 +111,7 @@ export class EditorUI {
 
     const addItem = (label: string, loader: () => void | Promise<void>) => {
       const li = createEl('li');
-      li.textContent = label.replace(/\.txt$/i, '');
+      li.textContent = label.replace(/\.mission\.txt$/i, '').replace(/\.txt$/i, '');
       li.addEventListener('click', async () => {
         await loader();
         this.setPaletteSelection(null);
@@ -167,7 +167,8 @@ export class EditorUI {
   }
 
   private async performSave(name: string): Promise<boolean> {
-    const fileName = name.replace(/\s+/g, '-') + '.txt';
+    const base = name.replace(/\s+/g, '-');
+    const fileName = base.endsWith('.mission.txt') ? base : base + '.mission.txt';
     const key = 'mission:' + fileName;
     if (typeof localStorage !== 'undefined' && localStorage.getItem(key)) {
       const proceed = await new Promise<boolean>((resolve) => {
