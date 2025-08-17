@@ -121,7 +121,8 @@ export function createRenderer(): Renderer {
     const entryMap = new Map<string, typeof manifest.entries[number]>();
     for (const e of manifest.entries) entryMap.set(e.key, e);
 
-    const drawCalls: { layer: number; fn: () => void }[] = [];
+    const terrainCalls: { layer: number; fn: () => void }[] = [];
+    const tokenCalls: { layer: number; fn: () => void }[] = [];
 
     // Terrain drawing omitted unless getCellType available.
     const getCellType = (state as any).getCellType as
@@ -162,7 +163,7 @@ export function createRenderer(): Renderer {
             }
             ctx.restore();
           };
-          drawCalls.push({ layer: sprite.layer, fn: draw });
+          terrainCalls.push({ layer: sprite.layer, fn: draw });
         }
       }
     }
@@ -205,12 +206,42 @@ export function createRenderer(): Renderer {
           }
           ctx.restore();
         };
-        drawCalls.push({ layer: sprite?.layer ?? 0, fn: draw });
+        tokenCalls.push({ layer: sprite?.layer ?? 0, fn: draw });
       }
     }
 
-    drawCalls.sort((a, b) => a.layer - b.layer);
-    for (const d of drawCalls) d.fn();
+    terrainCalls.sort((a, b) => a.layer - b.layer);
+    for (const d of terrainCalls) d.fn();
+
+    if (options?.showSegmentBounds) {
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'gray';
+      for (const seg of state.segments) {
+        const def = state.segmentDefs?.find((s) => s.segmentId === seg.segmentId);
+        if (!def) continue;
+        const width = def.grid?.[0]?.length ?? def.width ?? 0;
+        const height = def.grid?.length ?? def.height ?? 0;
+        if (!width || !height) continue;
+        let w = width;
+        let h = height;
+        if (seg.rot === 90 || seg.rot === 270) {
+          [w, h] = [h, w];
+        }
+        const rect = boardToScreen(seg.origin, viewport);
+        const px = rect.x;
+        const py = rect.y;
+        const pw = rect.width * w;
+        const ph = rect.height * h;
+        if (px + pw <= 0 || py + ph <= 0 || px >= canvasPx.w || py >= canvasPx.h)
+          continue;
+        ctx.strokeRect(px, py, pw, ph);
+      }
+      ctx.restore();
+    }
+
+    tokenCalls.sort((a, b) => a.layer - b.layer);
+    for (const d of tokenCalls) d.fn();
 
     ctx.restore();
   }
