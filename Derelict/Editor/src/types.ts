@@ -21,6 +21,7 @@ export interface Renderer {
 
 export interface BoardState {
   size: number;
+  missionName: string;
   segmentDefs: {
     segmentId: string;
     name?: string;

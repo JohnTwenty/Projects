@@ -66,6 +66,11 @@ export class EditorUI {
       this.openLoadDialog();
     });
 
+    const saveBtn = qs<HTMLButtonElement>(this.container, '#btn-save');
+    saveBtn.addEventListener('click', () => {
+      this.openSaveDialog();
+    });
+
     const rotL = qs<HTMLButtonElement>(this.container, '#rot-left');
     rotL.addEventListener('click', () => {
       this.core.rotateGhost(-1);
@@ -92,7 +97,7 @@ export class EditorUI {
         this.render();
       },
       save: () => {
-        this.core.saveMission();
+        this.openSaveDialog();
       },
     });
   }
@@ -116,6 +121,54 @@ export class EditorUI {
     modalRef = showModal('Select Mission to Load', list, [
       { label: 'Cancel', onClick: () => modalRef.close() },
     ]);
+  }
+
+  private async openSaveDialog() {
+    const input = createEl('input');
+    input.type = 'text';
+    input.value = this.core.getMissionName();
+    const body = createEl('div');
+    body.appendChild(input);
+    let modalRef: { close(): void };
+    modalRef = showModal('Save Mission', body, [
+      {
+        label: 'OK',
+        onClick: async () => {
+          const name = input.value.trim() || 'Unnamed Mission';
+          const saved = await this.performSave(name);
+          if (saved) modalRef.close();
+        },
+      },
+      { label: 'Cancel', onClick: () => modalRef.close() },
+    ]);
+    input.focus();
+  }
+
+  private async performSave(name: string): Promise<boolean> {
+    const fileName = name.replace(/\s+/g, '-') + '.txt';
+    const url = `missions/${encodeURIComponent(fileName)}`;
+    let exists = false;
+    try {
+      const res = await fetch(url, { method: 'HEAD' });
+      exists = res.ok;
+    } catch {
+      exists = false;
+    }
+    if (exists) {
+      const proceed = await new Promise<boolean>((resolve) => {
+        const body = createEl('div');
+        body.textContent = `${fileName} exists. Overwrite?`;
+        let ref: { close(): void };
+        ref = showModal('Confirm Overwrite', body, [
+          { label: 'OK', onClick: () => { ref.close(); resolve(true); } },
+          { label: 'Cancel', onClick: () => { ref.close(); resolve(false); } },
+        ]);
+      });
+      if (!proceed) return false;
+    }
+    const text = this.core.saveMission(name);
+    await fetch(url, { method: 'PUT', body: text });
+    return true;
   }
 
   private async fetchMissionList(): Promise<string[]> {
