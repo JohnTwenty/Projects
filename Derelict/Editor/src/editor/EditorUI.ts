@@ -3,6 +3,7 @@ import { EditorCore } from './EditorCore.js';
 import { qs, createEl, showModal } from '../util/dom.js';
 import { pixelToCell, clampCell } from '../util/geometry.js';
 import { registerShortcuts } from './Shortcuts.js';
+import { downloadText } from '../util/files.js';
 import type { Renderer, BoardState } from '../types.js';
 
 export class EditorUI {
@@ -66,6 +67,11 @@ export class EditorUI {
       this.openLoadDialog();
     });
 
+    const saveBtn = qs<HTMLButtonElement>(this.container, '#btn-save');
+    saveBtn.addEventListener('click', () => {
+      this.openSaveDialog();
+    });
+
     const rotL = qs<HTMLButtonElement>(this.container, '#rot-left');
     rotL.addEventListener('click', () => {
       this.core.rotateGhost(-1);
@@ -92,30 +98,100 @@ export class EditorUI {
         this.render();
       },
       save: () => {
-        this.core.saveMission();
+        this.openSaveDialog();
       },
     });
   }
 
   private async openLoadDialog() {
-    const files = await this.fetchMissionList();
+    const server = await this.fetchMissionList();
+    const local = this.getLocalMissionNames();
     const list = createEl('ul');
     let modalRef: { close(): void };
-    for (const f of files) {
+
+    const addItem = (label: string, loader: () => void | Promise<void>) => {
       const li = createEl('li');
-      li.textContent = f.replace(/\.txt$/i, '');
+      li.textContent = label.replace(/\.mission\.txt$/i, '').replace(/\.txt$/i, '');
       li.addEventListener('click', async () => {
-        const text = await fetch(`missions/${f}`).then((r) => r.text());
-        this.core.loadMission(text);
+        await loader();
         this.setPaletteSelection(null);
         this.render();
         modalRef.close();
       });
       list.appendChild(li);
+    };
+
+    for (const f of server) {
+      addItem(f, async () => {
+        const text = await fetch(`missions/${f}`).then((r) => r.text());
+        this.core.loadMission(text);
+      });
     }
+
+    if (local.length) {
+      const sep = createEl('li', 'section');
+      sep.textContent = 'Local Missions';
+      list.appendChild(sep);
+      for (const f of local) {
+        addItem(f, () => {
+          const text = localStorage.getItem('mission:' + f) || '';
+          this.core.loadMission(text);
+        });
+      }
+    }
+
     modalRef = showModal('Select Mission to Load', list, [
       { label: 'Cancel', onClick: () => modalRef.close() },
     ]);
+  }
+
+  private async openSaveDialog() {
+    const input = createEl('input');
+    input.type = 'text';
+    input.value = this.core.getMissionName();
+    const body = createEl('div');
+    body.appendChild(input);
+    let modalRef: { close(): void };
+    modalRef = showModal('Save Mission', body, [
+      {
+        label: 'OK',
+        onClick: async () => {
+          const name = input.value.trim() || 'Unnamed Mission';
+          const saved = await this.performSave(name);
+          if (saved) modalRef.close();
+        },
+      },
+      { label: 'Cancel', onClick: () => modalRef.close() },
+    ]);
+    input.focus();
+  }
+
+  private async performSave(name: string): Promise<boolean> {
+    const base = name.replace(/\s+/g, '-');
+    const fileName = base.endsWith('.mission.txt') ? base : base + '.mission.txt';
+    const key = 'mission:' + fileName;
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(key)) {
+      const proceed = await new Promise<boolean>((resolve) => {
+        const body = createEl('div');
+        body.textContent = `${fileName} exists. Overwrite?`;
+        let ref: { close(): void };
+        ref = showModal('Confirm Overwrite', body, [
+          { label: 'OK', onClick: () => { ref.close(); resolve(true); } },
+          { label: 'Cancel', onClick: () => { ref.close(); resolve(false); } },
+        ]);
+      });
+      if (!proceed) return false;
+    }
+    const text = this.core.saveMission(name);
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(key, text);
+      } catch {
+        /* ignore */
+      }
+    }
+    downloadText(fileName, text);
+    return true;
   }
 
   private async fetchMissionList(): Promise<string[]> {
@@ -123,6 +199,16 @@ export class EditorUI {
     const text = await res.text();
     const matches = [...text.matchAll(/href="([^"/]+\.txt)"/g)];
     return matches.map((m) => m[1]);
+  }
+
+  private getLocalMissionNames(): string[] {
+    if (typeof localStorage === 'undefined') return [];
+    const names: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('mission:')) names.push(k.slice(8));
+    }
+    return names;
   }
 
   setPaletteSelection(segId: string | null) {

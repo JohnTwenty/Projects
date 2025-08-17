@@ -33,6 +33,7 @@ describe('EditorUI smoke test', () => {
 
     const state: BoardState = {
       size: 20,
+      missionName: 'Unnamed Mission',
       segmentDefs: [{ segmentId: 's1', name: 'Seg1' }],
       tokenTypes: [],
       segments: [],
@@ -119,6 +120,7 @@ describe('EditorUI smoke test', () => {
     });
     const state: BoardState = {
       size: 40,
+      missionName: 'Unnamed Mission',
       segmentDefs: [],
       tokenTypes: [],
       segments: [],

@@ -14,7 +14,9 @@ export function serializeMission(state: BoardState, missionName = 'Untitled'): s
   }
   lines.push('');
   lines.push('tokens:');
-  const toks = [...state.tokens].sort((a, b) => a.instanceId.localeCompare(b.instanceId));
+  const toks = state.tokens
+    .filter((t) => t.instanceId)
+    .sort((a, b) => a.instanceId.localeCompare(b.instanceId));
   for (const t of toks) {
     const pos = t.cells[0];
     const attr = t.attrs ? ` attrs=${JSON.stringify(t.attrs)}` : '';

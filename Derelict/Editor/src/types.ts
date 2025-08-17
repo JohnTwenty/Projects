@@ -21,6 +21,7 @@ export interface Renderer {
 
 export interface BoardState {
   size: number;
+  missionName: string;
   segmentDefs: {
     segmentId: string;
     name?: string;
@@ -48,7 +49,7 @@ export interface BoardStateAPI {
   addToken(
     state: BoardState,
     tok: {
-      tokenId: string;
+      instanceId: string;
       type: string;
       rot: 0 | 90 | 180 | 270;
       cells: { x: number; y: number }[];

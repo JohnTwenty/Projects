@@ -7,8 +7,12 @@ function nextRot(rot: 0 | 90 | 180 | 270, dir: 1 | -1): 0 | 90 | 180 | 270 {
 
 export class EditorCore {
   private _ui: EditorState = { selected: null, ghost: null };
+  private missionName: string;
 
-  constructor(private api: BoardStateAPI, private state: BoardState) {}
+  constructor(private api: BoardStateAPI, private state: BoardState) {
+    this.missionName = state.missionName || 'Unnamed Mission';
+    this.state.missionName = this.missionName;
+  }
 
   get ui(): Readonly<EditorState> {
     return JSON.parse(JSON.stringify(this._ui));
@@ -16,6 +20,15 @@ export class EditorCore {
 
   getState(): BoardState {
     return this.state;
+  }
+
+  getMissionName(): string {
+    return this.missionName;
+  }
+
+  private setMissionName(name: string) {
+    this.missionName = name;
+    this.state.missionName = name;
   }
 
   selectSegment(segmentId: string): void {
@@ -69,7 +82,7 @@ export class EditorCore {
       } else if (g.kind === 'token') {
         const id = `tok-${Date.now()}`;
         this.api.addToken(this.state, {
-          tokenId: id,
+          instanceId: id,
           type: g.id,
           rot: g.rot,
           cells: [g.cell],
@@ -92,15 +105,19 @@ export class EditorCore {
 
   newMission(name: string, size: number, segLibText: string, tokenLibText: string): void {
     this.state = this.api.newBoard(size, segLibText, tokenLibText);
+    this.setMissionName(name || 'Unnamed Mission');
     this.clearSelection();
   }
 
   loadMission(text: string): void {
+    const m = text.match(/^mission:\s*(.+)$/m);
+    this.setMissionName(m ? m[1].trim() : 'Unnamed Mission');
     this.api.importBoardText(this.state, text);
     this.clearSelection();
   }
 
-  saveMission(name = 'Untitled'): string {
-    return this.api.exportBoardText(this.state, name);
+  saveMission(name = this.missionName): string {
+    this.setMissionName(name);
+    return this.api.exportBoardText(this.state, this.missionName);
   }
 }

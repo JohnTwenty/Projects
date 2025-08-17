@@ -36,6 +36,7 @@ async function init() {
   // Augment state for Editor expectations
   state.segmentDefs = segmentDefs;
   state.tokenTypes = tokenTypes.map((t) => ({ type: t }));
+  state.missionName = 'Unnamed Mission';
 
   const { core, ui } = createEditor(app, renderer, BoardState, state);
 

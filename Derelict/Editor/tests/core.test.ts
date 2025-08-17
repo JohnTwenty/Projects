@@ -6,6 +6,7 @@ import type { BoardState, BoardStateAPI } from '../src/types.js';
 function makeState(): BoardState {
   return {
     size: 10,
+    missionName: 'Unnamed Mission',
     segmentDefs: [{ segmentId: 'segA', name: 'SegA' }],
     tokenTypes: [{ type: 'tokA' }],
     segments: [],
