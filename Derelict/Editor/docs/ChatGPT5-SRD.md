@@ -5,7 +5,7 @@ Provide a browser-based **mission editor** for the Derelict game, separated from
 
 ## 2. Scope
 - UI for creating, loading, editing, and saving missions.
-- Palettes for selecting segments and tokens.
+- Palettes for picking segments and tokens for placement.
 - Placement, rotation, and deletion tools.
 - File dialogs for New, Load, Save, and Play actions.
 - Uses Renderer for all visuals; uses BoardState for all state changes.
@@ -21,6 +21,7 @@ Provide a browser-based **mission editor** for the Derelict game, separated from
 **Main Area:**
 - **Viewport** (left): Canvas drawn by Renderer.
 - **Segment Palette** (right): Vertical list of segment names from the loaded segment library (text-based initially; graphical previews planned for later versions).
+- **Selection Bar**: Vertically split from the segment panette, just under it: Displays a zero or one segment (as text name) and zero or more tokens overlapping the most recently clicked cell. Each has an 'X' button to delete it.
 
 **Button Bar 2 (below viewport):**
 - Buttons for: Rotate Left, Rotate Right, Unselect, Place, Delete, Edit Mission Data.
@@ -30,15 +31,17 @@ Provide a browser-based **mission editor** for the Derelict game, separated from
 - Horizontal row showing token sprites from token library, with labels.
 
 ## 4. Functional Requirements
-- **R-001** Segment selection from palette.
-- **R-002** Token selection from token palette.
-- **R-003** Ghosting: selected segment/token follows mouse cursor until placed, displayed semi-transparently (or outlined if performance issues arise).
-- **R-004** Placement: clicking a valid location places the ghosted item in BoardState.
-- **R-005** Rotation: rotate ghosted item 90° via buttons or keyboard shortcuts.
-- **R-006** Unselect: cancel ghosting.
-- **R-007** Delete: remove selected segment/token.
-- **R-008** File operations via modals (New, Load, Save, Play).
-- **R-009** Renderer updates after each change to BoardState.
+- We start in selection mode by default, which lets us a cell on the map.
+- Selecting a cell will display a possibly overlapping segment and any overlapping tokens in the selection bar.
+- This list of items in selection bar has a little X preceding each item, which when clicked deletes that item. (Which also clears it from selection bar of course.)
+- Clicking an item on the segment or token palette puts us in placement mode, with picked item ghosting and ready for placement.
+- Ghosting: selected segment/token follows mouse cursor until placed, displayed semi-transparently (or outlined if performance issues arise).
+- Placement: clicking a valid location places the ghosted item in BoardState.
+- Placement mode is not canceled after pkacing the ghosted item, so that another instance can be placed with another click.
+- Rotation: rotate ghosted item 90° via buttons or keyboard shortcuts.
+- Unselect: cancel ghosting, return to selection mode.
+- File operations via modals (New, Load, Save, Play).
+- Renderer updates after each change to BoardState.
 
 ## 5. Non-Functional Requirements
 - **N-001** Responsive layout for desktops and tablets.
