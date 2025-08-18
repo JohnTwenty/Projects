@@ -28,33 +28,9 @@ Board State
 * the board contains a list of objects
 * depending on the type of object, it can contain other objects.  For example, a segment can contain cells that can contain blips or marines.  It can also contain a fire marker.
 * maps are created from segments
-* there is text based segment description format that just works like this: 
-	
-	5x5_L_room:
-	XXoXX
-	XoooX
-	ooooX
-	XoooX
-	XXXXX
-	
-	5_corridor:
-	XXXXX
-	ooooo
-	XXXXX
-	
-	end:	
-	XX
-	Xx		//little x means there is a connector but no space to stand.
-	XX
-	
-
+* there is text based segment description format 
 * we can just have newline separated segments in a file; this is our segment library
-* there is a text based mission file including a format laying out segments:
-
-1: end, 0, east: 2		//instance index, segment name, rotation, connections
-2: 5_corridor, 180, west: 3
-3: end, 180
-
+* there is a text based mission file format 
 * there is a map for each official mission in the game
 * the map file also specifies victory conditions and any other information that missions have, like which marines are included and alien reinforcement rules, and the segment library it uses
 * new games initialize themselves to an empty state which is like an empty map.
@@ -64,10 +40,6 @@ Board State
 * thus the state fils has to be efficient both for human readability and rendering
 * gamestate has to be able to map from cell coordinates to objects and back
 * it is able to send this game state to file or to a renderer for display or serialization purposes.
-
-
-
-
 
 GUI
 ===========
