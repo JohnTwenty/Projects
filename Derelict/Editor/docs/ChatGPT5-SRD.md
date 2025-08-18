@@ -24,7 +24,7 @@ Provide a browser-based **mission editor** for the Derelict game, separated from
  - **Selection Bar**: Vertically split from the segment palette, just under it. Shows a label **"Selection:"** followed by the items in the most recently clicked cell. Each item name is followed by a red "X" to delete it.
 
 **Button Bar 2 (below viewport):**
-- Buttons for: Rotate Left, Rotate Right, Unselect, Place, Delete, Edit Mission Data.
+- Buttons for: Rotate Left, Rotate Right, Place, Edit Mission Data.
 - `Edit Mission Data` opens a modal with mission properties.
 
 **Token Palette (bottom):**
@@ -41,6 +41,7 @@ Provide a browser-based **mission editor** for the Derelict game, separated from
 - Rotation: rotate ghosted item 90° via buttons or keyboard shortcuts.
 - Unselect: cancel ghosting, return to selection mode.
 - File operations via modals (New, Load, Save, Play).
+- Confirming **New** clears the board and resets the mission name to "Unnamed Mission".
 - Renderer updates after each change to BoardState.
 
 ## 5. Non-Functional Requirements

@@ -136,6 +136,29 @@ describe('EditorCore basics', () => {
     assert.equal(removed, 'abc');
   });
 
+  it('clearBoard resets state', () => {
+    const state = makeState();
+    state.missionName = 'Old';
+    state.segments.push({} as any);
+    state.tokens.push({} as any);
+    const api: BoardStateAPI = {
+      newBoard: () => makeState(),
+      addSegment: () => {},
+      removeSegment: () => {},
+      addToken: () => {},
+      removeToken: () => {},
+      importBoardText: () => {},
+      exportBoardText: () => '',
+      getCellType: () => -1,
+      findById: () => undefined,
+    };
+    const core = new EditorCore(api, state);
+    core.clearBoard();
+    assert.equal(state.missionName, 'Unnamed Mission');
+    assert.equal(state.segments.length, 0);
+    assert.equal(state.tokens.length, 0);
+  });
+
   it('rotate selected segment', () => {
     const state = makeState();
     state.segmentDefs[0].width = 1;

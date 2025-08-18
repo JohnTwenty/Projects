@@ -91,6 +91,27 @@ export class EditorUI {
       this.openSaveDialog();
     });
 
+    const newBtn = qs<HTMLButtonElement>(this.container, '#btn-new');
+    newBtn.addEventListener('click', () => {
+      const body = createEl('div');
+      body.textContent = 'Start a new mission?';
+      let ref: { close(): void };
+      ref = showModal('Confirm New', body, [
+        {
+          label: 'OK',
+          onClick: () => {
+            this.core.clearBoard();
+            this.setPaletteSelection(null);
+            this.render();
+            this.updateSelectionBar();
+            this.drawGhost();
+            ref.close();
+          },
+        },
+        { label: 'Cancel', onClick: () => ref.close() },
+      ]);
+    });
+
     const rotL = qs<HTMLButtonElement>(this.container, '#rot-left');
     rotL.addEventListener('click', () => {
       this.core.rotate(-1);
@@ -262,7 +283,7 @@ export class EditorUI {
     const ui = this.core.ui;
     if (ui.ghost) {
       const li = createEl('li');
-      li.textContent = ui.ghost.id;
+      li.textContent = ui.ghost.id + ' ';
       const del = createEl('span', 'del');
       del.textContent = 'X';
       del.addEventListener('click', () => {
@@ -312,6 +333,7 @@ export class EditorUI {
       this.updateSelectionBar();
       this.render();
     });
+    li.textContent += ' ';
     li.appendChild(del);
     li.addEventListener('click', () => {
       this.core.selectExisting(kind, id);

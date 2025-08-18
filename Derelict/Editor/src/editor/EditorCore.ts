@@ -207,6 +207,13 @@ export class EditorCore {
     return { segment, tokens };
   }
 
+  clearBoard(): void {
+    this.state.segments = [];
+    this.state.tokens = [];
+    this.setMissionName('Unnamed Mission');
+    this.clearSelection();
+  }
+
   newMission(name: string, size: number, segLibText: string, tokenLibText: string): void {
     this.state = this.api.newBoard(size, segLibText, tokenLibText);
     this.setMissionName(name || 'Unnamed Mission');

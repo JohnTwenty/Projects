@@ -22,9 +22,7 @@ const layout = `
 <div id="buttons2">
   <button id="rot-left">Rotate Left</button>
   <button id="rot-right">Rotate Right</button>
-  <button id="unselect">Unselect</button>
   <button id="place">Place</button>
-  <button id="delete">Delete</button>
   <button id="edit-mission">Edit Mission Data</button>
 </div>
 <div id="token-palette"></div>
