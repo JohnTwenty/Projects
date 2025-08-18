@@ -53,6 +53,7 @@ describe('EditorUI smoke test', () => {
       importBoardText: () => {},
       exportBoardText: () => '',
       getCellType: () => -1,
+      findById: () => undefined,
     };
     const renderer: Renderer = {
       setSpriteManifest: () => {},
@@ -136,6 +137,7 @@ describe('EditorUI smoke test', () => {
       importBoardText: () => {},
       exportBoardText: () => '',
       getCellType: () => -1,
+      findById: () => undefined,
     };
     const renderer: Renderer = {
       setSpriteManifest: () => {},
@@ -156,5 +158,68 @@ describe('EditorUI smoke test', () => {
     ui.render();
     assert.equal(lastCellSize2, 64);
     void ui;
+  });
+
+  it('New button clears board', () => {
+    const dom = new JSDOM(`<!doctype html><html><body><div id="app"></div></body></html>`, {
+      pretendToBeVisual: true,
+    });
+    const { window } = dom;
+    (globalThis as any).window = window;
+    (globalThis as any).document = window.document;
+    (window.HTMLCanvasElement.prototype as any).getContext = () => ({
+      clearRect() {},
+      fillRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      rotate() {},
+      globalAlpha: 1,
+    });
+    const state: BoardState & { cellTypes: Map<string, number> } = {
+      size: 20,
+      missionName: 'Something',
+      segmentDefs: [],
+      tokenTypes: [],
+      segments: [{} as any],
+      tokens: [{} as any],
+      cellTypes: new Map([['2,3', 1]]),
+    };
+    const api: BoardStateAPI = {
+      newBoard: () => state,
+      addSegment: () => {},
+      removeSegment: () => {},
+      addToken: () => {},
+      removeToken: () => {},
+      importBoardText: (s: any) => {
+        s.segments = [];
+        s.tokens = [];
+        s.cellTypes.clear();
+      },
+      exportBoardText: () => '',
+      getCellType: (s: any, c: { x: number; y: number }) =>
+        s.cellTypes.get(`${c.x},${c.y}`) ?? 0,
+      findById: () => undefined,
+    };
+    const renderer: Renderer = {
+      setSpriteManifest: () => {},
+      loadSpriteManifestFromText: () => {},
+      setAssetResolver: () => {},
+      resize: () => {},
+      render: () => {},
+      drawGhost: () => {},
+    };
+    const core = new EditorCore(api, state);
+    const container = window.document.getElementById('app')!;
+    // creates UI
+    new EditorUI(container, core, renderer);
+    const btn = container.querySelector('#btn-new') as HTMLElement;
+    btn.dispatchEvent(new window.Event('click', { bubbles: true }));
+    const ok = window.document.querySelector('.modal button') as HTMLElement;
+    ok.dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(state.missionName, 'Unnamed Mission');
+    assert.equal(state.segments.length, 0);
+    assert.equal(state.tokens.length, 0);
+    assert.equal(api.getCellType(state, { x: 2, y: 3 }), 0);
   });
 });

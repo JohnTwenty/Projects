@@ -1,12 +1,52 @@
-import type { BoardState, BoardStateAPI, EditorState, GhostKind } from '../types.js';
+import type {
+  BoardState,
+  BoardStateAPI,
+  EditorState,
+  GhostKind,
+} from '../types.js';
 
 function nextRot(rot: 0 | 90 | 180 | 270, dir: 1 | -1): 0 | 90 | 180 | 270 {
   const r = (rot + dir * 90 + 360) % 360;
   return r as 0 | 90 | 180 | 270;
 }
 
+function rotateLocal(
+  local: { x: number; y: number },
+  rot: 0 | 90 | 180 | 270,
+  def: { width: number; height: number },
+): { x: number; y: number } {
+  const { width, height } = def;
+  const { x, y } = local;
+  switch (rot) {
+    case 0:
+      return { x, y };
+    case 90:
+      return { x: height - 1 - y, y: x };
+    case 180:
+      return { x: width - 1 - x, y: height - 1 - y };
+    case 270:
+      return { x: y, y: width - 1 - x };
+  }
+}
+
+function segmentContains(
+  cell: { x: number; y: number },
+  inst: { origin: { x: number; y: number }; rot: 0 | 90 | 180 | 270; type: string },
+  def: { width: number; height: number },
+): boolean {
+  for (let y = 0; y < def.height; y++) {
+    for (let x = 0; x < def.width; x++) {
+      const r = rotateLocal({ x, y }, inst.rot, def);
+      if (inst.origin.x + r.x === cell.x && inst.origin.y + r.y === cell.y) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export class EditorCore {
-  private _ui: EditorState = { selected: null, ghost: null };
+  private _ui: EditorState = { selected: null, ghost: null, cell: null };
   private missionName: string;
 
   constructor(private api: BoardStateAPI, private state: BoardState) {
@@ -33,6 +73,7 @@ export class EditorCore {
 
   selectSegment(segmentId: string): void {
     this._ui.selected = null;
+    this._ui.cell = null;
     this._ui.ghost = {
       kind: 'segment',
       id: segmentId,
@@ -43,6 +84,7 @@ export class EditorCore {
 
   selectToken(tokenType: string): void {
     this._ui.selected = null;
+    this._ui.cell = null;
     this._ui.ghost = {
       kind: 'token',
       id: tokenType,
@@ -51,9 +93,16 @@ export class EditorCore {
     };
   }
 
+  selectCell(cell: { x: number; y: number }): void {
+    this._ui.ghost = null;
+    this._ui.selected = null;
+    this._ui.cell = cell;
+  }
+
   clearSelection(): void {
     this._ui.selected = null;
     this._ui.ghost = null;
+    this._ui.cell = null;
   }
 
   setGhostCell(cell: { x: number; y: number } | null): void {
@@ -63,6 +112,31 @@ export class EditorCore {
   rotateGhost(dir: 1 | -1): void {
     if (this._ui.ghost) {
       this._ui.ghost.rot = nextRot(this._ui.ghost.rot, dir);
+    }
+  }
+
+  rotate(dir: 1 | -1): void {
+    if (this._ui.ghost) {
+      this.rotateGhost(dir);
+      return;
+    }
+    const sel = this._ui.selected;
+    if (!sel) return;
+    const inst = this.api.findById(this.state, sel.id) as any;
+    if (!inst) return;
+    if (sel.kind === 'segment') {
+      const def = this.state.segmentDefs.find((d) => d.segmentId === inst.type);
+      if (!def || def.width === undefined || def.height === undefined) return;
+      const orig = { ...inst };
+      inst.rot = nextRot(inst.rot, dir);
+      this.api.removeSegment(this.state, inst.instanceId);
+      try {
+        this.api.addSegment(this.state, inst);
+      } catch {
+        this.api.addSegment(this.state, orig);
+      }
+    } else {
+      inst.rot = nextRot(inst.rot, dir);
     }
   }
 
@@ -95,11 +169,47 @@ export class EditorCore {
     }
   }
 
+  deleteItem(kind: 'segment' | 'token', id: string): void {
+    if (kind === 'segment') this.api.removeSegment(this.state, id);
+    else this.api.removeToken(this.state, id);
+    if (this._ui.selected && this._ui.selected.id === id) this._ui.selected = null;
+  }
+
   deleteSelection(): void {
     const sel = this._ui.selected;
     if (!sel) return;
-    if (sel.kind === 'segment') this.api.removeSegment(this.state, sel.id);
-    else this.api.removeToken(this.state, sel.id);
+    this.deleteItem(sel.kind, sel.id);
+    this._ui.selected = null;
+  }
+
+  selectExisting(kind: 'segment' | 'token', id: string): void {
+    this._ui.selected = { kind, id };
+  }
+
+  getSelectionContents(): {
+    segment: any | null;
+    tokens: any[];
+  } {
+    const cell = this._ui.cell;
+    if (!cell) return { segment: null, tokens: [] };
+    let segment: any = null;
+    for (const s of this.state.segments) {
+      const def = this.state.segmentDefs.find((d) => d.segmentId === s.type);
+      if (!def || def.width === undefined || def.height === undefined) continue;
+      if (segmentContains(cell, s, def as { width: number; height: number })) {
+        segment = s;
+        break;
+      }
+    }
+    const tokens = this.state.tokens.filter((t: any) =>
+      t.cells.some((c: any) => c.x === cell.x && c.y === cell.y),
+    );
+    return { segment, tokens };
+  }
+
+  clearBoard(): void {
+    this.api.importBoardText(this.state, '');
+    this.setMissionName('Unnamed Mission');
     this.clearSelection();
   }
 

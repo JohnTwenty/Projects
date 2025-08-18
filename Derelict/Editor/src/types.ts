@@ -59,6 +59,10 @@ export interface BoardStateAPI {
   importBoardText(state: BoardState, text: string): void;
   exportBoardText(state: BoardState, missionName: string): string;
   getCellType(state: BoardState, coord: { x: number; y: number }): number | -1;
+  findById(
+    state: BoardState,
+    id: string,
+  ): { rot: 0 | 90 | 180 | 270; [k: string]: any } | undefined;
 }
 
 export type GhostKind = 'segment' | 'token' | null;
@@ -71,4 +75,5 @@ export interface EditorState {
     rot: 0 | 90 | 180 | 270;
     cell: { x: number; y: number } | null;
   } | null;
+  cell?: { x: number; y: number } | null;
 }

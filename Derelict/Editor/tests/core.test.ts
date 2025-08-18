@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { EditorCore } from '../src/editor/EditorCore.js';
 import type { BoardState, BoardStateAPI } from '../src/types.js';
 
-function makeState(): BoardState {
+function makeState(): BoardState & { cellTypes: Map<string, number> } {
   return {
     size: 10,
     missionName: 'Unnamed Mission',
@@ -11,6 +11,7 @@ function makeState(): BoardState {
     tokenTypes: [{ type: 'tokA' }],
     segments: [],
     tokens: [],
+    cellTypes: new Map<string, number>(),
   };
 }
 
@@ -25,6 +26,7 @@ describe('EditorCore basics', () => {
       importBoardText: () => {},
       exportBoardText: () => 'text',
       getCellType: () => -1,
+      findById: () => undefined,
     };
     const core = new EditorCore(api, makeState());
     core.selectSegment('segA');
@@ -34,7 +36,7 @@ describe('EditorCore basics', () => {
   });
 
   it('rotate ghost cycles', () => {
-    const api: any = { newBoard: () => makeState() };
+    const api: any = { newBoard: () => makeState(), findById: () => undefined };
     const core = new EditorCore(api, makeState());
     core.selectSegment('segA');
     core.rotateGhost(1);
@@ -60,6 +62,7 @@ describe('EditorCore basics', () => {
       importBoardText: () => {},
       exportBoardText: () => 't',
       getCellType: () => -1,
+      findById: () => undefined,
     };
     const core = new EditorCore(api, makeState());
     core.selectSegment('segA');
@@ -82,6 +85,7 @@ describe('EditorCore basics', () => {
       importBoardText: () => {},
       exportBoardText: () => 't',
       getCellType: () => -1,
+      findById: () => undefined,
     };
     const core = new EditorCore(api, makeState());
     core.selectToken('tokA');
@@ -103,6 +107,7 @@ describe('EditorCore basics', () => {
       importBoardText: () => {},
       exportBoardText: () => 't',
       getCellType: () => -1,
+      findById: () => undefined,
     };
     const core = new EditorCore(api, makeState());
     core.selectSegment('segA');
@@ -124,10 +129,77 @@ describe('EditorCore basics', () => {
       importBoardText: () => {},
       exportBoardText: () => 't',
       getCellType: () => -1,
+      findById: () => undefined,
     };
     const core = new EditorCore(api, makeState());
     (core as any)._ui.selected = { kind: 'segment', id: 'abc' };
     core.deleteSelection();
     assert.equal(removed, 'abc');
+  });
+
+  it('clearBoard resets state', () => {
+    const state = makeState();
+    state.missionName = 'Old';
+    state.segments.push({} as any);
+    state.tokens.push({} as any);
+    state.cellTypes.set('1,1', 1);
+    let imported = 'nope';
+    const api: BoardStateAPI = {
+      newBoard: () => makeState(),
+      addSegment: () => {},
+      removeSegment: () => {},
+      addToken: () => {},
+      removeToken: () => {},
+      importBoardText: (s: any, text: string) => {
+        imported = text;
+        s.segments = [];
+        s.tokens = [];
+        s.cellTypes.clear();
+      },
+      exportBoardText: () => '',
+      getCellType: (s: any, c: { x: number; y: number }) =>
+        s.cellTypes.get(`${c.x},${c.y}`) ?? 0,
+      findById: () => undefined,
+    };
+    const core = new EditorCore(api, state);
+    core.clearBoard();
+    assert.equal(imported, '');
+    assert.equal(state.missionName, 'Unnamed Mission');
+    assert.equal(state.segments.length, 0);
+    assert.equal(state.tokens.length, 0);
+    assert.equal(api.getCellType(state, { x: 1, y: 1 }), 0);
+  });
+
+  it('rotate selected segment', () => {
+    const state = makeState();
+    state.segmentDefs[0].width = 1;
+    state.segmentDefs[0].height = 1;
+    state.segmentDefs[0].grid = [[1]];
+    state.segments.push({
+      instanceId: 's1',
+      type: 'segA',
+      origin: { x: 0, y: 0 },
+      rot: 0,
+    });
+    const api: BoardStateAPI = {
+      newBoard: () => state,
+      addSegment: (_s, seg) => {
+        state.segments.push(seg as any);
+      },
+      removeSegment: (_s, id) => {
+        state.segments = state.segments.filter((s) => s.instanceId !== id);
+      },
+      addToken: () => {},
+      removeToken: () => {},
+      importBoardText: () => {},
+      exportBoardText: () => '',
+      getCellType: () => -1,
+      findById: (_s, id) => state.segments.find((s) => s.instanceId === id),
+    };
+    const core = new EditorCore(api, state);
+    core.selectCell({ x: 0, y: 0 });
+    core.selectExisting('segment', 's1');
+    core.rotate(1);
+    assert.equal(state.segments[0].rot, 90);
   });
 });
