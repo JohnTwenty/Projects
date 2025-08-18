@@ -21,7 +21,7 @@ Provide a browser-based **mission editor** for the Derelict game, separated from
 **Main Area:**
 - **Viewport** (left): Canvas drawn by Renderer.
 - **Segment Palette** (right): Vertical list of segment names from the loaded segment library (text-based initially; graphical previews planned for later versions).
-- **Selection Bar**: Vertically split from the segment panette, just under it: Displays a zero or one segment (as text name) and zero or more tokens overlapping the most recently clicked cell. Each has an 'X' button to delete it.
+ - **Selection Bar**: Vertically split from the segment palette, just under it. Shows a label **"Selection:"** followed by the items in the most recently clicked cell. Each item name is followed by a red "X" to delete it.
 
 **Button Bar 2 (below viewport):**
 - Buttons for: Rotate Left, Rotate Right, Unselect, Place, Delete, Edit Mission Data.
@@ -31,10 +31,10 @@ Provide a browser-based **mission editor** for the Derelict game, separated from
 - Horizontal row showing token sprites from token library, with labels.
 
 ## 4. Functional Requirements
-- We start in selection mode by default, which lets us a cell on the map.
-- Selecting a cell will display a possibly overlapping segment and any overlapping tokens in the selection bar.
-- This list of items in selection bar has a little X preceding each item, which when clicked deletes that item. (Which also clears it from selection bar of course.)
-- Clicking an item on the segment or token palette puts us in placement mode, with picked item ghosting and ready for placement.
+ - We start in **selection mode** by default, which lets us click a cell on the map.
+ - Selecting a cell will display a possibly overlapping segment and any overlapping tokens in the selection bar.
+ - Items in the selection bar list are followed by a red **X**; clicking it removes that item from the board state.
+ - Clicking an item on the segment or token palette switches to placement mode. The selection bar is cleared and shows only the item about to be placed with an **X** to cancel placement and return to selection mode.
 - Ghosting: selected segment/token follows mouse cursor until placed, displayed semi-transparently (or outlined if performance issues arise).
 - Placement: clicking a valid location places the ghosted item in BoardState.
 - Placement mode is not canceled after pkacing the ghosted item, so that another instance can be placed with another click.

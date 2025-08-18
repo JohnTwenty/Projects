@@ -11,7 +11,13 @@ const layout = `
     <canvas id="viewport" width="640" height="640"></canvas>
     <canvas id="overlay" width="640" height="640"></canvas>
   </div>
-  <ul id="segment-palette"></ul>
+  <div id="side-panel">
+    <ul id="segment-palette"></ul>
+    <div id="selection-bar">
+      <div class="label">Selection:</div>
+      <ul id="selection-list"></ul>
+    </div>
+  </div>
 </div>
 <div id="buttons2">
   <button id="rot-left">Rotate Left</button>

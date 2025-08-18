@@ -53,6 +53,7 @@ describe('EditorUI smoke test', () => {
       importBoardText: () => {},
       exportBoardText: () => '',
       getCellType: () => -1,
+      findById: () => undefined,
     };
     const renderer: Renderer = {
       setSpriteManifest: () => {},
@@ -136,6 +137,7 @@ describe('EditorUI smoke test', () => {
       importBoardText: () => {},
       exportBoardText: () => '',
       getCellType: () => -1,
+      findById: () => undefined,
     };
     const renderer: Renderer = {
       setSpriteManifest: () => {},

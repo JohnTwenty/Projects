@@ -11,6 +11,7 @@ export class EditorUI {
   private overlay: HTMLCanvasElement;
   private segPalette: HTMLElement;
   private segItems: Map<string, HTMLElement> = new Map();
+  private selectionList: HTMLElement;
 
   constructor(
     private container: HTMLElement,
@@ -21,8 +22,10 @@ export class EditorUI {
     this.viewport = qs<HTMLCanvasElement>(container, '#viewport');
     this.overlay = qs<HTMLCanvasElement>(container, '#overlay');
     this.segPalette = qs<HTMLElement>(container, '#segment-palette');
+     this.selectionList = qs<HTMLElement>(container, '#selection-list');
     this.populatePalettes();
     this.wireEvents();
+    this.updateSelectionBar();
   }
 
   private populatePalettes() {
@@ -35,6 +38,7 @@ export class EditorUI {
         this.core.selectSegment(seg.segmentId);
         this.setPaletteSelection(seg.segmentId);
         this.drawGhost();
+        this.updateSelectionBar();
       });
       this.segPalette.appendChild(li);
       this.segItems.set(seg.segmentId, li);
@@ -43,6 +47,7 @@ export class EditorUI {
 
   private wireEvents() {
     this.viewport.addEventListener('mousemove', (ev) => {
+      if (!this.core.ui.ghost) return;
       const rect = this.viewport.getBoundingClientRect();
       const state = this.core.getState();
       const cellSize = this.getCellSize(state);
@@ -54,11 +59,25 @@ export class EditorUI {
       this.core.setGhostCell(clamped);
       this.drawGhost();
     });
-    this.viewport.addEventListener('click', () => {
-      const res = this.core.placeGhost();
-      if (res.ok) {
-        this.setPaletteSelection(null);
-        this.render();
+    this.viewport.addEventListener('click', (ev) => {
+      const rect = this.viewport.getBoundingClientRect();
+      const state = this.core.getState();
+      const cellSize = this.getCellSize(state);
+      const cell = pixelToCell(
+        { x: ev.clientX - rect.left, y: ev.clientY - rect.top },
+        cellSize,
+      );
+      const clamped = clampCell(cell, state.size);
+      if (this.core.ui.ghost) {
+        this.core.setGhostCell(clamped);
+        const res = this.core.placeGhost();
+        if (res.ok) {
+          this.render();
+          this.updateSelectionBar();
+        }
+      } else {
+        this.core.selectCell(clamped);
+        this.updateSelectionBar();
       }
     });
 
@@ -74,28 +93,33 @@ export class EditorUI {
 
     const rotL = qs<HTMLButtonElement>(this.container, '#rot-left');
     rotL.addEventListener('click', () => {
-      this.core.rotateGhost(-1);
-      this.drawGhost();
+      this.core.rotate(-1);
+      this.render();
+      this.updateSelectionBar();
     });
     const rotR = qs<HTMLButtonElement>(this.container, '#rot-right');
     rotR.addEventListener('click', () => {
-      this.core.rotateGhost(1);
-      this.drawGhost();
+      this.core.rotate(1);
+      this.render();
+      this.updateSelectionBar();
     });
 
     registerShortcuts(document, {
       rotate: (d) => {
-        this.core.rotateGhost(d);
-        this.drawGhost();
+        this.core.rotate(d);
+        this.render();
+        this.updateSelectionBar();
       },
       unselect: () => {
         this.core.clearSelection();
         this.setPaletteSelection(null);
+        this.updateSelectionBar();
         this.drawGhost();
       },
       delete: () => {
         this.core.deleteSelection();
         this.render();
+        this.updateSelectionBar();
       },
       save: () => {
         this.openSaveDialog();
@@ -116,6 +140,7 @@ export class EditorUI {
         await loader();
         this.setPaletteSelection(null);
         this.render();
+        this.updateSelectionBar();
         modalRef.close();
       });
       list.appendChild(li);
@@ -216,6 +241,83 @@ export class EditorUI {
       if (id === segId) el.classList.add('selected');
       else el.classList.remove('selected');
     }
+  }
+
+  private refreshSelectionHighlight() {
+    const sel = this.core.ui.selected;
+    const items = Array.from(this.selectionList.querySelectorAll('li'));
+    for (const li of items) {
+      if (
+        sel &&
+        li.dataset['id'] === sel.id &&
+        li.dataset['kind'] === sel.kind
+      )
+        li.classList.add('selected');
+      else li.classList.remove('selected');
+    }
+  }
+
+  updateSelectionBar() {
+    this.selectionList.innerHTML = '';
+    const ui = this.core.ui;
+    if (ui.ghost) {
+      const li = createEl('li');
+      li.textContent = ui.ghost.id;
+      const del = createEl('span', 'del');
+      del.textContent = 'X';
+      del.addEventListener('click', () => {
+        this.core.clearSelection();
+        this.setPaletteSelection(null);
+        this.updateSelectionBar();
+        this.drawGhost();
+      });
+      li.appendChild(del);
+      this.selectionList.appendChild(li);
+      return;
+    }
+    const contents = this.core.getSelectionContents();
+    if (contents.segment) {
+      const def = this.core
+        .getState()
+        .segmentDefs.find((d) => d.segmentId === contents.segment.type);
+      const name = def?.name || contents.segment.type;
+      const li = this.makeSelectionItem(
+        'segment',
+        contents.segment.instanceId,
+        name,
+      );
+      this.selectionList.appendChild(li);
+    }
+    for (const t of contents.tokens) {
+      const li = this.makeSelectionItem('token', t.instanceId, t.type);
+      this.selectionList.appendChild(li);
+    }
+    this.refreshSelectionHighlight();
+  }
+
+  private makeSelectionItem(
+    kind: 'segment' | 'token',
+    id: string,
+    label: string,
+  ): HTMLElement {
+    const li = createEl('li');
+    li.textContent = label;
+    li.dataset['kind'] = kind;
+    li.dataset['id'] = id;
+    const del = createEl('span', 'del');
+    del.textContent = 'X';
+    del.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      this.core.deleteItem(kind, id);
+      this.updateSelectionBar();
+      this.render();
+    });
+    li.appendChild(del);
+    li.addEventListener('click', () => {
+      this.core.selectExisting(kind, id);
+      this.refreshSelectionHighlight();
+    });
+    return li;
   }
 
   drawGhost() {
