@@ -208,8 +208,7 @@ export class EditorCore {
   }
 
   clearBoard(): void {
-    this.state.segments = [];
-    this.state.tokens = [];
+    this.api.importBoardText(this.state, '');
     this.setMissionName('Unnamed Mission');
     this.clearSelection();
   }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { EditorCore } from '../src/editor/EditorCore.js';
 import type { BoardState, BoardStateAPI } from '../src/types.js';
 
-function makeState(): BoardState {
+function makeState(): BoardState & { cellTypes: Map<string, number> } {
   return {
     size: 10,
     missionName: 'Unnamed Mission',
@@ -11,6 +11,7 @@ function makeState(): BoardState {
     tokenTypes: [{ type: 'tokA' }],
     segments: [],
     tokens: [],
+    cellTypes: new Map<string, number>(),
   };
 }
 
@@ -141,22 +142,32 @@ describe('EditorCore basics', () => {
     state.missionName = 'Old';
     state.segments.push({} as any);
     state.tokens.push({} as any);
+    state.cellTypes.set('1,1', 1);
+    let imported = 'nope';
     const api: BoardStateAPI = {
       newBoard: () => makeState(),
       addSegment: () => {},
       removeSegment: () => {},
       addToken: () => {},
       removeToken: () => {},
-      importBoardText: () => {},
+      importBoardText: (s: any, text: string) => {
+        imported = text;
+        s.segments = [];
+        s.tokens = [];
+        s.cellTypes.clear();
+      },
       exportBoardText: () => '',
-      getCellType: () => -1,
+      getCellType: (s: any, c: { x: number; y: number }) =>
+        s.cellTypes.get(`${c.x},${c.y}`) ?? 0,
       findById: () => undefined,
     };
     const core = new EditorCore(api, state);
     core.clearBoard();
+    assert.equal(imported, '');
     assert.equal(state.missionName, 'Unnamed Mission');
     assert.equal(state.segments.length, 0);
     assert.equal(state.tokens.length, 0);
+    assert.equal(api.getCellType(state, { x: 1, y: 1 }), 0);
   });
 
   it('rotate selected segment', () => {

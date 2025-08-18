@@ -176,13 +176,14 @@ describe('EditorUI smoke test', () => {
       rotate() {},
       globalAlpha: 1,
     });
-    const state: BoardState = {
+    const state: BoardState & { cellTypes: Map<string, number> } = {
       size: 20,
       missionName: 'Something',
       segmentDefs: [],
       tokenTypes: [],
       segments: [{} as any],
       tokens: [{} as any],
+      cellTypes: new Map([['2,3', 1]]),
     };
     const api: BoardStateAPI = {
       newBoard: () => state,
@@ -190,9 +191,14 @@ describe('EditorUI smoke test', () => {
       removeSegment: () => {},
       addToken: () => {},
       removeToken: () => {},
-      importBoardText: () => {},
+      importBoardText: (s: any) => {
+        s.segments = [];
+        s.tokens = [];
+        s.cellTypes.clear();
+      },
       exportBoardText: () => '',
-      getCellType: () => -1,
+      getCellType: (s: any, c: { x: number; y: number }) =>
+        s.cellTypes.get(`${c.x},${c.y}`) ?? 0,
       findById: () => undefined,
     };
     const renderer: Renderer = {
@@ -214,5 +220,6 @@ describe('EditorUI smoke test', () => {
     assert.equal(state.missionName, 'Unnamed Mission');
     assert.equal(state.segments.length, 0);
     assert.equal(state.tokens.length, 0);
+    assert.equal(api.getCellType(state, { x: 2, y: 3 }), 0);
   });
 });
