@@ -202,4 +202,29 @@ describe('EditorCore basics', () => {
     core.rotate(1);
     assert.equal(state.segments[0].rot, 90);
   });
+
+  it('rotate selected token', () => {
+    const state = makeState();
+    state.tokens.push({
+      instanceId: 't1',
+      type: 'tokA',
+      rot: 0,
+      cells: [{ x: 0, y: 0 }],
+    });
+    const api: BoardStateAPI = {
+      newBoard: () => state,
+      addSegment: () => {},
+      removeSegment: () => {},
+      addToken: () => {},
+      removeToken: () => {},
+      importBoardText: () => {},
+      exportBoardText: () => '',
+      getCellType: () => -1,
+      findById: (_s, id) => state.tokens.find((t) => t.instanceId === id),
+    };
+    const core = new EditorCore(api, state);
+    core.selectExisting('token', 't1');
+    core.rotate(1);
+    assert.equal(state.tokens[0].rot, 90);
+  });
 });
