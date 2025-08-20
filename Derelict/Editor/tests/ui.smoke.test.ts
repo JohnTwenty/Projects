@@ -174,6 +174,8 @@ describe('EditorUI smoke test', () => {
     );
     assert.equal((core.ui.selected as any)?.kind, 'token');
     assert.equal((core.ui.selected as any)?.id, 't1');
+    assert.equal((items[0] as HTMLElement).classList.contains('selected'), false);
+    assert.equal((items[1] as HTMLElement).classList.contains('selected'), true);
 
     const rot = container.querySelector('#rot-right') as HTMLElement;
     rot.dispatchEvent(new window.Event('click', { bubbles: true }));
