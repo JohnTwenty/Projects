@@ -55,6 +55,7 @@ html, body {
   padding: 8px;
   overflow: auto;
   background: #f5f5f5;
+  cursor:pointer;
 }
 #segment-palette li.selected {
   background: #444;
@@ -74,6 +75,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  cursor:pointer;
 }
 
 #token-palette button.selected {
@@ -120,4 +122,38 @@ html, body {
 }
 .modal .actions {
   text-align: right;
+}
+
+#side-panel {
+	 display:flex; 
+	 flex-direction:column; 
+}
+#selection-bar {
+	 margin-top:8px; 
+}
+#selection-bar .label {
+	 font-weight:bold; 
+}
+#selection-list {
+	 list-style:none; 
+	 margin:0; 
+	 padding:0; 
+}
+#selection-list li {
+	 display:flex; 
+	 justify-content:space-between; 
+	 cursor:pointer; 
+}
+#selection-list li.no-select {
+	 cursor:default; 
+}
+#selection-list li.selected {
+	 background:#444; 
+	 color:#fff; 
+	 font-weight:bold; 
+}
+#selection-list .del {
+	 color:red; 
+	 margin-left:4px; 
+	 cursor:pointer; 
 }
