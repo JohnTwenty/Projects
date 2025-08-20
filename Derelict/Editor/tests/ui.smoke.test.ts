@@ -97,6 +97,89 @@ describe('EditorUI smoke test', () => {
     void ui;
   });
 
+  it('token selection and rotation from selection panel', () => {
+    const dom = new JSDOM(`<!doctype html><html><body><div id="app"></div></body></html>`, {
+      pretendToBeVisual: true,
+    });
+    const { window } = dom;
+    (globalThis as any).window = window;
+    (globalThis as any).document = window.document;
+    (window.HTMLCanvasElement.prototype as any).getContext = () => ({
+      clearRect() {},
+      fillRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      rotate() {},
+      globalAlpha: 1,
+    });
+    (window.HTMLCanvasElement.prototype as any).getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width: 640,
+      height: 640,
+    });
+
+    const state: BoardState = {
+      size: 20,
+      missionName: 'Unnamed Mission',
+      segmentDefs: [
+        { segmentId: 's1', name: 'Seg1', width: 1, height: 1, grid: [[1]] },
+      ],
+      tokenTypes: [{ type: 'tokA' }],
+      segments: [
+        { instanceId: 'seg1', type: 's1', origin: { x: 1, y: 1 }, rot: 0 },
+      ],
+      tokens: [
+        { instanceId: 't1', type: 'tokA', rot: 0, cells: [{ x: 1, y: 1 }] },
+      ],
+    };
+    const api: BoardStateAPI = {
+      newBoard: () => state,
+      addSegment: () => {},
+      removeSegment: () => {},
+      addToken: () => {},
+      removeToken: () => {},
+      importBoardText: () => {},
+      exportBoardText: () => '',
+      getCellType: () => -1,
+      findById: (_s, id) =>
+        state.segments.find((s) => s.instanceId === id) ||
+        state.tokens.find((t) => t.instanceId === id),
+    };
+    const renderer: Renderer = {
+      setSpriteManifest: () => {},
+      loadSpriteManifestFromText: () => {},
+      setAssetResolver: () => {},
+      resize: () => {},
+      render: () => {},
+      drawGhost: () => {},
+    };
+    const core = new EditorCore(api, state);
+    const container = window.document.getElementById('app')!;
+    new EditorUI(container, core, renderer);
+
+    const canvas = container.querySelector('#viewport') as HTMLCanvasElement;
+    canvas.dispatchEvent(
+      new window.MouseEvent('click', { clientX: 40, clientY: 40, bubbles: true }),
+    );
+
+    const items = container.querySelectorAll('#selection-list li');
+    (items[0] as HTMLElement).dispatchEvent(
+      new window.Event('click', { bubbles: true }),
+    );
+    assert.equal(core.ui.selected, null);
+    (items[1] as HTMLElement).dispatchEvent(
+      new window.Event('click', { bubbles: true }),
+    );
+    assert.equal((core.ui.selected as any)?.kind, 'token');
+    assert.equal((core.ui.selected as any)?.id, 't1');
+
+    const rot = container.querySelector('#rot-right') as HTMLElement;
+    rot.dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(state.tokens[0].rot, 90);
+  });
+
   it('cell size capped at 64', () => {
     const dom = new JSDOM(`<!doctype html><html><body><div id="app"></div></body></html>`, {
       pretendToBeVisual: true,

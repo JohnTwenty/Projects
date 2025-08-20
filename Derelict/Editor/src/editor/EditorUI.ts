@@ -335,10 +335,14 @@ export class EditorUI {
     });
     li.textContent += ' ';
     li.appendChild(del);
-    li.addEventListener('click', () => {
-      this.core.selectExisting(kind, id);
-      this.refreshSelectionHighlight();
-    });
+    if (kind === 'token') {
+      li.addEventListener('click', () => {
+        this.core.selectExisting('token', id);
+        this.refreshSelectionHighlight();
+      });
+    } else {
+      li.classList.add('no-select');
+    }
     return li;
   }
 
