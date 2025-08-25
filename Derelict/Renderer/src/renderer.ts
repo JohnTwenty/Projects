@@ -42,46 +42,100 @@ export function createRenderer(): Renderer {
     const h = canvas?.height ?? 0;
     ctx.clearRect(0, 0, w, h);
     if (!ghost || !ghost.cell) return;
-    const ts = vp.cellSize * vp.scale;
+
+    const entryMap = new Map<string, typeof manifest.entries[number]>();
+    for (const e of manifest.entries) entryMap.set(e.key, e);
+
     ctx.save();
     ctx.globalAlpha = 0.5;
-    if (ghost.kind === 'segment') {
-      const def = state.segmentDefs?.find((s) => s.segmentId === ghost.id);
-      const width = def?.grid?.[0]?.length ?? def?.width ?? 1;
-      const height = def?.grid?.length ?? def?.height ?? 1;
-      const rotate = (
-        local: { x: number; y: number },
-        rot: 0 | 90 | 180 | 270,
-      ) => {
-        const x = local.x;
-        const y = local.y;
-        switch (rot) {
-          case 0:
-            return { x, y };
-          case 90:
-            return { x: height - 1 - y, y: x };
-          case 180:
-            return { x: width - 1 - x, y: height - 1 - y };
-          case 270:
-            return { x: y, y: width - 1 - x };
-        }
-      };
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const rc = rotate({ x, y }, ghost.rot);
-          const gx = (ghost.cell.x + rc.x - vp.origin.x) * ts;
-          const gy = (ghost.cell.y + rc.y - vp.origin.y) * ts;
-          ctx.fillStyle = 'rgba(0,0,255,0.5)';
-          ctx.fillRect(gx, gy, ts, ts);
-        }
+
+    if (ghost.kind === 'token') {
+      const sprite = entryMap.get(ghost.id);
+      const rect = boardToScreen(ghost.cell, vp);
+      const image = sprite ? resolver(sprite.file) : undefined;
+      if (image && sprite) {
+        ctx.save();
+        ctx.translate(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        const sw = sprite.w || (image as any).width || rect.width;
+        const sh = sprite.h || (image as any).height || rect.height;
+        const scaleX = rect.width / sw;
+        const scaleY = rect.height / sh;
+        ctx.translate((sprite.xoff || 0) * scaleX, (sprite.yoff || 0) * scaleY);
+        if (ghost.rot) ctx.rotate((ghost.rot * Math.PI) / 180);
+        ctx.drawImage(
+          image as any,
+          sprite.x,
+          sprite.y,
+          sw,
+          sh,
+          -rect.width / 2,
+          -rect.height / 2,
+          rect.width,
+          rect.height,
+        );
+        ctx.restore();
+      } else {
+        ctx.fillStyle = 'rgba(0,0,255,0.5)';
+        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
       }
       ctx.restore();
       return;
     }
-    const gx = (ghost.cell.x - vp.origin.x) * ts;
-    const gy = (ghost.cell.y - vp.origin.y) * ts;
-    ctx.fillStyle = 'rgba(0,0,255,0.5)';
-    ctx.fillRect(gx, gy, ts, ts);
+
+    const def = state.segmentDefs?.find((s) => s.segmentId === ghost.id);
+    const grid = def?.grid;
+    const width = grid?.[0]?.length ?? def?.width ?? 1;
+    const height = grid?.length ?? def?.height ?? 1;
+    const rotate = (
+      local: { x: number; y: number },
+      rot: 0 | 90 | 180 | 270,
+    ) => {
+      const x = local.x;
+      const y = local.y;
+      switch (rot) {
+        case 0:
+          return { x, y };
+        case 90:
+          return { x: height - 1 - y, y: x };
+        case 180:
+          return { x: width - 1 - x, y: height - 1 - y };
+        case 270:
+          return { x: y, y: width - 1 - x };
+      }
+    };
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const rc = rotate({ x, y }, ghost.rot);
+        const cellType = grid?.[y]?.[x];
+        const sprite = entryMap.get(String(cellType));
+        const cell = { x: ghost.cell.x + rc.x, y: ghost.cell.y + rc.y };
+        const rect = boardToScreen(cell, vp);
+        if (sprite) {
+          const img = resolver(sprite.file);
+          if (img) {
+            ctx.save();
+            ctx.translate(rect.x, rect.y);
+            const sw = sprite.w || (img as any).width || rect.width;
+            const sh = sprite.h || (img as any).height || rect.height;
+            ctx.drawImage(
+              img as any,
+              sprite.x,
+              sprite.y,
+              sw,
+              sh,
+              0,
+              0,
+              rect.width,
+              rect.height,
+            );
+            ctx.restore();
+            continue;
+          }
+        }
+        ctx.fillStyle = 'rgba(0,0,255,0.5)';
+        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+      }
+    }
     ctx.restore();
   }
 

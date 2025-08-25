@@ -6,41 +6,93 @@ class Ctx {
   canvas = { width: 100, height: 100 };
   ops: any[] = [];
   globalAlpha = 1;
-  clearRect(x:number,y:number,w:number,h:number){ this.ops.push(['clearRect',x,y,w,h]); }
-  save(){ this.ops.push(['save']); }
-  restore(){ this.ops.push(['restore']); }
-  fillRect(x:number,y:number,w:number,h:number){ this.ops.push(['fillRect',x,y,w,h]); }
+  clearRect(x: number, y: number, w: number, h: number) {
+    this.ops.push(['clearRect', x, y, w, h]);
+  }
+  save() {
+    this.ops.push(['save']);
+  }
+  restore() {
+    this.ops.push(['restore']);
+  }
+  fillRect(x: number, y: number, w: number, h: number) {
+    this.ops.push(['fillRect', x, y, w, h]);
+  }
+  translate(x: number, y: number) {
+    this.ops.push(['translate', x, y]);
+  }
+  rotate(a: number) {
+    this.ops.push(['rotate', a]);
+  }
+  drawImage(...args: any[]) {
+    this.ops.push(['drawImage', this.globalAlpha, ...args]);
+  }
 }
 
 describe('Renderer.drawGhost', () => {
-  it('draws ghost cells for segments', () => {
+  it('draws token ghosts with sprite and alpha', () => {
     const ctx = new Ctx();
     const r = createRenderer();
-    const state: any = { size: 10, segments: [], tokens: [], segmentDefs: [{ segmentId: 's', width: 2, height: 1, grid: [[1,1]] }] };
-    r.drawGhost(ctx as any, { kind: 'segment', id: 's', rot: 0, cell: { x: 1, y: 2 } }, state, { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 });
-    assert.ok(ctx.ops.some(o => o[0] === 'fillRect' && o[1] === 32 && o[2] === 64));
+    r.setSpriteManifest({
+      entries: [
+        { key: 't', file: 'img', x: 0, y: 0, w: 0, h: 0, layer: 0, xoff: 0, yoff: 0 },
+      ],
+    });
+    r.setAssetResolver(() => ({ width: 32, height: 32 } as any));
+    const state: any = { size: 10, segments: [], tokens: [], segmentDefs: [] };
+    r.drawGhost(
+      ctx as any,
+      { kind: 'token', id: 't', rot: 0, cell: { x: 1, y: 2 } },
+      state,
+      { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 },
+    );
+    assert.ok(
+      ctx.ops.some(
+        (o) =>
+          o[0] === 'drawImage' &&
+          o[1] === 0.5 &&
+          o[o.length - 4] === -16 &&
+          o[o.length - 3] === -16,
+      ),
+    );
+    assert.ok(
+      ctx.ops.some((o) => o[0] === 'translate' && o[1] === 48 && o[2] === 80),
+    );
   });
 
-  it('uses grid dimensions for non-square segments', () => {
+  it('draws segment ghosts using terrain sprites with alpha', () => {
     const ctx = new Ctx();
     const r = createRenderer();
-    const grid = [
-      [1, 1, 1, 1, 1],
-      [1, 1, 1, 1, 1],
-      [1, 1, 1, 1, 1],
-    ];
+    r.setSpriteManifest({
+      entries: [
+        { key: '1', file: 'img', x: 0, y: 0, w: 0, h: 0, layer: 0, xoff: 0, yoff: 0 },
+      ],
+    });
+    r.setAssetResolver(() => ({ width: 32, height: 32 } as any));
     const state: any = {
       size: 10,
       segments: [],
       tokens: [],
-      segmentDefs: [{ segmentId: 's', width: 3, height: 5, grid }],
+      segmentDefs: [{ segmentId: 's', grid: [[1]] }],
     };
     r.drawGhost(
       ctx as any,
-      { kind: 'segment', id: 's', rot: 0, cell: { x: 0, y: 0 } },
+      { kind: 'segment', id: 's', rot: 0, cell: { x: 1, y: 2 } },
       state,
-      { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 }
+      { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 },
     );
-    assert.ok(ctx.ops.some(o => o[0] === 'fillRect' && o[1] === 128 && o[2] === 64));
+    assert.ok(
+      ctx.ops.some(
+        (o) =>
+          o[0] === 'drawImage' &&
+          o[1] === 0.5 &&
+          o[o.length - 4] === 0 &&
+          o[o.length - 3] === 0,
+      ),
+    );
+    assert.ok(
+      ctx.ops.some((o) => o[0] === 'translate' && o[1] === 32 && o[2] === 64),
+    );
   });
 });
+
