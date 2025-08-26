@@ -3,3 +3,6 @@ type=door
 type=marine
 type=blip
 type=objective
+type=marine_start
+type=alien_entry
+

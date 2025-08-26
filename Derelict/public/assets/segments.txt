@@ -7,13 +7,61 @@ segment L_room_5x5 5x5
 0 0 0 0 0
 endsegment
 
+segment T_room_5x5 5x5
+0 0 1 0 0
+0 1 1 1 0
+1 1 1 1 1
+0 1 1 1 0
+0 0 0 0 0
+endsegment
+
+segment C_room_5x5 5x5
+0 0 1 0 0
+0 1 1 1 0
+0 1 1 1 0
+0 1 1 1 0
+0 0 0 0 0
+endsegment
+
+
+segment L_room_3x3 3x3
+0 1 0
+1 1 0
+0 0 0
+endsegment
+
+segment T_room_3x3 3x3
+0 1 0
+1 1 1
+0 0 0
+endsegment
+
+segment X_room_3x3 3x3
+0 1 0
+1 1 1
+0 1 0
+endsegment
+
 segment corridor_5 3x5
 0 0 0 0 0
 1 1 1 1 1
 0 0 0 0 0
 endsegment
 
-segment endcap 2x2
+segment corridor_4 3x4
+0 0 0 0
+1 1 1 1
+0 0 0 0
+endsegment
+
+segment corridor_3 3x3
+0 0 0
+1 1 1
+0 0 0
+endsegment
+
+segment endcap 3x2
 0 0
 0 1
+0 0
 endsegment
