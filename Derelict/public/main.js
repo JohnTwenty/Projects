@@ -67,6 +67,8 @@ async function init() {
       btn.addEventListener('click', () => {
         core.selectToken(t.type);
         ui.setPaletteSelection(null);
+        ui.drawGhost();
+        ui.updateSelectionBar();
         if (selectedTokenBtn) selectedTokenBtn.classList.remove('selected');
         btn.classList.add('selected');
         selectedTokenBtn = btn;
