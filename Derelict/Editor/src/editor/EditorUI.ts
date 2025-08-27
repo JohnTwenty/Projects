@@ -3,7 +3,7 @@ import { EditorCore } from './EditorCore.js';
 import { qs, createEl, showModal } from '../util/dom.js';
 import { pixelToCell, clampCell } from '../util/geometry.js';
 import { registerShortcuts } from './Shortcuts.js';
-import { downloadText } from '../util/files.js';
+import { downloadText, readFileAsText } from '../util/files.js';
 import type { Renderer, BoardState } from '../types.js';
 
 export class EditorUI {
@@ -145,6 +145,41 @@ export class EditorUI {
       save: () => {
         this.openSaveDialog();
       },
+    });
+
+    this.container.addEventListener('dragover', (ev) => {
+      ev.preventDefault();
+      this.container.classList.add('drag-over');
+      this.container.style.outline = '2px dashed #66f';
+    });
+    this.container.addEventListener('dragleave', () => {
+      this.container.classList.remove('drag-over');
+      this.container.style.outline = '';
+    });
+    this.container.addEventListener('drop', (ev) => {
+      ev.preventDefault();
+      this.container.classList.remove('drag-over');
+      this.container.style.outline = '';
+      const file = ev.dataTransfer?.files[0];
+      if (file && file.name.endsWith('.mission.txt')) {
+        const body = createEl('div');
+        body.textContent = `Load ${file.name}?`;
+        let ref: { close(): void };
+        ref = showModal('Load Mission', body, [
+          {
+            label: 'OK',
+            onClick: async () => {
+              const text = await readFileAsText(file);
+              this.core.loadMission(text);
+              this.setPaletteSelection(null);
+              this.render();
+              this.updateSelectionBar();
+              ref.close();
+            },
+          },
+          { label: 'Cancel', onClick: () => ref.close() },
+        ]);
+      }
     });
   }
 
