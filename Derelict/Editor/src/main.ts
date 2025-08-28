@@ -1,11 +1,14 @@
-import * as BoardState from '../BoardState/dist/api/public.js';
-import { createRenderer } from '../Renderer/dist/src/renderer.js';
-import { createEditor } from '../Editor/dist/src/index.js';
+import { createEditor } from './index.js';
 import { parseSegmentDefs } from './segments.js';
 
 async function init() {
   const app = document.getElementById('app');
   if (!app) return;
+
+  const [{ createRenderer }, BoardState] = await Promise.all([
+    import(new URL('../../../Renderer/dist/src/renderer.js', import.meta.url).href),
+    import(new URL('../../../BoardState/dist/api/public.js', import.meta.url).href),
+  ]);
 
   const [segLib, tokLib, spriteManifestText] = await Promise.all([
     fetch('assets/segments.txt').then((r) => r.text()),
@@ -17,7 +20,7 @@ async function init() {
   renderer.loadSpriteManifestFromText(spriteManifestText);
 
   // Build a simple lookup of sprite file paths for token types
-  const spriteMap = new Map();
+  const spriteMap = new Map<string, string>();
   for (const line of spriteManifestText.split(/\r?\n/)) {
     const parts = line.trim().split(/\s+/);
     if (parts.length >= 2 && !line.startsWith('#')) {
@@ -32,7 +35,7 @@ async function init() {
     .filter((l) => l.startsWith('type='))
     .map((l) => l.split('=')[1]);
 
-  const state = BoardState.newBoard(40, segLib, tokLib);
+  const state: any = BoardState.newBoard(40, segLib, tokLib);
   // Augment state for Editor expectations
   state.segmentDefs = segmentDefs;
   state.tokenTypes = tokenTypes.map((t) => ({ type: t }));
@@ -40,8 +43,8 @@ async function init() {
 
   const { core, ui } = createEditor(app, renderer, BoardState, state);
 
-  const imageCache = new Map();
-  renderer.setAssetResolver((key) => {
+  const imageCache = new Map<string, HTMLImageElement>();
+  renderer.setAssetResolver((key: string) => {
     let img = imageCache.get(key);
     if (!img) {
       img = document.createElement('img');
@@ -53,7 +56,7 @@ async function init() {
   });
 
   const tokenPalette = document.getElementById('token-palette');
-  let selectedTokenBtn = null;
+  let selectedTokenBtn: HTMLButtonElement | null = null;
   if (tokenPalette) {
     for (const t of state.tokenTypes) {
       const btn = document.createElement('button');
@@ -95,8 +98,8 @@ async function init() {
   });
 
   function resize() {
-    const vp = document.getElementById('viewport');
-    const overlay = document.getElementById('overlay');
+    const vp = document.getElementById('viewport') as HTMLCanvasElement | null;
+    const overlay = document.getElementById('overlay') as HTMLCanvasElement | null;
     if (!vp || !overlay) return;
     const rect = vp.getBoundingClientRect();
     vp.width = overlay.width = rect.width;

@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import url from 'node:url';
-import { parseSegmentDefs } from '../public/segments.js';
+import { parseSegmentDefs } from '../Editor/dist/src/segments.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
@@ -46,7 +46,7 @@ test('bootstrap initializes without errors', async () => {
     return { text: async () => text };
   };
 
-  await import('../public/main.js');
+  await import('../Editor/dist/src/main.js');
   // Allow async bootstrap to finish fetching assets
   await new Promise((r) => setTimeout(r, 50));
 

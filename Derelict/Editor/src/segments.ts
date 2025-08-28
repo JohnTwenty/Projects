@@ -1,6 +1,13 @@
-export function parseSegmentDefs(text) {
+export interface SegmentDef {
+  segmentId: string;
+  width: number;
+  height: number;
+  grid: number[][];
+}
+
+export function parseSegmentDefs(text: string): SegmentDef[] {
   const lines = text.split(/\r?\n/);
-  const defs = [];
+  const defs: SegmentDef[] = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const m = line.match(/^segment\s+(\S+)\s+(\d+)x(\d+)/);
@@ -8,7 +15,7 @@ export function parseSegmentDefs(text) {
       const id = m[1];
       const h = parseInt(m[2], 10);
       const w = parseInt(m[3], 10);
-      const grid = [];
+      const grid: number[][] = [];
       for (let r = 0; r < h; r++) {
         const row = lines[++i];
         grid.push(row.trim().split(/\s+/).map(Number));
