@@ -1,0 +1,17 @@
+# Derelict Game Rules Modules
+
+This folder contains initially one but later perhaps more implementations of the Rules interface.
+
+Rules implement various kinds of board game rules.  
+
+Rules will read and write the BoardState object.  Rules will also reference two Players objects, and ask them to make choices.
+
+Based on these choices made, the game will progress until one player wins.
+
+Initially the rules of the game are very simple: 
+
+* The first player controls the marines.  The second player for the time being does not do anything.
+* The first player must select a cell on the board with a marine in it to activate the marine.  If there are no marines on the board that can be selected, the game is lost.
+* Once a marine is seledcted, the controlling player may choose to move one cell forward (in the direction the marine is facing) assuming this cell is a corridor and does not contain either a marine or a blip, or turn left, or turn right, or select a different marine to activate it.
+* This selection and movement can continue indefinitely.
+
