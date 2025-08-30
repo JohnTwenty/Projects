@@ -44,13 +44,21 @@ The Rules:runGame() will call the players to make choices.  The computer player 
 The human player will of course need to use the UI the GameModule provides to make decisions.  Therefore, when the human player
 is inevitably called on to make a choice, we are unblocked.  This happens by the human player calling a game API this Game module provides.
 This API provides functions, for example: 
-	* chooseCell(allowed_coords[]):Promise<Coord> - draws a sprite token based highlight on allowed cells, and lets the user pick one by clicking with the mouse.
+	* letUserSelect(Options[]):Promise<Option> - prompts the user to click one of multiple permissible options.  An Option can include information like: 
+		- the cell coordinates where to draw a clickable sprite overlay over the board at the provided cell coordinates 
+		- a sprite name to use as an overlay by referring to the sprite manifest
+		- rotation of the cell overlay sprite in 90 degree increments.  These rotate not around the sprite center but around the cell center.  The idea is that on a 64x64 cell, we will want a button representing forward movement, which will be an e.g. 64x16 sprite.  This will rotate to be along the edge of the cell that is toward the forward direction of the marine.  We will make use of the x and y offsets in the sprite manifest
+		to position these sprites correctly relative to the cell, but these offsets will rotate. Another example is that the left turn button will be a small square always drawn to be on the left side of the marine.
 	* messageBox(string):Boolean - modal message box allowing a yes or no boolean reply.
-	* highlightCells()
-	* clearHightlights()
-	
+
+
 If during such a UI callback the user takes an action like pressing the New Game button and and confirms, the runGame() function is returned to and aborted via error message or exception before proceeding.
 
 The game proceeds with the the players taking turns and getting a chance to make decisions until some victory condition in the rules is achieved.  At that point victory is declared and runGame() exits. 
 
-
+I will provide the following sprite assets to make representation of the current coices described in the rules possible:
+* A marine selection highlight bracket
+* forward move arrow
+* rotate left arrow
+* rotate right arrow
+For the time being just add placeholders for these into the sprites.manifest.txt file.

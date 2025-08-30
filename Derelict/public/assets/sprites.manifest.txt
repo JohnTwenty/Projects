@@ -10,3 +10,9 @@ door      assets/images/door.png         0  0  0  0  30      0    0
 objective assets/images/objective.png    0  0  0  0  10      0    0
 marine_start assets/images/start.png     0  0  0  0  10      0    0
 alien_entry assets/images/entry.png      0  0  0  0  10      0    0
+
+# UI overlays (placeholders)
+ui_select_bracket assets/images/objective.png 0  0  0  0  50  0  0
+ui_move_forward  assets/images/start.png      0  0  0  0  50  0  0
+ui_turn_left     assets/images/start.png      0  0  0  0  50  0  0
+ui_turn_right    assets/images/start.png      0  0  0  0  50  0  0
