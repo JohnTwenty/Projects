@@ -5,7 +5,10 @@
   "workspaces": [
     "BoardState",
     "Renderer",
-    "Editor"
+    "Editor",
+    "Game",
+    "Players",
+    "Rules"
   ],
   "scripts": {
     "build": "npm run -ws --if-present build",
