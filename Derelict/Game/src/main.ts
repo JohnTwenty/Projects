@@ -1,11 +1,20 @@
 import { Game } from "./index.js";
+import type { Coord } from "derelict-boardstate";
 
 async function init() {
   const app = document.getElementById("app");
   if (!app) return;
+  const main = document.createElement("div");
+  main.id = "main";
+  app.appendChild(main);
+
+  const wrap = document.createElement("div");
+  wrap.id = "viewport-wrap";
+  main.appendChild(wrap);
 
   const canvas = document.createElement("canvas");
-  app.appendChild(canvas);
+  canvas.id = "viewport";
+  wrap.appendChild(canvas);
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -53,9 +62,15 @@ async function init() {
 
   const renderer = { render };
   const rules = new Rules.BasicRules(board);
-  const p1 = new Players.RandomAI();
+  let game!: Game;
+  const p1 = new Players.HumanPlayer({
+    chooseCell: (allowed: Coord[]) => game.chooseCell(allowed),
+    messageBox: (msg: string) => game.messageBox(msg),
+    highlightCells: (coords: Coord[]) => game.highlightCells(coords),
+    clearHighlights: () => game.clearHighlights(),
+  });
   const p2 = new Players.RandomAI();
-  const game = new Game(board, renderer, rules, p1, p2);
+  game = new Game(board, renderer, rules, p1, p2);
   await game.start();
 }
 

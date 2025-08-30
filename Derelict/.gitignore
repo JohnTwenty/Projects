@@ -1,0 +1,5 @@
+# Ignore JavaScript build artifacts
+*.js
+
+# Node modules
+node_modules
