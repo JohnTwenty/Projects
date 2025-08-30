@@ -13,12 +13,25 @@ test('marine moves forward when choosing move', async () => {
   const rules = new BasicRules(board);
   rules.validate(board);
 
+  let calls = 0;
+  let moved;
   const player = {
-    chooseMarine: async (options) => options[0],
-    chooseAction: async () => 'move',
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options[0]; // choose marine
+      }
+      if (calls === 2) {
+        return options.find((o) => o.action === 'move');
+      }
+      moved = { ...board.tokens[0].cells[0] };
+      // After moving once, exit by selecting other and removing marine
+      board.tokens = [];
+      return options.find((o) => o.action === 'selectOther');
+    },
   };
 
   await rules.runGame(player, player);
 
-  assert.deepEqual(board.tokens[0].cells[0], { x: 1, y: 0 });
+  assert.deepEqual(moved, { x: 1, y: 0 });
 });

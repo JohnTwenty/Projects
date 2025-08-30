@@ -1,5 +1,4 @@
 import { Game } from "./index.js";
-import type { Coord } from "derelict-boardstate";
 
 async function init() {
   const app = document.getElementById("app");
@@ -44,6 +43,20 @@ async function init() {
   ]);
   rendererCore.loadSpriteManifestFromText(manifestText);
 
+  const spriteInfo: Record<string, { file: string; xoff: number; yoff: number }> = {};
+  for (const line of manifestText.split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const parts = t.split(/\s+/);
+    if (parts.length < 9) continue;
+    const [key, file, , , , , , xoff, yoff] = parts;
+    spriteInfo[key] = {
+      file,
+      xoff: parseInt(xoff, 10) || 0,
+      yoff: parseInt(yoff, 10) || 0,
+    };
+  }
+
   const board = BoardState.newBoard(40, segLib, tokLib);
   BoardState.addToken(board, {
     tokenId: "m1",
@@ -64,13 +77,15 @@ async function init() {
   const rules = new Rules.BasicRules(board);
   let game!: Game;
   const p1 = new Players.HumanPlayer({
-    chooseCell: (allowed: Coord[]) => game.chooseCell(allowed),
+    choose: (options: any) => game.choose(options),
     messageBox: (msg: string) => game.messageBox(msg),
-    highlightCells: (coords: Coord[]) => game.highlightCells(coords),
-    clearHighlights: () => game.clearHighlights(),
   });
   const p2 = new Players.RandomAI();
-  game = new Game(board, renderer, rules, p1, p2);
+  game = new Game(board, renderer, rules, p1, p2, {
+    container: wrap,
+    cellToRect: (coord: any) => rendererCore.boardToScreen(coord, viewport),
+    sprites: spriteInfo,
+  });
   await game.start();
 }
 

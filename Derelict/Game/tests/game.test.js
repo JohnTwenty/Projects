@@ -21,8 +21,7 @@ test('start validates and runs rules', async () => {
     },
   };
   const player = {
-    chooseMarine: async () => ({ x: 0, y: 0 }),
-    chooseAction: async () => 'move',
+    choose: async () => ({ type: 'marine', coord: { x: 0, y: 0 } }),
   };
   const game = new Game(board, renderer, rules, player, player);
   await game.start();

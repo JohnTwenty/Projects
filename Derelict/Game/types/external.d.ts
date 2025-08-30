@@ -11,20 +11,25 @@ declare module 'derelict-boardstate' {
     size: number;
     segments: any[];
     tokens: TokenInstance[];
+    getCellType?(coord: Coord): number;
   }
 }
 
 declare module 'derelict-players' {
   import type { Coord } from 'derelict-boardstate';
+  export interface Choice {
+    type: 'marine' | 'action';
+    coord?: Coord;
+    action?: 'move' | 'turnLeft' | 'turnRight' | 'selectOther';
+    sprite?: string;
+    rot?: number;
+  }
   export interface GameApi {
-    chooseCell(allowed: Coord[]): Promise<Coord>;
+    choose(options: Choice[]): Promise<Choice>;
     messageBox(message: string): Promise<boolean>;
-    highlightCells(coords: Coord[]): void;
-    clearHighlights(): void;
   }
   export interface Player {
-    chooseMarine(options: Coord[]): Promise<Coord>;
-    chooseAction(options: string[]): Promise<string>;
+    choose(options: Choice[]): Promise<Choice>;
   }
 }
 
