@@ -8,10 +8,18 @@ Rules will read and write the BoardState object.  Rules will also reference two 
 
 Based on these choices made, the game will progress until one player wins.
 
-Initially the rules of the game are very simple: 
+Initially the rules of the game are very simple; all this is implemented in the Rules:runGame function: 
 
 * The first player controls the marines.  The second player for the time being does not do anything.
-* The first player must select a cell on the board with a marine in it to activate the marine.  If there are no marines on the board that can be selected, the game is lost.
+* The first player must select a cell on the board with a marine in it to activate the marine.  If there are no marines on the board that can be selected, the game is lost and runGame() exits.
 * Once a marine is seledcted, the controlling player may choose to move one cell forward (in the direction the marine is facing) assuming this cell is a corridor and does not contain either a marine or a blip, or turn left, or turn right, or select a different marine to activate it.
 * This selection and movement can continue indefinitely.
+
+This rules module should make the process of choosing for players as simple as possible.  That means that this rules module should examine the boardState and provide an explicit list of possible legal choices
+to players whenever possible.  So above, the Rules should search the board for cells with marines and provide these cells as an explicit list to the player to choose.
+For the choice of what action to take, the rules should inspect the cell in front of the marine and decide if it meets the above conditions such that it can be moved into.  If not, this choice should not be offered, and only turn left, turn right, or a list of alternative selectable marines should be offered.
+
+The rules should then avait the player to make a choice.  If the player chooses to move or turn a marine, this action should be carried out by mutating the board state, and if necessary, a change should be signaled to the Game module so that the board may be redrawn.
+
+When choices are offered to players, the choices should be provided with information such as cell coordinates, choice type identifiers ("move forward", "turn left") and so on.
 
