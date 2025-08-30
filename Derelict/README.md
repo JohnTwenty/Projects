@@ -5,7 +5,7 @@ Derelict is a turn based tactical browser game including a map editor
 1. install NPM e.g. from https://nodejs.org/en/download/
 2. install typescript
 ```bash
-   npm install typescript
+   npm install -g typescript
 ```
 3. build and test
 ```bash
