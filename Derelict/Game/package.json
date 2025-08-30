@@ -1,0 +1,21 @@
+{
+  "name": "derelict-game",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "format": "prettier -w ."
+  },
+  "dependencies": {
+    "derelict-boardstate": "workspace:*",
+    "derelict-players": "workspace:*",
+    "derelict-rules": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "typescript": "^5.2.2",
+    "prettier": "^3.0.0"
+  }
+}
