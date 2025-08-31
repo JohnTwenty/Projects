@@ -34,33 +34,34 @@ When this button is pressed the "New Game" dialog is dismissed and the following
 
 ## UI 
 
-The UI of the game page is as follows: 
-	* Horizontal bar at the top saying "Derelict Game", just like we have in Editor.
-	* Horizontal Button Bar with buttons: "New Game", "Save Game", "Editor", same style like we have in Editor.
-		* The "New Game" button that when pressed, after modal confirmation dialog that gives a chance to cance, start a new game returns us to a "new game" dialog as above.
-		* The "Save Game" button saves the BoardState to a mission file (that gets downloaded to the user's computer.
-		* The "Editor" button, that when pressed, after modal confirmation dialog that gives a chance to cancel, forwards to index.html which is the editor page. 		
-	* The play area viewport that uses the Renderer to display the boardState.
-	* A vertical bar to the right of the play area viewport that is horizontally divided into two regions:
-		* A top region showing buttons including:
-			* The "Move" button 
-			* The "Turn Left" button
-			* The "Turn Right" button
-			* The "Manipulate" button
-			* The "Assault" button
-			* The "Shoot / Clear Jam" button
-			* The "Activate Ally" button
-			* The "Overwatch" button
-			* The "Guard" button
-			* The "Pass" button
-		* A status region showing information like: (We will describe how to populate this later)
-			* "Turn: n"
-			* "Command points: n"
-			* "Activated Unit Name: xyz" 
-			* "Activated Unit Role: xyz" 
-			* "AP remaining: n"
-			* "AP for action: n" 
-			* "Ammo remaining: n" 
+The UI of the game page is as follows:
+
+* Horizontal bar at the top saying "Derelict Game", just like we have in Editor.
+* Horizontal Button Bar with buttons: "New Game", "Save Game", "Editor", same style like we have in Editor.
+	* The "New Game" button that when pressed, after modal confirmation dialog that gives a chance to cance, start a new game returns us to a "new game" dialog as above.
+	* The "Save Game" button saves the BoardState to a mission file (that gets downloaded to the user's computer.
+	* The "Editor" button, that when pressed, after modal confirmation dialog that gives a chance to cancel, forwards to index.html which is the editor page. 		
+* The play area viewport that uses the Renderer to display the boardState.
+* A vertical bar to the right of the play area viewport that is horizontally divided into two regions:
+	* A top region showing buttons including:
+		* The "Move" button 
+		* The "Turn Left" button
+		* The "Turn Right" button
+		* The "Manipulate" button
+		* The "Assault" button
+		* The "Shoot / Clear Jam" button
+		* The "Activate Ally" button
+		* The "Overwatch" button
+		* The "Guard" button
+		* The "Pass" button
+	* A status region showing information like: (We will describe how to populate this later)
+		* "Turn: n"
+		* "Command points: n"
+		* "Activated Unit Name: xyz" 
+		* "Activated Unit Role: xyz" 
+		* "AP remaining: n"
+		* "AP for action: n" 
+		* "Ammo remaining: n" 
 	
 ## Control FLow
 
@@ -70,12 +71,13 @@ The Rules:runGame() will call the players to make choices.  The computer player 
 The human player will of course need to use the UI the GameModule provides to make decisions.  Therefore, when the human player
 is inevitably called on to make a choice, we are unblocked.  This happens by the human player calling a game API this Game module provides.
 This API provides functions, for example: 
-	* letUserSelect(Options[]):Promise<Option> - prompts the user to click one of multiple permissible options.  An Option will include information like: 
-		- the type of option, e.g. MOVE or TURN
-		- a sub-type like LEFT or RIGHT
-		- an action point cost integer that can be displayed to the user
-		- optionally the cell coordinates where to draw a clickable sprite overlay over the board at the provided cell coordinates 
-	* messageBox(string):Boolean - modal message box allowing a yes or no boolean reply.
+
+* letUserSelect(Options[]):Promise<Option> - prompts the user to click one of multiple permissible options.  An Option will include information like: 
+	- the type of option, e.g. MOVE or TURN
+	- a sub-type like LEFT or RIGHT
+	- an action point cost integer that can be displayed to the user
+	- optionally the cell coordinates where to draw a clickable sprite overlay over the board at the provided cell coordinates 
+* messageBox(string):Boolean - modal message box allowing a yes or no boolean reply.
 
 
 
