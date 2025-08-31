@@ -92,13 +92,13 @@ function sameCoord(a: Coord, b: Coord): boolean {
 function forwardCell(cell: Coord, rot: Rotation): Coord {
   switch (rot) {
     case 0:
-      return { x: cell.x + 1, y: cell.y };
-    case 90:
       return { x: cell.x, y: cell.y + 1 };
-    case 180:
+    case 90:
       return { x: cell.x - 1, y: cell.y };
-    case 270:
+    case 180:
       return { x: cell.x, y: cell.y - 1 };
+    case 270:
+      return { x: cell.x + 1, y: cell.y };
     default:
       return cell;
   }
