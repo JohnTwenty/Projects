@@ -1,41 +1,37 @@
 import { Coord } from 'derelict-boardstate';
 
+// A generic choice presented to a player.
+export interface Choice {
+  type: 'marine' | 'action';
+  coord?: Coord;
+  action?: 'move' | 'turnLeft' | 'turnRight' | 'selectOther';
+  sprite?: string;
+  rot?: number;
+}
+
 // Game API that players can call to interact with the UI
 export interface GameApi {
-  chooseCell(allowed: Coord[]): Promise<Coord>;
+  choose(options: Choice[]): Promise<Choice>;
   messageBox(message: string): Promise<boolean>;
-  highlightCells(coords: Coord[]): void;
-  clearHighlights(): void;
 }
 
 // Basic player interface used by the rules engine
 export interface Player {
-  chooseMarine(options: Coord[]): Promise<Coord>;
-  chooseAction(options: string[]): Promise<string>;
+  choose(options: Choice[]): Promise<Choice>;
 }
 
 // Human controlled player delegating to the Game UI
 export class HumanPlayer implements Player {
   constructor(private game: GameApi) {}
 
-  chooseMarine(options: Coord[]): Promise<Coord> {
-    return this.game.chooseCell(options);
-  }
-
-  async chooseAction(options: string[]): Promise<string> {
-    // Placeholder: always pick the first option
-    return options[0];
+  choose(options: Choice[]): Promise<Choice> {
+    return this.game.choose(options);
   }
 }
 
 // Simple computer player making random choices
 export class RandomAI implements Player {
-  async chooseMarine(options: Coord[]): Promise<Coord> {
-    const idx = Math.floor(Math.random() * options.length);
-    return options[idx];
-  }
-
-  async chooseAction(options: string[]): Promise<string> {
+  async choose(options: Choice[]): Promise<Choice> {
     const idx = Math.floor(Math.random() * options.length);
     return options[idx];
   }
