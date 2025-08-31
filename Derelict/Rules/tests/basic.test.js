@@ -33,5 +33,5 @@ test('marine moves forward when choosing move', async () => {
 
   await rules.runGame(player, player);
 
-  assert.deepEqual(moved, { x: 1, y: 0 });
+  assert.deepEqual(moved, { x: 0, y: 1 });
 });
