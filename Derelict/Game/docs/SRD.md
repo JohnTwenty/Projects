@@ -75,11 +75,41 @@ This API provides functions, for example:
 * letUserSelect(Options[]):Promise<Option> - prompts the user to click one of multiple permissible options.  An Option will include information like: 
 	- the type of option, e.g. MOVE or TURN
 	- a sub-type like LEFT or RIGHT
-	- an action point cost integer that can be displayed to the user
-	- optionally the cell coordinates where to draw a clickable sprite overlay over the board at the provided cell coordinates 
+	- an action point (AP) cost integer that can be displayed to the user
+	- optionally the CELL coordinates where to draw a clickable sprite overlay over the board at the provided cell coordinates 
 * messageBox(string):Boolean - modal message box allowing a yes or no boolean reply.
 
+## Specific Options 
 
+The Rules are able to pass us the following types of Options.  CELL means to pass the cell coordinate (e.g. for shoot target or move destination).  If there are multiple cells that can be moved to, each is passed as a distinct option.
+By default all cells that have been referenced in at least one options get overlaid with a certain color rectangular outline and may be selected.
+Because some cells might be related to more than one option (e.g. an enemy in a cell may be both assaulted or shot) we need to prioritize actions.  The below table is in priority order.  
+This means that shoot takes precedence over assault so in the previous case the enemy would get a shoot highlight by default, and a click would lead to a shoot option being chosen.
+
+The reason we have buttons is twofold: First, some Options do not have a cell associated, so there is no cell to click to select them.  They are selected simply by a button press.
+Second, when cells have multiple actions associated like in the above example, pressing a button first will disambiguate, and remove all cell highlights save for the ones associated with the button's associated option.  This makes
+the button act as an action filter.  The filtering can be disabled by clicking the button again, which is visually indicated by such a button remaining darkened until a cell is clicked or the button is clicked again.
+A keyboard key accelerator listed in the Key column has the same effect as clicking or tapping the button.
+
+
+| Option        | 	Button   | 	Key	 | Cell Choice     |  Cell Highlight | Notes |
+|---------------|------------|-------|-----------------|-----------------|-------|
+| activate CELL | activate 	 | n	 | available ally  | purple          | |
+| shoot CELL    | shoot  	 | s	 | visible enemy   | orange          | all visible cells when button clicked; ap cost might be free; ammo availability for flamer; may disable on jam; button may name after weapon |
+| assault CELL  | assault    | a	 | adjacent enemy  | red             | |
+| move CELL     | move	     | m	 | legal move cell | green           | marines: fw+back, aliens all 4 dirs. aliens move ap might be free after turn action |
+| door CELL     | manipulate | e	 | adjacent door   | blue            | |	
+| turn left	    | turn left  | l	 | none	           | none            | ap cost might be 0 after move action |
+| turn right    | turn right | r	 | none	           | none            | ap cost might be 0 after move action |
+| unjam         | clear jam	 | u	 | none		       | none            | on jam token; this could be rename of shoot button rather than distinct weapon |
+| overwatch     | overwatch  | o	 | none	           | none            | ends activation	|
+| guard	        | guard	     | g	 | none	           | none            | ends activation 	|
+| pass	        | pass	     | x	 | none	           | none            | ends activation 	|
+
+When a highlighted cell is hovered over (or tapped on a touch device) will show the AP cost of the action in the status region.  Tap devices may need an additional confirm button to tap.
+When the AP cost of a button is zero, the button could perhaps get an additional green highlight.
+
+Buttons that end activation should have a message to this effect on hover in the status region.
 
 
 If during such a UI callback the user takes an action like pressing the New Game button and and confirms, the runGame() function is returned to and aborted via error message or exception before proceeding.
