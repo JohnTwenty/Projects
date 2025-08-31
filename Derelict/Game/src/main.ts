@@ -82,18 +82,13 @@ async function init() {
     import(new URL("../../../Players/dist/src/index.js", import.meta.url).href),
   ]);
 
-  const rendererCore = createRenderer();
-  rendererCore.setAssetResolver((key: string) => {
-    const img = new Image();
-    img.src = key;
-    return img;
-  });
-
   const [segLib, tokLib, manifestText] = await Promise.all([
     fetch("assets/segments.txt").then((r) => r.text()),
     fetch("assets/tokens.txt").then((r) => r.text()),
     fetch("assets/sprites.manifest.txt").then((r) => r.text()),
   ]);
+  const rendererCore = createRenderer();
+
   rendererCore.loadSpriteManifestFromText(manifestText);
 
   const spriteInfo: Record<string, { file: string; xoff: number; yoff: number }> = {};
@@ -111,12 +106,28 @@ async function init() {
   }
 
   const viewport: any = { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 };
+  let currentState: any = null;
   function render(state: any) {
+    currentState = state;
     const rect = canvas.getBoundingClientRect();
     rendererCore.resize(rect.width, rect.height);
     viewport.dpr = window.devicePixelRatio || 1;
     rendererCore.render(ctx, state, viewport);
   }
+
+  const imageCache = new Map<string, HTMLImageElement>();
+  rendererCore.setAssetResolver((key: string) => {
+    let img = imageCache.get(key);
+    if (!img) {
+      img = new Image();
+      img.src = key;
+      img.addEventListener("load", () => {
+        if (currentState) render(currentState);
+      });
+      imageCache.set(key, img);
+    }
+    return img;
+  });
 
   const renderer = { render };
 
