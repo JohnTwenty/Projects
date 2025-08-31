@@ -11,7 +11,7 @@ npm install
 npm test
 ```
 
-The tests use the Node `node:test` runner. DOM based tests run inside jsdom.
+The tests use the Node `node:test` runner and currently do not require a DOM environment.
 
 ## Usage
 

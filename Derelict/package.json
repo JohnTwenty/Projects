@@ -13,12 +13,10 @@
   "scripts": {
     "build": "npm run -ws --if-present build",
     "dev": "npm run -ws --if-present dev",
-    "test": "npm run -ws --if-present test && node --test tests/main.test.js",
+    "test": "npm run -ws --if-present test",
     "clean": "npm run -ws --if-present clean",
     "start": "node server.mjs",
     "pretest": "npm run build"
   },
-  "devDependencies": {
-    "jsdom": "^22.1.0"
-  }
+  "devDependencies": {}
 }

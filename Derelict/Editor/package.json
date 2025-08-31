@@ -8,7 +8,6 @@
   },
   "devDependencies": {
     "typescript": "^5.2.2",
-    "@types/node": "^18.0.0",
-    "jsdom": "^22.1.0"
+    "@types/node": "^18.0.0"
   }
 }
