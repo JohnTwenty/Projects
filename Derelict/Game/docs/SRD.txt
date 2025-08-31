@@ -1,5 +1,7 @@
 # Derelict Game Module
 
+## Initialization
+
 The Game Module starts when the user is sent or navigates to a game.html page.
 The Game Module is responsible for the UI, page layout and rendering in the game mode.
 The Game Module interacts with the following other modules: 
@@ -30,13 +32,37 @@ When this button is pressed the "New Game" dialog is dismissed and the following
 3. The two Player objects are instanced.  The first player is always a Human player, the second player is Human or Computer. 
 4. rules.validate(boardState) is called to check if the boardState is a legitimate starting point for the rules. If this fails, an error message is displayed, and when that is dismissed, we return to a "new game" dialog.
 
+## UI 
+
 The UI of the game page is as follows: 
-	* menu bar at the top saying "Derelict Game", just like we had for Editor
-	* Button Bar with buttons: "New Game", "Save Game", "Editor".
-		* The New Game button after modal confirmation to start a new game returns us to a "new game" dialog.
-		* The Save Game button saves the BoardState to a mission file (that gets downloaded to the user's computer.
-		* The Editor button after modal confirmation forwards to index.html which is the editor page. 		
-	* The play area that uses the Renderer to display the boardState.
+	* Horizontal bar at the top saying "Derelict Game", just like we have in Editor.
+	* Horizontal Button Bar with buttons: "New Game", "Save Game", "Editor", same style like we have in Editor.
+		* The "New Game" button that when pressed, after modal confirmation dialog that gives a chance to cance, start a new game returns us to a "new game" dialog as above.
+		* The "Save Game" button saves the BoardState to a mission file (that gets downloaded to the user's computer.
+		* The "Editor" button, that when pressed, after modal confirmation dialog that gives a chance to cancel, forwards to index.html which is the editor page. 		
+	* The play area viewport that uses the Renderer to display the boardState.
+	* A vertical bar to the right of the play area viewport that is horizontally divided into two regions:
+		* A top region showing buttons including:
+			* The "Move" button 
+			* The "Turn Left" button
+			* The "Turn Right" button
+			* The "Manipulate" button
+			* The "Assault" button
+			* The "Shoot / Clear Jam" button
+			* The "Activate Ally" button
+			* The "Overwatch" button
+			* The "Guard" button
+			* The "Pass" button
+		* A status region showing information like: (We will describe how to populate this later)
+			* "Turn: n"
+			* "Command points: n"
+			* "Activated Unit Name: xyz" 
+			* "Activated Unit Role: xyz" 
+			* "AP remaining: n"
+			* "AP for action: n" 
+			* "Ammo remaining: n" 
+	
+## Control FLow
 
 Once the initial boardState is rendered, we call rules.runGame(player1, player2)
 This is an async function which will go on for a long time because it will block on all sorts of Promises.  When it returns, we return to the new game dialog.
@@ -44,21 +70,16 @@ The Rules:runGame() will call the players to make choices.  The computer player 
 The human player will of course need to use the UI the GameModule provides to make decisions.  Therefore, when the human player
 is inevitably called on to make a choice, we are unblocked.  This happens by the human player calling a game API this Game module provides.
 This API provides functions, for example: 
-	* letUserSelect(Options[]):Promise<Option> - prompts the user to click one of multiple permissible options.  An Option can include information like: 
-		- the cell coordinates where to draw a clickable sprite overlay over the board at the provided cell coordinates 
-		- a sprite name to use as an overlay by referring to the sprite manifest
-		- rotation of the cell overlay sprite in 90 degree increments.  These rotate not around the sprite center but around the cell center.  The idea is that on a 64x64 cell, we will want a button representing forward movement, which will be an e.g. 64x16 sprite.  This will rotate to be along the edge of the cell that is toward the forward direction of the marine.  We will make use of the x and y offsets in the sprite manifest
-		to position these sprites correctly relative to the cell, but these offsets will rotate. Another example is that the left turn button will be a small square always drawn to be on the left side of the marine.
+	* letUserSelect(Options[]):Promise<Option> - prompts the user to click one of multiple permissible options.  An Option will include information like: 
+		- the type of option, e.g. MOVE or TURN
+		- a sub-type like LEFT or RIGHT
+		- an action point cost integer that can be displayed to the user
+		- optionally the cell coordinates where to draw a clickable sprite overlay over the board at the provided cell coordinates 
 	* messageBox(string):Boolean - modal message box allowing a yes or no boolean reply.
+
+
 
 
 If during such a UI callback the user takes an action like pressing the New Game button and and confirms, the runGame() function is returned to and aborted via error message or exception before proceeding.
 
 The game proceeds with the the players taking turns and getting a chance to make decisions until some victory condition in the rules is achieved.  At that point victory is declared and runGame() exits. 
-
-I will provide the following sprite assets to make representation of the current coices described in the rules possible:
-* A marine selection highlight bracket
-* forward move arrow
-* rotate left arrow
-* rotate right arrow
-For the time being just add placeholders for these into the sprites.manifest.txt file.
