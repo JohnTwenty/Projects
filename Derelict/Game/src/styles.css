@@ -10,6 +10,22 @@ html, body {
   height: 100%;
 }
 
+#top-bar {
+  background: #333;
+  color: #fff;
+  text-align: center;
+  padding: 8px;
+  flex: 0 0 auto;
+}
+
+#buttons {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: #ddd;
+  flex: 0 0 auto;
+}
+
 #main {
   flex: 1;
   display: flex;
@@ -29,6 +45,27 @@ html, body {
   height: 100%;
   background: #000;
   display: block;
+}
+
+#side-bar {
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  background: #ddd;
+}
+
+#action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+}
+
+#status-region {
+  flex: 1;
+  padding: 8px;
+  background: #eee;
+  font-size: 14px;
 }
 
 .modal-overlay {

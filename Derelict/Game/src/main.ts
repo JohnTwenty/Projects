@@ -46,6 +46,18 @@ function readFileAsText(f: File): Promise<string> {
   });
 }
 
+function downloadText(name: string, text: string) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name.endsWith('.mission.txt') ? name : name + '.mission.txt';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 async function fetchMissionList(): Promise<string[]> {
   const res = await fetch("missions/");
   const text = await res.text();
@@ -56,6 +68,27 @@ async function fetchMissionList(): Promise<string[]> {
 async function init() {
   const app = document.getElementById("app");
   if (!app) return;
+  const topBar = document.createElement("div");
+  topBar.id = "top-bar";
+  topBar.textContent = "Derelict Game";
+  app.appendChild(topBar);
+
+  const btnBar = document.createElement("div");
+  btnBar.id = "buttons";
+  app.appendChild(btnBar);
+
+  const newBtn = document.createElement("button");
+  newBtn.textContent = "New Game";
+  btnBar.appendChild(newBtn);
+
+  const saveBtn = document.createElement("button");
+  saveBtn.textContent = "Save Game";
+  btnBar.appendChild(saveBtn);
+
+  const editorBtn = document.createElement("button");
+  editorBtn.textContent = "Editor";
+  btnBar.appendChild(editorBtn);
+
   const main = document.createElement("div");
   main.id = "main";
   app.appendChild(main);
@@ -67,6 +100,44 @@ async function init() {
   const canvas = document.createElement("canvas");
   canvas.id = "viewport";
   wrap.appendChild(canvas);
+
+  const side = document.createElement("div");
+  side.id = "side-bar";
+  main.appendChild(side);
+
+  const actionButtons = document.createElement("div");
+  actionButtons.id = "action-buttons";
+  side.appendChild(actionButtons);
+
+  const actions = [
+    "Move",
+    "Turn Left",
+    "Turn Right",
+    "Manipulate",
+    "Assault",
+    "Shoot / Clear Jam",
+    "Activate Ally",
+    "Overwatch",
+    "Guard",
+    "Pass",
+  ];
+  for (const label of actions) {
+    const b = document.createElement("button");
+    b.textContent = label;
+    actionButtons.appendChild(b);
+  }
+
+  const status = document.createElement("div");
+  status.id = "status-region";
+  status.innerHTML =
+    "Turn: n<br>" +
+    "Command points: n<br>" +
+    "Activated Unit Name: xyz<br>" +
+    "Activated Unit Role: xyz<br>" +
+    "AP remaining: n<br>" +
+    "AP for action: n<br>" +
+    "Ammo remaining: n";
+  side.appendChild(status);
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -107,6 +178,7 @@ async function init() {
 
   const viewport: any = { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 };
   let currentState: any = null;
+  let currentBoard: any = null;
   function render(state: any) {
     currentState = state;
     const rect = canvas.getBoundingClientRect();
@@ -142,6 +214,7 @@ async function init() {
   async function startGameFromText(text: string, twoPlayer: boolean) {
     const board = BoardState.newBoard(40, segLib, tokLib);
     BoardState.importBoardText(board, text);
+    currentBoard = board;
     const rules = new Rules.BasicRules(board, () => renderer.render(board));
     let game!: Game;
     const p1 = new Players.HumanPlayer({
@@ -278,6 +351,44 @@ async function init() {
       },
     ]);
   }
+
+  newBtn.addEventListener("click", () => {
+    const body = createEl("div");
+    body.textContent = "Start a new game?";
+    let ref: { close(): void };
+    ref = showModal("Confirm", body, [
+      {
+        label: "OK",
+        onClick: () => {
+          ref.close();
+          newGameDialog();
+        },
+      },
+      { label: "Cancel", onClick: () => ref.close() },
+    ]);
+  });
+
+  saveBtn.addEventListener("click", () => {
+    if (!currentBoard) return;
+    const text = BoardState.exportBoardText(currentBoard, "savegame");
+    downloadText("savegame.mission.txt", text);
+  });
+
+  editorBtn.addEventListener("click", () => {
+    const body = createEl("div");
+    body.textContent = "Leave to editor? Unsaved progress will be lost.";
+    let ref: { close(): void };
+    ref = showModal("Confirm", body, [
+      {
+        label: "OK",
+        onClick: () => {
+          ref.close();
+          window.location.href = "index.html";
+        },
+      },
+      { label: "Cancel", onClick: () => ref.close() },
+    ]);
+  });
 
   await newGameDialog();
 }
