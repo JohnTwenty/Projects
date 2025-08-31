@@ -110,8 +110,12 @@ async function init() {
   function render(state: any) {
     currentState = state;
     const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
     rendererCore.resize(rect.width, rect.height);
     viewport.dpr = window.devicePixelRatio || 1;
+    const base = Math.min(rect.width, rect.height) / state.size;
+    viewport.cellSize = Math.min(base, 64);
     rendererCore.render(ctx, state, viewport);
   }
 
@@ -127,6 +131,10 @@ async function init() {
       imageCache.set(key, img);
     }
     return img;
+  });
+
+  window.addEventListener("resize", () => {
+    if (currentState) render(currentState);
   });
 
   const renderer = { render };
