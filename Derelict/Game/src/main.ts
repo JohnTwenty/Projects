@@ -134,7 +134,7 @@ async function init() {
   async function startGameFromText(text: string, twoPlayer: boolean) {
     const board = BoardState.newBoard(40, segLib, tokLib);
     BoardState.importBoardText(board, text);
-    const rules = new Rules.BasicRules(board);
+    const rules = new Rules.BasicRules(board, () => renderer.render(board));
     let game!: Game;
     const p1 = new Players.HumanPlayer({
       choose: (options: any) => game.choose(options),

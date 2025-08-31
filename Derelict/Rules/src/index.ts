@@ -8,7 +8,10 @@ export interface Rules {
 
 // Basic rules implementation allowing a marine to move forward one cell
 export class BasicRules implements Rules {
-  constructor(private board: BoardState) {}
+  constructor(
+    private board: BoardState,
+    private onChange?: (state: BoardState) => void,
+  ) {}
 
   validate(state: BoardState): void {
     const hasMarine = state.tokens.some((t) => t.type === 'marine');
@@ -63,12 +66,15 @@ export class BasicRules implements Rules {
         switch (action.action) {
           case 'move':
             moveForward(token);
+            this.onChange?.(this.board);
             break;
           case 'turnLeft':
             token.rot = (((token.rot + 270) % 360) as Rotation);
+            this.onChange?.(this.board);
             break;
           case 'turnRight':
             token.rot = (((token.rot + 90) % 360) as Rotation);
+            this.onChange?.(this.board);
             break;
           case 'selectOther':
             selecting = false;
