@@ -30,3 +30,48 @@ html, body {
   background: #000;
   display: block;
 }
+
+.modal-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: #fff;
+  padding: 16px;
+  max-width: 300px;
+  width: 100%;
+}
+
+.modal ul {
+  list-style: none;
+  margin: 0 0 8px 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.modal ul li {
+  padding: 4px;
+  cursor: pointer;
+}
+
+.modal ul li:hover {
+  background: #eee;
+}
+
+.modal ul li.selected {
+  background: #444;
+  color: #fff;
+}
+
+.modal .actions {
+  text-align: right;
+}
