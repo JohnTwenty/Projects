@@ -110,23 +110,21 @@ async function init() {
   actionButtons.id = "action-buttons";
   side.appendChild(actionButtons);
 
-  const actions = [
-    "Move",
-    "Turn Left",
-    "Turn Right",
-    "Manipulate",
-    "Assault",
-    "Shoot / Clear Jam",
-    "Activate Ally",
-    "Overwatch",
-    "Guard",
-    "Pass",
-  ];
-  for (const label of actions) {
-    const b = document.createElement("button");
-    b.textContent = label;
-    actionButtons.appendChild(b);
-  }
+  const btnMove = document.createElement("button");
+  btnMove.textContent = "Move";
+  actionButtons.appendChild(btnMove);
+
+  const btnTurnLeft = document.createElement("button");
+  btnTurnLeft.textContent = "Turn Left";
+  actionButtons.appendChild(btnTurnLeft);
+
+  const btnTurnRight = document.createElement("button");
+  btnTurnRight.textContent = "Turn Right";
+  actionButtons.appendChild(btnTurnRight);
+
+  const btnActivate = document.createElement("button");
+  btnActivate.textContent = "Activate Ally";
+  actionButtons.appendChild(btnActivate);
 
   const status = document.createElement("div");
   status.id = "status-region";
@@ -165,22 +163,7 @@ async function init() {
   // these, so parse them here and attach to the state manually.
   const segmentDefs = parseSegmentDefs(segLib);
   const rendererCore = createRenderer();
-
   rendererCore.loadSpriteManifestFromText(manifestText);
-
-  const spriteInfo: Record<string, { file: string; xoff: number; yoff: number }> = {};
-  for (const line of manifestText.split(/\r?\n/)) {
-    const t = line.trim();
-    if (!t || t.startsWith("#")) continue;
-    const parts = t.split(/\s+/);
-    if (parts.length < 9) continue;
-    const [key, file, , , , , , xoff, yoff] = parts;
-    spriteInfo[key] = {
-      file,
-      xoff: parseInt(xoff, 10) || 0,
-      yoff: parseInt(yoff, 10) || 0,
-    };
-  }
 
   const viewport: any = { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 };
   let currentState: any = null;
@@ -238,7 +221,12 @@ async function init() {
     game = new Game(board, renderer, rules, p1, p2, {
       container: wrap,
       cellToRect: (coord: any) => rendererCore.boardToScreen(coord, viewport),
-      sprites: spriteInfo,
+      buttons: {
+        activate: btnActivate,
+        move: btnMove,
+        turnLeft: btnTurnLeft,
+        turnRight: btnTurnRight,
+      },
     });
     try {
       await game.start();

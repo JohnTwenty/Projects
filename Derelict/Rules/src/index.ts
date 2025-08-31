@@ -42,24 +42,10 @@ export class BasicRules implements Rules {
             type: 'action',
             action: 'move',
             coord: forwardCell(token.cells[0], token.rot as Rotation),
-            sprite: 'forward',
-            rot: token.rot,
           });
         }
-        actionChoices.push({
-          type: 'action',
-          action: 'turnLeft',
-          coord: token.cells[0],
-          sprite: 'turn',
-          rot: (token.rot + 270) % 360,
-        });
-        actionChoices.push({
-          type: 'action',
-          action: 'turnRight',
-          coord: token.cells[0],
-          sprite: 'turn',
-          rot: (token.rot + 90) % 360,
-        });
+        actionChoices.push({ type: 'action', action: 'turnLeft' });
+        actionChoices.push({ type: 'action', action: 'turnRight' });
         actionChoices.push({ type: 'action', action: 'selectOther' });
 
         const action = await p1.choose(actionChoices);
