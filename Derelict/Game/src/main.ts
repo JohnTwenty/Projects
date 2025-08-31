@@ -1,4 +1,5 @@
 import { Game } from "./index.js";
+import { parseSegmentDefs } from "./segments.js";
 
 function createEl<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -158,6 +159,11 @@ async function init() {
     fetch("assets/tokens.txt").then((r) => r.text()),
     fetch("assets/sprites.manifest.txt").then((r) => r.text()),
   ]);
+
+  // Renderer expects embedded segment definitions on the board state so it
+  // can compute multi-cell segment bounds. The BoardState API does not expose
+  // these, so parse them here and attach to the state manually.
+  const segmentDefs = parseSegmentDefs(segLib);
   const rendererCore = createRenderer();
 
   rendererCore.loadSpriteManifestFromText(manifestText);
@@ -212,7 +218,9 @@ async function init() {
   const renderer = { render };
 
   async function startGameFromText(text: string, twoPlayer: boolean) {
-    const board = BoardState.newBoard(40, segLib, tokLib);
+    const board: any = BoardState.newBoard(40, segLib, tokLib);
+    // ensure renderer knows dimensions for each segment
+    board.segmentDefs = segmentDefs;
     BoardState.importBoardText(board, text);
     currentBoard = board;
     const rules = new Rules.BasicRules(board, () => renderer.render(board));
