@@ -68,6 +68,10 @@ html, body {
   font-size: 14px;
 }
 
+#action-buttons button.active {
+  background: #bbb;
+}
+
 .modal-overlay {
   position: fixed;
   left: 0;

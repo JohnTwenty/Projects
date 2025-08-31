@@ -5,8 +5,6 @@ export interface Choice {
   type: 'marine' | 'action';
   coord?: Coord;
   action?: 'move' | 'turnLeft' | 'turnRight' | 'selectOther';
-  sprite?: string;
-  rot?: number;
 }
 
 // Game API that players can call to interact with the UI
