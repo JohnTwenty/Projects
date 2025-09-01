@@ -122,6 +122,10 @@ async function init() {
   btnTurnRight.textContent = "Turn Right";
   actionButtons.appendChild(btnTurnRight);
 
+  const btnManipulate = document.createElement("button");
+  btnManipulate.textContent = "Manipulate";
+  actionButtons.appendChild(btnManipulate);
+
   const btnActivate = document.createElement("button");
   btnActivate.textContent = "Activate Ally";
   actionButtons.appendChild(btnActivate);
@@ -226,6 +230,7 @@ async function init() {
         move: btnMove,
         turnLeft: btnTurnLeft,
         turnRight: btnTurnRight,
+        manipulate: btnManipulate,
       },
     });
     try {

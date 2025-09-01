@@ -23,3 +23,5 @@ The rules should then avait the player to make a choice.  If the player chooses 
 
 When choices are offered to players, the choices should be provided with information such as cell coordinates, choice type identifiers ("move forward", "turn left") and so on.
 
+When an activated unit is determining available actions, the rules also inspect the three cells directly forward or diagonally forward from the unit.  Each of these cells is checked for the presence of a "door" or "dooropen" token.  For every such token found, the player is offered a "door" choice that includes the door's cell coordinates.  If a "dooropen" token shares its cell with a "marine", "alien" or "blip" token, the door is considered blocked and no choice to close it is presented.  When a player selects a "door" choice, the corresponding token is swapped between "door" and "dooropen", representing the unit opening or closing that door.
+
