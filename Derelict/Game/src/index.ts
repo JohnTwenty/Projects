@@ -21,7 +21,6 @@ export interface ChooseUI {
 
 // Core game orchestrator providing the GameApi for human players
 export class Game implements GameApi {
-  private preselect: Coord | null = null;
 
   constructor(
     private board: BoardState,
@@ -39,16 +38,6 @@ export class Game implements GameApi {
   }
 
   async choose(options: Choice[]): Promise<Choice> {
-    if (this.preselect) {
-      const found = options.find(
-        (o) => o.type === 'marine' && o.coord && sameCoord(o.coord, this.preselect!),
-      );
-      if (found) {
-        this.preselect = null;
-        return found;
-      }
-      this.preselect = null;
-    }
     if (!this.ui) return options[0];
 
     return new Promise<Choice>((resolve) => {
@@ -57,19 +46,18 @@ export class Game implements GameApi {
 
       const overlays: { el: HTMLElement; type: 'activate' | 'move' }[] = [];
 
-      const marineMap = new Map<string, Choice>();
+      const activateMap = new Map<string, Choice>();
       for (const opt of options) {
-        if (opt.type === 'marine' && opt.coord) marineMap.set(key(opt.coord), opt);
+        if (opt.type === 'action' && opt.action === 'activate' && opt.coord) {
+          activateMap.set(key(opt.coord), opt);
+        }
       }
-      const selectOther = options.find(
-        (o) => o.type === 'action' && o.action === 'selectOther',
-      );
 
       const addOverlay = (
         coord: Coord,
         color: string,
         type: 'activate' | 'move',
-        onClick: () => void,
+        onClick?: () => void,
       ) => {
         const rect = cellToRect(coord);
         const div = document.createElement('div');
@@ -80,11 +68,15 @@ export class Game implements GameApi {
         div.style.height = `${rect.height}px`;
         div.style.boxSizing = 'border-box';
         div.style.border = `2px solid ${color}`;
-        div.style.cursor = 'pointer';
-        div.addEventListener('click', (e) => {
-          e.stopPropagation();
-          onClick();
-        });
+        if (onClick) {
+          div.style.cursor = 'pointer';
+          div.addEventListener('click', (e) => {
+            e.stopPropagation();
+            onClick();
+          });
+        } else {
+          div.style.pointerEvents = 'none';
+        }
         container.appendChild(div);
         overlays.push({ el: div, type });
       };
@@ -101,18 +93,15 @@ export class Game implements GameApi {
       const marines = this.board.tokens.filter((t) => t.type === 'marine');
       for (const t of marines) {
         const coord = t.cells[0];
-        const m = marineMap.get(key(coord));
-        if (m) {
+
+        const act = activateMap.get(key(coord));
+        if (act) {
           addOverlay(coord, 'purple', 'activate', () => {
             cleanup();
-            resolve(m);
+            resolve(act);
           });
-        } else if (selectOther) {
-          addOverlay(coord, 'purple', 'activate', () => {
-            this.preselect = coord;
-            cleanup();
-            resolve(selectOther);
-          });
+        } else {
+          addOverlay(coord, 'purple', 'activate');
         }
       }
 
@@ -168,8 +157,10 @@ export class Game implements GameApi {
       buttons.turnLeft.addEventListener('click', onTurnLeft);
       buttons.turnRight.addEventListener('click', onTurnRight);
 
-      buttons.activate.disabled = !overlays.some((o) => o.type === 'activate');
-      buttons.move.disabled = !overlays.some((o) => o.type === 'move');
+      buttons.activate.disabled = activateMap.size === 0;
+      buttons.move.disabled = !options.some(
+        (o) => o.type === 'action' && o.action === 'move',
+      );
       buttons.turnLeft.disabled = !options.some(
         (o) => o.type === 'action' && o.action === 'turnLeft',
       );

@@ -4,7 +4,7 @@ import { Coord } from 'derelict-boardstate';
 export interface Choice {
   type: 'marine' | 'action';
   coord?: Coord;
-  action?: 'move' | 'turnLeft' | 'turnRight' | 'selectOther';
+  action?: 'move' | 'turnLeft' | 'turnRight' | 'activate';
 }
 
 // Game API that players can call to interact with the UI
@@ -23,6 +23,7 @@ export class HumanPlayer implements Player {
   constructor(private game: GameApi) {}
 
   choose(options: Choice[]): Promise<Choice> {
+    console.log('Player choices', options);
     return this.game.choose(options);
   }
 }
@@ -30,6 +31,7 @@ export class HumanPlayer implements Player {
 // Simple computer player making random choices
 export class RandomAI implements Player {
   async choose(options: Choice[]): Promise<Choice> {
+    console.log('Player choices', options);
     const idx = Math.floor(Math.random() * options.length);
     return options[idx];
   }
