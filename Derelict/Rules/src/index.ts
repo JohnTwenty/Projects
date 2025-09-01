@@ -21,64 +21,54 @@ export class BasicRules implements Rules {
   }
 
   async runGame(p1: Player, _p2: Player): Promise<void> {
+    let active: TokenInstance | null = null;
     while (true) {
       const marineTokens = this.board.tokens.filter((t) => t.type === 'marine');
       if (marineTokens.length === 0) return;
+      if (!active || !marineTokens.includes(active)) {
+        active = marineTokens[0];
+      }
 
-      const marineChoices: Choice[] = marineTokens.map((t) => ({
-        type: 'marine',
-        coord: t.cells[0],
-      }));
-
-      const chosen = await p1.choose(marineChoices);
-      const token = marineTokens.find((t) => chosen.coord && sameCoord(t.cells[0], chosen.coord));
-      if (!token) continue;
-
-      let selecting = true;
-      while (selecting) {
-        const actionChoices: Choice[] = [];
-        if (canMoveForward(this.board, token)) {
+      const actionChoices: Choice[] = [];
+      if (canMoveForward(this.board, active)) {
+        actionChoices.push({
+          type: 'action',
+          action: 'move',
+          coord: forwardCell(active.cells[0], active.rot as Rotation),
+        });
+      }
+      actionChoices.push({ type: 'action', action: 'turnLeft' });
+      actionChoices.push({ type: 'action', action: 'turnRight' });
+      for (const t of marineTokens) {
+        if (t !== active) {
           actionChoices.push({
             type: 'action',
-            action: 'move',
-            coord: forwardCell(token.cells[0], token.rot as Rotation),
-            sprite: 'forward',
-            rot: token.rot,
+            action: 'activate',
+            coord: t.cells[0],
           });
         }
-        actionChoices.push({
-          type: 'action',
-          action: 'turnLeft',
-          coord: token.cells[0],
-          sprite: 'turn',
-          rot: (token.rot + 270) % 360,
-        });
-        actionChoices.push({
-          type: 'action',
-          action: 'turnRight',
-          coord: token.cells[0],
-          sprite: 'turn',
-          rot: (token.rot + 90) % 360,
-        });
-        actionChoices.push({ type: 'action', action: 'selectOther' });
+      }
 
-        const action = await p1.choose(actionChoices);
-        switch (action.action) {
-          case 'move':
-            moveForward(token);
-            this.onChange?.(this.board);
-            break;
-          case 'turnLeft':
-            token.rot = (((token.rot + 270) % 360) as Rotation);
-            this.onChange?.(this.board);
-            break;
-          case 'turnRight':
-            token.rot = (((token.rot + 90) % 360) as Rotation);
-            this.onChange?.(this.board);
-            break;
-          case 'selectOther':
-            selecting = false;
-            break;
+      const action = await p1.choose(actionChoices);
+      switch (action.action) {
+        case 'move':
+          moveForward(active);
+          this.onChange?.(this.board);
+          break;
+        case 'turnLeft':
+          active.rot = (((active.rot + 270) % 360) as Rotation);
+          this.onChange?.(this.board);
+          break;
+        case 'turnRight':
+          active.rot = (((active.rot + 90) % 360) as Rotation);
+          this.onChange?.(this.board);
+          break;
+        case 'activate': {
+          const target = marineTokens.find(
+            (t) => action.coord && sameCoord(t.cells[0], action.coord),
+          );
+          if (target) active = target;
+          break;
         }
       }
     }

@@ -19,15 +19,11 @@ test('marine moves forward when choosing move', async () => {
     choose: async (options) => {
       calls++;
       if (calls === 1) {
-        return options[0]; // choose marine
-      }
-      if (calls === 2) {
         return options.find((o) => o.action === 'move');
       }
       moved = { ...board.tokens[0].cells[0] };
-      // After moving once, exit by selecting other and removing marine
       board.tokens = [];
-      return options.find((o) => o.action === 'selectOther');
+      return options[0];
     },
   };
 
