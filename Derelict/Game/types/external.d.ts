@@ -20,7 +20,7 @@ declare module 'derelict-players' {
   export interface Choice {
     type: 'marine' | 'action';
     coord?: Coord;
-    action?: 'move' | 'turnLeft' | 'turnRight' | 'activate';
+    action?: 'move' | 'turnLeft' | 'turnRight' | 'activate' | 'door';
   }
   export interface GameApi {
     choose(options: Choice[]): Promise<Choice>;

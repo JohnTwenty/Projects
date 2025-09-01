@@ -37,6 +37,34 @@ export class BasicRules implements Rules {
           coord: forwardCell(active.cells[0], active.rot as Rotation),
         });
       }
+      for (const cell of forwardAndDiagonalCells(
+        active.cells[0],
+        active.rot as Rotation,
+      )) {
+        const doorToken = this.board.tokens.find((t) =>
+          t.cells.some((c) => sameCoord(c, cell)) &&
+          (t.type === 'door' || t.type === 'dooropen'),
+        );
+        if (doorToken) {
+          if (
+            doorToken.type === 'dooropen' &&
+            this.board.tokens.some(
+              (t) =>
+                t !== doorToken &&
+                t.cells.some((c) => sameCoord(c, cell)) &&
+                (t.type === 'marine' || t.type === 'alien' || t.type === 'blip'),
+            )
+          ) {
+            // blocked open door, cannot close
+          } else {
+            actionChoices.push({
+              type: 'action',
+              action: 'door',
+              coord: cell,
+            });
+          }
+        }
+      }
       actionChoices.push({ type: 'action', action: 'turnLeft' });
       actionChoices.push({ type: 'action', action: 'turnRight' });
       for (const t of marineTokens) {
@@ -70,6 +98,20 @@ export class BasicRules implements Rules {
           if (target) active = target;
           break;
         }
+        case 'door': {
+          const cell = action.coord;
+          if (cell) {
+            const doorToken = this.board.tokens.find((t) =>
+              t.cells.some((c) => sameCoord(c, cell)) &&
+              (t.type === 'door' || t.type === 'dooropen'),
+            );
+            if (doorToken) {
+              doorToken.type = doorToken.type === 'door' ? 'dooropen' : 'door';
+              this.onChange?.(this.board);
+            }
+          }
+          break;
+        }
       }
     }
   }
@@ -98,8 +140,10 @@ function canMoveForward(board: BoardState, token: TokenInstance): boolean {
   const target = forwardCell(token.cells[0], token.rot as Rotation);
   const cellType = board.getCellType ? board.getCellType(target) : 1;
   if (cellType !== 1) return false; // must be corridor
-  const occupied = board.tokens.some((t) =>
-    t.cells.some((c) => sameCoord(c, target)),
+  const occupied = board.tokens.some(
+    (t) =>
+      t.type !== 'dooropen' &&
+      t.cells.some((c) => sameCoord(c, target)),
   );
   if (occupied) return false;
   return true;
@@ -107,4 +151,41 @@ function canMoveForward(board: BoardState, token: TokenInstance): boolean {
 
 function moveForward(token: TokenInstance): void {
   token.cells = token.cells.map((c) => forwardCell(c, token.rot as Rotation));
+}
+
+function forwardAndDiagonalCells(cell: Coord, rot: Rotation): Coord[] {
+  const f = forwardCell(cell, rot);
+  const fl = leftCell(f, rot);
+  const fr = rightCell(f, rot);
+  return [f, fl, fr];
+}
+
+function leftCell(cell: Coord, rot: Rotation): Coord {
+  switch (rot) {
+    case 0:
+      return { x: cell.x - 1, y: cell.y };
+    case 90:
+      return { x: cell.x, y: cell.y - 1 };
+    case 180:
+      return { x: cell.x + 1, y: cell.y };
+    case 270:
+      return { x: cell.x, y: cell.y + 1 };
+    default:
+      return cell;
+  }
+}
+
+function rightCell(cell: Coord, rot: Rotation): Coord {
+  switch (rot) {
+    case 0:
+      return { x: cell.x + 1, y: cell.y };
+    case 90:
+      return { x: cell.x, y: cell.y + 1 };
+    case 180:
+      return { x: cell.x - 1, y: cell.y };
+    case 270:
+      return { x: cell.x, y: cell.y - 1 };
+    default:
+      return cell;
+  }
 }

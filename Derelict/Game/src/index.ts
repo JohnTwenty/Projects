@@ -16,6 +16,7 @@ export interface ChooseUI {
     move: HTMLButtonElement;
     turnLeft: HTMLButtonElement;
     turnRight: HTMLButtonElement;
+    manipulate: HTMLButtonElement;
   };
 }
 
@@ -44,7 +45,7 @@ export class Game implements GameApi {
       const { container, cellToRect, buttons } = this.ui!;
       const key = (c: Coord) => `${c.x},${c.y}`;
 
-      const overlays: { el: HTMLElement; type: 'activate' | 'move' }[] = [];
+      const overlays: { el: HTMLElement; type: 'activate' | 'move' | 'door' }[] = [];
 
       const activateMap = new Map<string, Choice>();
       for (const opt of options) {
@@ -56,7 +57,7 @@ export class Game implements GameApi {
       const addOverlay = (
         coord: Coord,
         color: string,
-        type: 'activate' | 'move',
+        type: 'activate' | 'move' | 'door',
         onClick?: () => void,
       ) => {
         const rect = cellToRect(coord);
@@ -88,6 +89,12 @@ export class Game implements GameApi {
             resolve(opt);
           });
         }
+        if (opt.type === 'action' && opt.action === 'door' && opt.coord) {
+          addOverlay(opt.coord, 'blue', 'door', () => {
+            cleanup();
+            resolve(opt);
+          });
+        }
       }
 
       const marines = this.board.tokens.filter((t) => t.type === 'marine');
@@ -105,14 +112,15 @@ export class Game implements GameApi {
         }
       }
 
-      let filter: 'activate' | 'move' | null = null;
-      const setFilter = (f: 'activate' | 'move' | null) => {
+      let filter: 'activate' | 'move' | 'door' | null = null;
+      const setFilter = (f: 'activate' | 'move' | 'door' | null) => {
         filter = f;
         for (const o of overlays) {
           o.el.style.display = !filter || o.type === filter ? 'block' : 'none';
         }
         buttons.activate.classList.toggle('active', filter === 'activate');
         buttons.move.classList.toggle('active', filter === 'move');
+        buttons.manipulate.classList.toggle('active', filter === 'door');
       };
 
       function onActivate() {
@@ -122,6 +130,10 @@ export class Game implements GameApi {
       function onMove() {
         if (buttons.move.disabled) return;
         setFilter(filter === 'move' ? null : 'move');
+      }
+      function onManipulate() {
+        if (buttons.manipulate.disabled) return;
+        setFilter(filter === 'door' ? null : 'door');
       }
       function onTurnLeft() {
         const opt = options.find(
@@ -146,20 +158,26 @@ export class Game implements GameApi {
         for (const o of overlays) o.el.remove();
         buttons.activate.removeEventListener('click', onActivate);
         buttons.move.removeEventListener('click', onMove);
+        buttons.manipulate.removeEventListener('click', onManipulate);
         buttons.turnLeft.removeEventListener('click', onTurnLeft);
         buttons.turnRight.removeEventListener('click', onTurnRight);
         buttons.activate.classList.remove('active');
         buttons.move.classList.remove('active');
+        buttons.manipulate.classList.remove('active');
       }
 
       buttons.activate.addEventListener('click', onActivate);
       buttons.move.addEventListener('click', onMove);
+      buttons.manipulate.addEventListener('click', onManipulate);
       buttons.turnLeft.addEventListener('click', onTurnLeft);
       buttons.turnRight.addEventListener('click', onTurnRight);
 
       buttons.activate.disabled = activateMap.size === 0;
       buttons.move.disabled = !options.some(
         (o) => o.type === 'action' && o.action === 'move',
+      );
+      buttons.manipulate.disabled = !options.some(
+        (o) => o.type === 'action' && o.action === 'door',
       );
       buttons.turnLeft.disabled = !options.some(
         (o) => o.type === 'action' && o.action === 'turnLeft',
