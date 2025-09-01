@@ -8,6 +8,7 @@ marine    assets/images/marine.png       0  0  0  0  20      0    0
 alien     assets/images/alien.png        0  0  0  0  20      0    0
 blip      assets/images/blip.png         0  0  0  0  15      0    0
 door      assets/images/door.png         0  0  0  0  30      0    0
+dooropen  assets/images/dooropen.png     0  0  0  0  30      0    0
 objective assets/images/objective.png    0  0  0  0  10      0    0
 marine_start assets/images/start.png     0  0  0  0  10      0    0
 alien_entry assets/images/entry.png      0  0  0  0  10      0    0
