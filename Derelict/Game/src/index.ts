@@ -93,6 +93,7 @@ export class Game implements GameApi {
       const marines = this.board.tokens.filter((t) => t.type === 'marine');
       for (const t of marines) {
         const coord = t.cells[0];
+
         const act = activateMap.get(key(coord));
         if (act) {
           addOverlay(coord, 'purple', 'activate', () => {

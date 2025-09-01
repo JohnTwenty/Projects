@@ -5,5 +5,8 @@
   - `BoardState/docs/*.md`
   - `Editor/docs/*.md`
   - `Renderer/docs/*.md`
+  - `Game/docs/*.md`
+  - `Rules/docs/*.md`
+  - `Players/docs/*.md`
 
 These documents define the expected behavior and design for each part of the project.
