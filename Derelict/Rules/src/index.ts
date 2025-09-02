@@ -69,8 +69,16 @@ export class BasicRules implements Rules {
           }
         }
       }
-      actionChoices.push({ type: 'action', action: 'turnLeft' });
-      actionChoices.push({ type: 'action', action: 'turnRight' });
+      actionChoices.push({
+        type: 'action',
+        action: 'turnLeft',
+        coord: active.cells[0],
+      });
+      actionChoices.push({
+        type: 'action',
+        action: 'turnRight',
+        coord: active.cells[0],
+      });
       for (const t of tokens) {
         if (t !== active) {
           actionChoices.push({

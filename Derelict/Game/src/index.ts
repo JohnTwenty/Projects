@@ -45,7 +45,7 @@ export class Game implements GameApi {
     return new Promise<Choice>((resolve) => {
       const { container, cellToRect, buttons } = this.ui!;
 
-      const overlays: { el: HTMLElement; type: 'activate' | 'move' | 'door' }[] = [];
+      const overlays: { el: HTMLElement; type: 'activate' | 'move' | 'door' | 'turn' }[] = [];
 
       const addOverlay = (
         coord: Coord,
@@ -73,6 +73,21 @@ export class Game implements GameApi {
         }
         container.appendChild(div);
         overlays.push({ el: div, type });
+      };
+
+      const addTurnHighlight = (coord: Coord) => {
+        const rect = cellToRect(coord);
+        const div = document.createElement('div');
+        div.style.position = 'absolute';
+        div.style.left = `${rect.x}px`;
+        div.style.top = `${rect.y}px`;
+        div.style.width = `${rect.width}px`;
+        div.style.height = `${rect.height}px`;
+        div.style.boxSizing = 'border-box';
+        div.style.border = '2px solid white';
+        div.style.pointerEvents = 'none';
+        container.appendChild(div);
+        overlays.push({ el: div, type: 'turn' });
       };
 
       for (const opt of options) {
@@ -106,7 +121,8 @@ export class Game implements GameApi {
       const setFilter = (f: 'activate' | 'move' | 'door' | null) => {
         filter = f;
         for (const o of overlays) {
-          o.el.style.display = !filter || o.type === filter ? 'block' : 'none';
+          o.el.style.display =
+            !filter || o.type === filter || o.type === 'turn' ? 'block' : 'none';
         }
         buttons.activate.classList.toggle('active', filter === 'activate');
         buttons.move.classList.toggle('active', filter === 'move');
@@ -126,6 +142,7 @@ export class Game implements GameApi {
         setFilter(filter === 'door' ? null : 'door');
       }
       function onTurnLeft() {
+        if (buttons.turnLeft.disabled) return;
         const opt = options.find(
           (o) => o.type === 'action' && o.action === 'turnLeft',
         );
@@ -135,6 +152,7 @@ export class Game implements GameApi {
         }
       }
       function onTurnRight() {
+        if (buttons.turnRight.disabled) return;
         const opt = options.find(
           (o) => o.type === 'action' && o.action === 'turnRight',
         );
@@ -145,6 +163,7 @@ export class Game implements GameApi {
       }
 
       function onPass() {
+        if (buttons.pass.disabled) return;
         const opt = options.find(
           (o) => o.type === 'action' && o.action === 'pass',
         );
@@ -152,6 +171,13 @@ export class Game implements GameApi {
           cleanup();
           resolve(opt);
         }
+      }
+
+      const turnRightOpt = options.find(
+        (o) => o.type === 'action' && o.action === 'turnRight' && o.coord,
+      );
+      if (turnRightOpt && turnRightOpt.coord) {
+        addTurnHighlight(turnRightOpt.coord);
       }
 
       function cleanup() {
@@ -162,6 +188,9 @@ export class Game implements GameApi {
         buttons.turnLeft.removeEventListener('click', onTurnLeft);
         buttons.turnRight.removeEventListener('click', onTurnRight);
         buttons.pass.removeEventListener('click', onPass);
+        if (document.removeEventListener) {
+          document.removeEventListener('keydown', onKey);
+        }
         buttons.activate.classList.remove('active');
         buttons.move.classList.remove('active');
         buttons.manipulate.classList.remove('active');
@@ -173,6 +202,25 @@ export class Game implements GameApi {
       buttons.turnLeft.addEventListener('click', onTurnLeft);
       buttons.turnRight.addEventListener('click', onTurnRight);
       buttons.pass.addEventListener('click', onPass);
+
+      const keyMap: Record<string, () => void> = {
+        n: onActivate,
+        m: onMove,
+        e: onManipulate,
+        l: onTurnLeft,
+        r: onTurnRight,
+        p: onPass,
+      };
+      const onKey = (e: KeyboardEvent) => {
+        const fn = keyMap[e.key.toLowerCase()];
+        if (fn) {
+          e.preventDefault();
+          fn();
+        }
+      };
+      if (document.addEventListener) {
+        document.addEventListener('keydown', onKey);
+      }
 
       const hasActivate = options.some(
         (o) => o.type === 'action' && o.action === 'activate' && o.coord,
