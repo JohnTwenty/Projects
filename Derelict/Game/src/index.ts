@@ -17,6 +17,7 @@ export interface ChooseUI {
     turnLeft: HTMLButtonElement;
     turnRight: HTMLButtonElement;
     manipulate: HTMLButtonElement;
+    pass: HTMLButtonElement;
   };
 }
 
@@ -97,8 +98,22 @@ export class Game implements GameApi {
         }
       }
 
-      const marines = this.board.tokens.filter((t) => t.type === 'marine');
-      for (const t of marines) {
+      let tokenType: string | null = null;
+      for (const opt of options) {
+        if (opt.action === 'activate' && opt.coord) {
+          const token = this.board.tokens.find((t) =>
+            sameCoord(t.cells[0], opt.coord!),
+          );
+          if (token) {
+            tokenType = token.type;
+            break;
+          }
+        }
+      }
+      const tokens = this.board.tokens.filter(
+        (t) => !tokenType || t.type === tokenType,
+      );
+      for (const t of tokens) {
         const coord = t.cells[0];
 
         const act = activateMap.get(key(coord));
@@ -154,6 +169,16 @@ export class Game implements GameApi {
         }
       }
 
+      function onPass() {
+        const opt = options.find(
+          (o) => o.type === 'action' && o.action === 'pass',
+        );
+        if (opt) {
+          cleanup();
+          resolve(opt);
+        }
+      }
+
       function cleanup() {
         for (const o of overlays) o.el.remove();
         buttons.activate.removeEventListener('click', onActivate);
@@ -161,6 +186,7 @@ export class Game implements GameApi {
         buttons.manipulate.removeEventListener('click', onManipulate);
         buttons.turnLeft.removeEventListener('click', onTurnLeft);
         buttons.turnRight.removeEventListener('click', onTurnRight);
+        buttons.pass.removeEventListener('click', onPass);
         buttons.activate.classList.remove('active');
         buttons.move.classList.remove('active');
         buttons.manipulate.classList.remove('active');
@@ -171,6 +197,7 @@ export class Game implements GameApi {
       buttons.manipulate.addEventListener('click', onManipulate);
       buttons.turnLeft.addEventListener('click', onTurnLeft);
       buttons.turnRight.addEventListener('click', onTurnRight);
+      buttons.pass.addEventListener('click', onPass);
 
       buttons.activate.disabled = activateMap.size === 0;
       buttons.move.disabled = !options.some(
@@ -184,6 +211,9 @@ export class Game implements GameApi {
       );
       buttons.turnRight.disabled = !options.some(
         (o) => o.type === 'action' && o.action === 'turnRight',
+      );
+      buttons.pass.disabled = !options.some(
+        (o) => o.type === 'action' && o.action === 'pass',
       );
     });
   }

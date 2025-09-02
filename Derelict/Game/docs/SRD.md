@@ -29,7 +29,8 @@ When this button is pressed the "New Game" dialog is dismissed and the following
 
 1. The BoardState is loaded from the file. 
 2. The Rules object is instanced. 
-3. The two Player objects are instanced.  The first player is always a Human player, the second player is Human or Computer. 
+3. The two Player objects are instanced.  The first player is always a Human player, the second player is Human or Computer.
+   The first player always controls "marine" tokens while the second player controls "alien" tokens.
 4. rules.validate(boardState) is called to check if the boardState is a legitimate starting point for the rules. If this fails, an error message is displayed, and when that is dismissed, we return to a "new game" dialog.
 
 ## UI 
@@ -52,8 +53,8 @@ The UI of the game page is as follows:
 		* The "Shoot / Clear Jam" button
 		* The "Activate Ally" button
 		* The "Overwatch" button
-		* The "Guard" button
-		* The "Pass" button
+                * The "Guard" button
+                * The "Pass" button (always shown last)
 	* A status region showing information like: (We will describe how to populate this later)
 		* "Turn: n"
 		* "Command points: n"
@@ -104,7 +105,7 @@ A keyboard key accelerator listed in the Key column has the same effect as click
 | unjam         | clear jam	 | u	 | none		       | none            | on jam token; this could be rename of shoot button rather than distinct weapon |
 | overwatch     | overwatch  | o	 | none	           | none            | ends activation	|
 | guard	        | guard	     | g	 | none	           | none            | ends activation 	|
-| pass	        | pass	     | x	 | none	           | none            | ends activation 	|
+| pass	        | pass	     | x	 | none	           | none            | ends activation; hands control to the other player |
 
 When a highlighted cell is hovered over (or tapped on a touch device) will show the AP cost of the action in the status region.  Tap devices may need an additional confirm button to tap.
 When the AP cost of a button is zero, the button could perhaps get an additional green highlight.

@@ -91,3 +91,47 @@ test('blocked open door not offered', async () => {
 
   assert.ok(!firstOptions.some((o) => o.action === 'door'));
 });
+
+test('pass hands control to second player who can move alien', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 2, y: 2 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  let p1Calls = 0;
+  let p2Calls = 0;
+  let moved;
+  const p1 = {
+    choose: async (options) => {
+      p1Calls++;
+      const passOpt = options.find((o) => o.action === 'pass');
+      assert.ok(passOpt);
+      return passOpt;
+    },
+  };
+  const p2 = {
+    choose: async (options) => {
+      p2Calls++;
+      if (p2Calls === 1) {
+        const moveOpt = options.find((o) => o.action === 'move');
+        assert.ok(moveOpt);
+        return moveOpt;
+      }
+      moved = { ...board.tokens.find((t) => t.instanceId === 'A1').cells[0] };
+      board.tokens = [];
+      return options[0];
+    },
+  };
+
+  await rules.runGame(p1, p2);
+
+  assert.equal(p1Calls, 1);
+  assert.ok(p2Calls >= 1);
+  assert.deepEqual(moved, { x: 2, y: 3 });
+});
