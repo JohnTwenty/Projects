@@ -30,7 +30,7 @@ When this button is pressed the "New Game" dialog is dismissed and the following
 1. The BoardState is loaded from the file. 
 2. The Rules object is instanced. 
 3. The two Player objects are instanced.  The first player is always a Human player, the second player is Human or Computer.
-   The first player always controls "marine" tokens while the second player controls "alien" tokens.
+   The first player always controls "marine" tokens while the second player controls "alien" or "blip" tokens.
 4. rules.validate(boardState) is called to check if the boardState is a legitimate starting point for the rules. If this fails, an error message is displayed, and when that is dismissed, we return to a "new game" dialog.
 
 ## UI 
@@ -98,7 +98,7 @@ A keyboard key accelerator listed in the Key column has the same effect as click
 | activate CELL | activate 	 | n	 | available ally  | purple          | |
 | shoot CELL    | shoot  	 | s	 | visible enemy   | orange          | all visible cells when button clicked; ap cost might be free; ammo availability for flamer; may disable on jam; button may name after weapon |
 | assault CELL  | assault    | a	 | adjacent enemy  | red             | |
-| move CELL     | move	     | m	 | legal move cell | green           | marines: fw+back, aliens all 4 dirs. aliens move ap might be free after turn action |
+| move CELL     | move	     | m	 | legal move cell | green           | marines: fw+back, aliens and blips all 4 dirs. aliens and blips move ap might be free after turn action |
 | door CELL     | manipulate | e	 | adjacent door   | blue            | |	
 | turn left	    | turn left  | l	 | none	           | none            | ap cost might be 0 after move action |
 | turn right    | turn right | r	 | none	           | none            | ap cost might be 0 after move action |
