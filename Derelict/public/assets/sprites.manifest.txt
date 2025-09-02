@@ -1,16 +1,17 @@
-# string_id file_name                    x  y  w  h  layer  xoff yoff
+# string_id file_name                     x  y  w  h  layer  xoff yoff
 # Cell types (terrain)
-0 assets/images/wall.png                 0  0  0  0   0      0    0
-1 assets/images/corridor.png             0  0  0  0   0      0    0
+0 assets/images/wall.png                  0  0  0  0   0      0    0
+1 assets/images/corridor.png              0  0  0  0   0      0    0
 
 # Tokens
-marine    assets/images/marine.png       0  0  0  0  20      0    0
-alien     assets/images/alien.png        0  0  0  0  20      0    0
-blip      assets/images/blip.png         0  0  0  0  15      0    0
-door      assets/images/door.png         0  0  0  0  30      0    0
-dooropen  assets/images/dooropen.png     0  0  0  0  30      0    0
-objective assets/images/objective.png    0  0  0  0  10      0    0
-marine_start assets/images/start.png     0  0  0  0  10      0    0
-alien_entry assets/images/entry.png      0  0  0  0  10      0    0
-forward   assets/images/forward.png      0  0  0  0   5      0    48	
-turn      assets/images/turn.png         0  0  0  0   5      32   16	
+marine    assets/images/marine.png        0  0  0  0  20      0    0
+alien     assets/images/alien.png         0  0  0  0  20      0    0
+blip      assets/images/blip.png          0  0  0  0  15      0    0
+door      assets/images/door.png          0  0  0  0  30      0    0
+dooropen  assets/images/dooropen.png      0  0  0  0  30      0    0
+objective assets/images/objective.png     0  0  0  0  10      0    0
+marine_start assets/images/start.png      0  0  0  0  10      0    0
+alien_entry assets/images/entry.png       0  0  0  0  10      0    0
+forward   assets/images/forward.png       0  0  0  0   5      0    48	
+turn      assets/images/turn.png          0  0  0  0   5      32   16	
+deactivated assets/images/deactivated.png 0  0  0  0   5      -32  32	
