@@ -56,11 +56,12 @@ export function createRenderer(): Renderer {
       if (image && sprite) {
         ctx.save();
         ctx.translate(rect.x + rect.width / 2, rect.y + rect.height / 2);
-        const sw = sprite.w || (image as any).width || rect.width;
-        const sh = sprite.h || (image as any).height || rect.height;
-        const scaleX = rect.width / sw;
-        const scaleY = rect.height / sh;
-        ctx.translate((sprite.xoff || 0) * scaleX, (sprite.yoff || 0) * scaleY);
+        const sw = sprite.w || (image as any).width || vp.cellSize;
+        const sh = sprite.h || (image as any).height || vp.cellSize;
+        const scale = vp.scale || 1;
+        const dw = sw * scale;
+        const dh = sh * scale;
+        ctx.translate((sprite.xoff || 0) * scale, (sprite.yoff || 0) * scale);
         if (ghost.rot) ctx.rotate((ghost.rot * Math.PI) / 180);
         ctx.drawImage(
           image as any,
@@ -68,10 +69,10 @@ export function createRenderer(): Renderer {
           sprite.y,
           sw,
           sh,
-          -rect.width / 2,
-          -rect.height / 2,
-          rect.width,
-          rect.height,
+          -dw / 2,
+          -dh / 2,
+          dw,
+          dh,
         );
         ctx.restore();
       } else {
@@ -228,11 +229,12 @@ export function createRenderer(): Renderer {
           ctx.save();
           ctx.translate(rect.x + rect.width / 2, rect.y + rect.height / 2);
           if (image && sprite) {
-            const sw = sprite.w || (image as any).width || rect.width;
-            const sh = sprite.h || (image as any).height || rect.height;
-            const scaleX = rect.width / sw;
-            const scaleY = rect.height / sh;
-            ctx.translate((sprite.xoff || 0) * scaleX, (sprite.yoff || 0) * scaleY);
+            const sw = sprite.w || (image as any).width || viewport.cellSize;
+            const sh = sprite.h || (image as any).height || viewport.cellSize;
+            const scale = viewport.scale || 1;
+            const dw = sw * scale;
+            const dh = sh * scale;
+            ctx.translate((sprite.xoff || 0) * scale, (sprite.yoff || 0) * scale);
             if (token.rot) {
               ctx.rotate((token.rot * Math.PI) / 180);
             }
@@ -242,17 +244,18 @@ export function createRenderer(): Renderer {
               sprite.y,
               sw,
               sh,
-              -rect.width / 2,
-              -rect.height / 2,
-              rect.width,
-              rect.height
+              -dw / 2,
+              -dh / 2,
+              dw,
+              dh
             );
           } else {
             if (token.rot) {
               ctx.rotate((token.rot * Math.PI) / 180);
             }
+            const size = viewport.cellSize * (viewport.scale || 1);
             ctx.fillStyle = 'magenta';
-            ctx.fillRect(-rect.width / 2, -rect.height / 2, rect.width, rect.height);
+            ctx.fillRect(-size / 2, -size / 2, size, size);
           }
           ctx.restore();
         };
