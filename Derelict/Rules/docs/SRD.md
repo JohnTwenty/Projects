@@ -11,10 +11,12 @@ Based on these choices made, the game will progress until one player wins.
 Initially the rules of the game are very simple; all this is implemented in the Rules:runGame function: 
 
 * The first player controls the marines while the second player controls the aliens and blips.  For the time being, aliens and blips have the same action choices available as marines.
-* The first player must select a cell on the board with a marine in it to activate the marine, or pass, which yields control to the other player.  If there are no marines on the board that can be selected, the game is lost and runGame() exits.
+* At the start of a player's turn no unit is active. The player must select a cell on the board with a unit they control to activate it, or pass, which yields control to the other player. If there are no units on the board that can be selected, the game is lost and runGame() exits.
 * Once a marine, alien, or blip is selected, the controlling player may choose to move one cell forward (in the direction the token is facing) assuming this cell is a corridor and does not contain a marine, alien, or blip, or turn left, or turn right, or select a different token of the same side to activate it.
 * Marines, blips and aliens all block movement for each other.
-* This selection and movement can continue indefinitely.  At any time, the active player may also choose a "pass" action which ends their activation and hands control to the other player.
+* When a player switches activation from one unit to another, the previously active unit receives a `deactivated` token in its cell.  Units with such a token are not offered as activation choices for the remainder of the turn.
+* This selection and movement can continue indefinitely.  At any time, the active player may also choose a "pass" action which ends their activation and hands control to the other player.  When "pass" is chosen, all `deactivated` tokens are removed from the board so units may be activated again next turn.
+* Even if no units are available for activation, the player is still prompted to "pass" rather than doing so automatically.
 
 This rules module should make the process of choosing for players as simple as possible.  That means that this rules module should examine the boardState and provide an explicit list of possible legal choices
 to players whenever possible.  So above, the Rules should search the board for cells with marines and provide these cells as an explicit list to the player to choose.

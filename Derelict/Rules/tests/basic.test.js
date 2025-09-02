@@ -19,6 +19,9 @@ test('marine moves forward when choosing move', async () => {
     choose: async (options) => {
       calls++;
       if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (calls === 2) {
         return options.find((o) => o.action === 'move');
       }
       moved = { ...board.tokens[0].cells[0] };
@@ -50,6 +53,9 @@ test('door action toggles door', async () => {
     choose: async (options) => {
       calls++;
       if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (calls === 2) {
         const doorOpt = options.find((o) => o.action === 'door');
         assert.ok(doorOpt);
         return doorOpt;
@@ -78,10 +84,15 @@ test('blocked open door not offered', async () => {
   const rules = new BasicRules(board);
   rules.validate(board);
 
-  let firstOptions;
+  let calls = 0;
+  let secondOptions;
   const player = {
     choose: async (options) => {
-      firstOptions = options;
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      secondOptions = options;
       board.tokens = [];
       return options[0];
     },
@@ -89,7 +100,7 @@ test('blocked open door not offered', async () => {
 
   await rules.runGame(player, player);
 
-  assert.ok(!firstOptions.some((o) => o.action === 'door'));
+  assert.ok(!secondOptions.some((o) => o.action === 'door'));
 });
 
 test('pass hands control to second player who can move alien', async () => {
@@ -119,6 +130,11 @@ test('pass hands control to second player who can move alien', async () => {
     choose: async (options) => {
       p2Calls++;
       if (p2Calls === 1) {
+        const act = options.find((o) => o.action === 'activate');
+        assert.ok(act);
+        return act;
+      }
+      if (p2Calls === 2) {
         const moveOpt = options.find((o) => o.action === 'move');
         assert.ok(moveOpt);
         return moveOpt;
@@ -132,7 +148,7 @@ test('pass hands control to second player who can move alien', async () => {
   await rules.runGame(p1, p2);
 
   assert.equal(p1Calls, 1);
-  assert.ok(p2Calls >= 1);
+  assert.ok(p2Calls >= 2);
   assert.deepEqual(moved, { x: 2, y: 3 });
 });
 
@@ -163,6 +179,11 @@ test('pass hands control to second player who can move blip', async () => {
     choose: async (options) => {
       p2Calls++;
       if (p2Calls === 1) {
+        const act = options.find((o) => o.action === 'activate');
+        assert.ok(act);
+        return act;
+      }
+      if (p2Calls === 2) {
         const moveOpt = options.find((o) => o.action === 'move');
         assert.ok(moveOpt);
         return moveOpt;
@@ -176,7 +197,7 @@ test('pass hands control to second player who can move blip', async () => {
   await rules.runGame(p1, p2);
 
   assert.equal(p1Calls, 1);
-  assert.ok(p2Calls >= 1);
+  assert.ok(p2Calls >= 2);
   assert.deepEqual(moved, { x: 2, y: 3 });
 });
 
@@ -192,10 +213,15 @@ test('marine cannot move into blip', async () => {
   const rules = new BasicRules(board);
   rules.validate(board);
 
-  let firstOptions;
+  let calls = 0;
+  let secondOptions;
   const player = {
     choose: async (options) => {
-      firstOptions = options;
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      secondOptions = options;
       board.tokens = [];
       return options[0];
     },
@@ -203,7 +229,7 @@ test('marine cannot move into blip', async () => {
 
   await rules.runGame(player, player);
 
-  assert.ok(!firstOptions.some((o) => o.action === 'move'));
+  assert.ok(!secondOptions.some((o) => o.action === 'move'));
 });
 
 test('blip cannot move into marine', async () => {
@@ -220,6 +246,7 @@ test('blip cannot move into marine', async () => {
   rules.validate(board);
 
   let blipOptions;
+  let calls = 0;
   const p1 = {
     choose: async (options) => {
       const passOpt = options.find((o) => o.action === 'pass');
@@ -229,6 +256,10 @@ test('blip cannot move into marine', async () => {
   };
   const p2 = {
     choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
       blipOptions = options;
       board.tokens = [];
       return options[0];
@@ -238,4 +269,88 @@ test('blip cannot move into marine', async () => {
   await rules.runGame(p1, p2);
 
   assert.ok(!blipOptions.some((o) => o.action === 'move'));
+});
+
+test('activating another unit deactivates previous and prevents reactivation', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'M2', type: 'marine', rot: 0, cells: [{ x: 1, y: 0 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  let thirdOptions;
+  let hadDeactivated = false;
+  let calls = 0;
+  const player = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find(
+          (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 0,
+        );
+      }
+      if (calls === 2) {
+        return options.find(
+          (o) => o.action === 'activate' && o.coord?.x === 1 && o.coord?.y === 0,
+        );
+      }
+      hadDeactivated = board.tokens.some(
+        (t) => t.type === 'deactivated' && t.cells[0].x === 0 && t.cells[0].y === 0,
+      );
+      thirdOptions = options;
+      board.tokens = []; // end game
+      return options.find((o) => o.action === 'pass');
+    },
+  };
+
+  await rules.runGame(player, player);
+
+  assert.ok(hadDeactivated);
+  assert.ok(
+    !thirdOptions.some(
+      (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 0,
+    ),
+  );
+});
+
+test('pass removes deactivated tokens', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'M2', type: 'marine', rot: 0, cells: [{ x: 1, y: 0 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  let calls = 0;
+  const player = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find(
+          (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 0,
+        );
+      }
+      if (calls === 2) {
+        return options.find(
+          (o) => o.action === 'activate' && o.coord?.x === 1 && o.coord?.y === 0,
+        );
+      }
+      const passOpt = options.find((o) => o.action === 'pass');
+      return passOpt;
+    },
+  };
+
+  await rules.runGame(player, player);
+
+  const hasToken = board.tokens.some((t) => t.type === 'deactivated');
+  assert.ok(!hasToken);
 });
