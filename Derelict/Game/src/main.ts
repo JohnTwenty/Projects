@@ -130,6 +130,10 @@ async function init() {
   btnActivate.textContent = "Activate Ally";
   actionButtons.appendChild(btnActivate);
 
+  const btnPass = document.createElement("button");
+  btnPass.textContent = "Pass";
+  actionButtons.appendChild(btnPass);
+
   const status = document.createElement("div");
   status.id = "status-region";
   status.innerHTML =
@@ -225,14 +229,15 @@ async function init() {
     game = new Game(board, renderer, rules, p1, p2, {
       container: wrap,
       cellToRect: (coord: any) => rendererCore.boardToScreen(coord, viewport),
-      buttons: {
-        activate: btnActivate,
-        move: btnMove,
-        turnLeft: btnTurnLeft,
-        turnRight: btnTurnRight,
-        manipulate: btnManipulate,
-      },
-    });
+        buttons: {
+          activate: btnActivate,
+          move: btnMove,
+          turnLeft: btnTurnLeft,
+          turnRight: btnTurnRight,
+          manipulate: btnManipulate,
+          pass: btnPass,
+        },
+      });
     try {
       await game.start();
     } catch (e) {

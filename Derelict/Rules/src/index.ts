@@ -20,16 +20,18 @@ export class BasicRules implements Rules {
     }
   }
 
-  async runGame(p1: Player, _p2: Player): Promise<void> {
+  async runGame(p1: Player, p2: Player): Promise<void> {
+    let currentPlayer: Player = p1;
+    let currentType: 'marine' | 'alien' = 'marine';
     let active: TokenInstance | null = null;
     while (true) {
-      const marineTokens = this.board.tokens.filter((t) => t.type === 'marine');
-      if (marineTokens.length === 0) return;
-      if (!active || !marineTokens.includes(active)) {
-        active = marineTokens[0];
+      const tokens = this.board.tokens.filter((t) => t.type === currentType);
+      if (tokens.length === 0) return;
+      if (!active || !tokens.includes(active)) {
+        active = tokens[0];
       }
 
-      const actionChoices: Choice[] = [];
+      const actionChoices: Choice[] = [{ type: 'action', action: 'pass' }];
       if (canMoveForward(this.board, active)) {
         actionChoices.push({
           type: 'action',
@@ -67,7 +69,7 @@ export class BasicRules implements Rules {
       }
       actionChoices.push({ type: 'action', action: 'turnLeft' });
       actionChoices.push({ type: 'action', action: 'turnRight' });
-      for (const t of marineTokens) {
+      for (const t of tokens) {
         if (t !== active) {
           actionChoices.push({
             type: 'action',
@@ -77,7 +79,7 @@ export class BasicRules implements Rules {
         }
       }
 
-      const action = await p1.choose(actionChoices);
+      const action = await currentPlayer.choose(actionChoices);
       switch (action.action) {
         case 'move':
           moveForward(active);
@@ -92,7 +94,7 @@ export class BasicRules implements Rules {
           this.onChange?.(this.board);
           break;
         case 'activate': {
-          const target = marineTokens.find(
+          const target = tokens.find(
             (t) => action.coord && sameCoord(t.cells[0], action.coord),
           );
           if (target) active = target;
@@ -112,6 +114,11 @@ export class BasicRules implements Rules {
           }
           break;
         }
+        case 'pass':
+          currentPlayer = currentPlayer === p1 ? p2 : p1;
+          currentType = currentType === 'marine' ? 'alien' : 'marine';
+          active = null;
+          break;
       }
     }
   }

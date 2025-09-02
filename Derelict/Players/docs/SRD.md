@@ -9,6 +9,7 @@ A human player is controlled by the user of the browser via the graphical user i
 A computer player is controlled using simple heuristics. 
 
 Both kinds of player effectively make choices among different options that are presented to them by the game rules.
+These options include a "pass" choice that hands control to the other player.
 
 Players, when asked to make a choice will return it as a Promise. 
 

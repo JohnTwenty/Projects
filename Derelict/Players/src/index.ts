@@ -4,7 +4,7 @@ import { Coord } from 'derelict-boardstate';
 export interface Choice {
   type: 'marine' | 'action';
   coord?: Coord;
-  action?: 'move' | 'turnLeft' | 'turnRight' | 'activate' | 'door';
+  action?: 'move' | 'turnLeft' | 'turnRight' | 'activate' | 'door' | 'pass';
 }
 
 // Game API that players can call to interact with the UI
