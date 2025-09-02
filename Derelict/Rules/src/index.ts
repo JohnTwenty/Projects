@@ -8,6 +8,7 @@ export interface Rules {
 
 // Basic rules implementation allowing a marine to move forward one cell
 export class BasicRules implements Rules {
+  private nextDeactId = 1;
   constructor(
     private board: BoardState,
     private onChange?: (state: BoardState) => void,
@@ -29,9 +30,13 @@ export class BasicRules implements Rules {
         currentSide === 'marine' ? t.type === 'marine' : t.type === 'alien' || t.type === 'blip',
       );
       if (tokens.length === 0) return;
-      if (!active || !tokens.includes(active)) {
+      if (!active || !tokens.includes(active) || hasDeactivatedToken(this.board, active.cells[0])) {
         active = null;
       }
+
+      const availableTokens = tokens.filter(
+        (t) => !hasDeactivatedToken(this.board, t.cells[0]),
+      );
 
       const actionChoices: Choice[] = [{ type: 'action', action: 'pass' }];
       if (active) {
@@ -80,7 +85,7 @@ export class BasicRules implements Rules {
           action: 'turnRight',
           coord: active.cells[0],
         });
-        for (const t of tokens) {
+        for (const t of availableTokens) {
           if (t !== active) {
             actionChoices.push({
               type: 'action',
@@ -90,7 +95,7 @@ export class BasicRules implements Rules {
           }
         }
       } else {
-        for (const t of tokens) {
+        for (const t of availableTokens) {
           actionChoices.push({
             type: 'action',
             action: 'activate',
@@ -123,7 +128,21 @@ export class BasicRules implements Rules {
           const target = tokens.find(
             (t) => action.coord && sameCoord(t.cells[0], action.coord),
           );
-          if (target) active = target;
+          if (target) {
+            if (active) {
+              const coord = active.cells[0];
+              if (!hasDeactivatedToken(this.board, coord)) {
+                this.board.tokens.push({
+                  instanceId: `deactivated-${this.nextDeactId++}`,
+                  type: 'deactivated',
+                  rot: 0,
+                  cells: [{ ...coord }],
+                });
+                this.onChange?.(this.board);
+              }
+            }
+            active = target;
+          }
           break;
         }
         case 'door': {
@@ -141,6 +160,12 @@ export class BasicRules implements Rules {
           break;
         }
         case 'pass':
+          if (this.board.tokens.some((t) => t.type === 'deactivated')) {
+            this.board.tokens = this.board.tokens.filter(
+              (t) => t.type !== 'deactivated',
+            );
+            this.onChange?.(this.board);
+          }
           currentPlayer = currentPlayer === p1 ? p2 : p1;
           currentSide = currentSide === 'marine' ? 'alien' : 'marine';
           active = null;
@@ -227,4 +252,10 @@ function isUnit(t: { type: string }): boolean {
 
 function blocksMovement(t: TokenInstance): boolean {
   return t.type === 'door' || isUnit(t);
+}
+
+function hasDeactivatedToken(board: BoardState, coord: Coord): boolean {
+  return board.tokens.some(
+    (t) => t.type === 'deactivated' && t.cells.some((c) => sameCoord(c, coord)),
+  );
 }

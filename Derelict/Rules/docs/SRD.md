@@ -26,3 +26,5 @@ When choices are offered to players, the choices should be provided with informa
 
 When an activated unit is determining available actions, the rules also inspect the three cells directly forward or diagonally forward from the unit.  Each of these cells is checked for the presence of a "door" or "dooropen" token.  For every such token found, the player is offered a "door" choice that includes the door's cell coordinates.  If a "dooropen" token shares its cell with a "marine", "alien" or "blip" token, the door is considered blocked and no choice to close it is presented.  When a player selects a "door" choice, the corresponding token is swapped between "door" and "dooropen", representing the unit opening or closing that door.
 
+If a player chooses to activate a different unit while one is already active, the formerly active unit receives a "deactivated" token in its cell.  Units that share a cell with a "deactivated" token are not offered as activation choices.  When a player selects "pass", all "deactivated" tokens are removed from the board, allowing those units to be activated again on subsequent turns.
+

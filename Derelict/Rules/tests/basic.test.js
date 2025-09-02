@@ -266,3 +266,59 @@ test('blip cannot move into marine', async () => {
 
   assert.ok(!blipOptions.some((o) => o.action === 'move'));
 });
+
+test('activating different unit marks previous as deactivated until pass', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'M2', type: 'marine', rot: 0, cells: [{ x: 1, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 2, y: 2 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  let calls = 0;
+  let optionsAfterSwitch;
+  let hadDeactDuringTurn = false;
+  let tokensAfterPass;
+  const p1 = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find(
+          (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 0,
+        );
+      }
+      if (calls === 2) {
+        return options.find(
+          (o) => o.action === 'activate' && o.coord?.x === 1 && o.coord?.y === 0,
+        );
+      }
+      if (calls === 3) {
+        optionsAfterSwitch = options;
+        hadDeactDuringTurn = board.tokens.some((t) => t.type === 'deactivated');
+        return options.find((o) => o.action === 'pass');
+      }
+    },
+  };
+  const p2 = {
+    choose: async (options) => {
+      tokensAfterPass = board.tokens.slice();
+      board.tokens = [];
+      return options[0];
+    },
+  };
+
+  await rules.runGame(p1, p2);
+
+  assert.ok(hadDeactDuringTurn);
+  assert.ok(
+    !optionsAfterSwitch.some(
+      (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 0,
+    ),
+  );
+  assert.ok(!tokensAfterPass.some((t) => t.type === 'deactivated'));
+});
