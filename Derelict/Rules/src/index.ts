@@ -38,8 +38,8 @@ export class BasicRules implements Rules {
       if (active && canMoveForward(this.board, active)) {
         actionChoices.push({
           type: 'action',
-          action: 'move',
-          coord: forwardCell(active.cells[0], active.rot as Rotation),
+          action: 'turnLeft',
+          coord: active.cells[0],
         });
       }
       if (active) {
