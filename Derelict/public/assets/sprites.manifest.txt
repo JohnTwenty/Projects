@@ -12,6 +12,4 @@ dooropen  assets/images/dooropen.png      0  0  0  0  30      0    0
 objective assets/images/objective.png     0  0  0  0  10      0    0
 marine_start assets/images/start.png      0  0  0  0  10      0    0
 alien_entry assets/images/entry.png       0  0  0  0  10      0    0
-forward   assets/images/forward.png       0  0  0  0   5      0    48	
-turn      assets/images/turn.png          0  0  0  0   5      32   16	
 deactivated assets/images/deactivated.png 0  0  0  0   5      -32  32	
