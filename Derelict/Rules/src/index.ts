@@ -30,57 +30,67 @@ export class BasicRules implements Rules {
       );
       if (tokens.length === 0) return;
       if (!active || !tokens.includes(active)) {
-        active = tokens[0];
+        active = null;
       }
 
       const actionChoices: Choice[] = [{ type: 'action', action: 'pass' }];
-      if (canMoveForward(this.board, active)) {
+      if (active) {
+        if (canMoveForward(this.board, active)) {
+          actionChoices.push({
+            type: 'action',
+            action: 'move',
+            coord: forwardCell(active.cells[0], active.rot as Rotation),
+          });
+        }
+        for (const cell of forwardAndDiagonalCells(
+          active.cells[0],
+          active.rot as Rotation,
+        )) {
+          const doorToken = this.board.tokens.find((t) =>
+            t.cells.some((c) => sameCoord(c, cell)) &&
+            (t.type === 'door' || t.type === 'dooropen'),
+          );
+          if (doorToken) {
+            if (
+              doorToken.type === 'dooropen' &&
+              this.board.tokens.some(
+                (t) =>
+                  t !== doorToken &&
+                  t.cells.some((c) => sameCoord(c, cell)) &&
+                  isUnit(t),
+              )
+            ) {
+              // blocked open door, cannot close
+            } else {
+              actionChoices.push({
+                type: 'action',
+                action: 'door',
+                coord: cell,
+              });
+            }
+          }
+        }
         actionChoices.push({
           type: 'action',
-          action: 'move',
-          coord: forwardCell(active.cells[0], active.rot as Rotation),
+          action: 'turnLeft',
+          coord: active.cells[0],
         });
-      }
-      for (const cell of forwardAndDiagonalCells(
-        active.cells[0],
-        active.rot as Rotation,
-      )) {
-        const doorToken = this.board.tokens.find((t) =>
-          t.cells.some((c) => sameCoord(c, cell)) &&
-          (t.type === 'door' || t.type === 'dooropen'),
-        );
-        if (doorToken) {
-          if (
-            doorToken.type === 'dooropen' &&
-            this.board.tokens.some(
-              (t) =>
-                t !== doorToken &&
-                t.cells.some((c) => sameCoord(c, cell)) &&
-                isUnit(t),
-            )
-          ) {
-            // blocked open door, cannot close
-          } else {
+        actionChoices.push({
+          type: 'action',
+          action: 'turnRight',
+          coord: active.cells[0],
+        });
+        for (const t of tokens) {
+          if (t !== active) {
             actionChoices.push({
               type: 'action',
-              action: 'door',
-              coord: cell,
+              action: 'activate',
+              coord: t.cells[0],
             });
           }
         }
-      }
-      actionChoices.push({
-        type: 'action',
-        action: 'turnLeft',
-        coord: active.cells[0],
-      });
-      actionChoices.push({
-        type: 'action',
-        action: 'turnRight',
-        coord: active.cells[0],
-      });
-      for (const t of tokens) {
-        if (t !== active) {
+      } else {
+        for (const t of tokens) {
           actionChoices.push({
             type: 'action',
             action: 'activate',
@@ -92,16 +102,22 @@ export class BasicRules implements Rules {
       const action = await currentPlayer.choose(actionChoices);
       switch (action.action) {
         case 'move':
-          moveForward(active);
-          this.onChange?.(this.board);
+          if (active) {
+            moveForward(active);
+            this.onChange?.(this.board);
+          }
           break;
         case 'turnLeft':
-          active.rot = (((active.rot + 270) % 360) as Rotation);
-          this.onChange?.(this.board);
+          if (active) {
+            active.rot = (((active.rot + 270) % 360) as Rotation);
+            this.onChange?.(this.board);
+          }
           break;
         case 'turnRight':
-          active.rot = (((active.rot + 90) % 360) as Rotation);
-          this.onChange?.(this.board);
+          if (active) {
+            active.rot = (((active.rot + 90) % 360) as Rotation);
+            this.onChange?.(this.board);
+          }
           break;
         case 'activate': {
           const target = tokens.find(

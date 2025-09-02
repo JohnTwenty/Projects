@@ -19,6 +19,9 @@ test('marine moves forward when choosing move', async () => {
     choose: async (options) => {
       calls++;
       if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (calls === 2) {
         return options.find((o) => o.action === 'move');
       }
       moved = { ...board.tokens[0].cells[0] };
@@ -50,6 +53,9 @@ test('door action toggles door', async () => {
     choose: async (options) => {
       calls++;
       if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (calls === 2) {
         const doorOpt = options.find((o) => o.action === 'door');
         assert.ok(doorOpt);
         return doorOpt;
@@ -78,10 +84,15 @@ test('blocked open door not offered', async () => {
   const rules = new BasicRules(board);
   rules.validate(board);
 
-  let firstOptions;
+  let secondOptions;
+  let calls = 0;
   const player = {
     choose: async (options) => {
-      firstOptions = options;
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate' && o.coord?.x === 1 && o.coord?.y === 1);
+      }
+      secondOptions = options;
       board.tokens = [];
       return options[0];
     },
@@ -89,7 +100,7 @@ test('blocked open door not offered', async () => {
 
   await rules.runGame(player, player);
 
-  assert.ok(!firstOptions.some((o) => o.action === 'door'));
+  assert.ok(!secondOptions.some((o) => o.action === 'door'));
 });
 
 test('pass hands control to second player who can move alien', async () => {
@@ -119,6 +130,9 @@ test('pass hands control to second player who can move alien', async () => {
     choose: async (options) => {
       p2Calls++;
       if (p2Calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (p2Calls === 2) {
         const moveOpt = options.find((o) => o.action === 'move');
         assert.ok(moveOpt);
         return moveOpt;
@@ -163,6 +177,9 @@ test('pass hands control to second player who can move blip', async () => {
     choose: async (options) => {
       p2Calls++;
       if (p2Calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (p2Calls === 2) {
         const moveOpt = options.find((o) => o.action === 'move');
         assert.ok(moveOpt);
         return moveOpt;
@@ -192,10 +209,15 @@ test('marine cannot move into blip', async () => {
   const rules = new BasicRules(board);
   rules.validate(board);
 
-  let firstOptions;
+  let secondOptions;
+  let calls = 0;
   const player = {
     choose: async (options) => {
-      firstOptions = options;
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      secondOptions = options;
       board.tokens = [];
       return options[0];
     },
@@ -203,7 +225,7 @@ test('marine cannot move into blip', async () => {
 
   await rules.runGame(player, player);
 
-  assert.ok(!firstOptions.some((o) => o.action === 'move'));
+  assert.ok(!secondOptions.some((o) => o.action === 'move'));
 });
 
 test('blip cannot move into marine', async () => {
@@ -220,6 +242,7 @@ test('blip cannot move into marine', async () => {
   rules.validate(board);
 
   let blipOptions;
+  let calls = 0;
   const p1 = {
     choose: async (options) => {
       const passOpt = options.find((o) => o.action === 'pass');
@@ -229,6 +252,10 @@ test('blip cannot move into marine', async () => {
   };
   const p2 = {
     choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
       blipOptions = options;
       board.tokens = [];
       return options[0];
