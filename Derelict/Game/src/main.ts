@@ -111,27 +111,27 @@ async function init() {
   side.appendChild(actionButtons);
 
   const btnMove = document.createElement("button");
-  btnMove.textContent = "Move";
+  btnMove.textContent = "(M)ove";
   actionButtons.appendChild(btnMove);
 
   const btnTurnLeft = document.createElement("button");
-  btnTurnLeft.textContent = "Turn Left";
+  btnTurnLeft.textContent = "Turn (L)eft";
   actionButtons.appendChild(btnTurnLeft);
 
   const btnTurnRight = document.createElement("button");
-  btnTurnRight.textContent = "Turn Right";
+  btnTurnRight.textContent = "Turn (R)ight";
   actionButtons.appendChild(btnTurnRight);
 
   const btnManipulate = document.createElement("button");
-  btnManipulate.textContent = "Manipulate";
+  btnManipulate.textContent = "Manipulat(e)";
   actionButtons.appendChild(btnManipulate);
 
   const btnActivate = document.createElement("button");
-  btnActivate.textContent = "Activate Ally";
+  btnActivate.textContent = "Activate Ally (N)";
   actionButtons.appendChild(btnActivate);
 
   const btnPass = document.createElement("button");
-  btnPass.textContent = "Pass";
+  btnPass.textContent = "(P)ass";
   actionButtons.appendChild(btnPass);
 
   const status = document.createElement("div");

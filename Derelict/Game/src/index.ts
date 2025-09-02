@@ -75,11 +75,7 @@ export class Game implements GameApi {
         overlays.push({ el: div, type });
       };
 
-      const addTurnOverlay = (
-        coord: Coord,
-        onLeft: () => void,
-        onRight: () => void,
-      ) => {
+      const addTurnHighlight = (coord: Coord) => {
         const rect = cellToRect(coord);
         const div = document.createElement('div');
         div.style.position = 'absolute';
@@ -89,16 +85,7 @@ export class Game implements GameApi {
         div.style.height = `${rect.height}px`;
         div.style.boxSizing = 'border-box';
         div.style.border = '2px solid white';
-        div.style.cursor = 'pointer';
-        div.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const x = e.offsetX;
-          if (x < rect.width / 2) {
-            onLeft();
-          } else {
-            onRight();
-          }
-        });
+        div.style.pointerEvents = 'none';
         container.appendChild(div);
         overlays.push({ el: div, type: 'turn' });
       };
@@ -190,7 +177,7 @@ export class Game implements GameApi {
         (o) => o.type === 'action' && o.action === 'turnRight' && o.coord,
       );
       if (turnRightOpt && turnRightOpt.coord) {
-        addTurnOverlay(turnRightOpt.coord, onTurnLeft, onTurnRight);
+        addTurnHighlight(turnRightOpt.coord);
       }
 
       function cleanup() {
@@ -222,7 +209,7 @@ export class Game implements GameApi {
         e: onManipulate,
         l: onTurnLeft,
         r: onTurnRight,
-        x: onPass,
+        p: onPass,
       };
       const onKey = (e: KeyboardEvent) => {
         const fn = keyMap[e.key.toLowerCase()];
