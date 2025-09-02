@@ -7,4 +7,6 @@ type=blip
 type=objective
 type=marine_start
 type=alien_entry
+type=deactivated
+
 
