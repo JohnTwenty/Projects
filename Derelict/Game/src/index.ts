@@ -44,16 +44,8 @@ export class Game implements GameApi {
 
     return new Promise<Choice>((resolve) => {
       const { container, cellToRect, buttons } = this.ui!;
-      const key = (c: Coord) => `${c.x},${c.y}`;
 
       const overlays: { el: HTMLElement; type: 'activate' | 'move' | 'door' }[] = [];
-
-      const activateMap = new Map<string, Choice>();
-      for (const opt of options) {
-        if (opt.type === 'action' && opt.action === 'activate' && opt.coord) {
-          activateMap.set(key(opt.coord), opt);
-        }
-      }
 
       const addOverlay = (
         coord: Coord,
@@ -98,32 +90,15 @@ export class Game implements GameApi {
         }
       }
 
-      let tokenType: string | null = null;
+      // Highlight cells that can be activated. The rules already
+      // specify which coordinates are valid, so we don't need to
+      // inspect the board or filter by token type here.
       for (const opt of options) {
-        if (opt.action === 'activate' && opt.coord) {
-          const token = this.board.tokens.find((t) =>
-            sameCoord(t.cells[0], opt.coord!),
-          );
-          if (token) {
-            tokenType = token.type;
-            break;
-          }
-        }
-      }
-      const tokens = this.board.tokens.filter(
-        (t) => !tokenType || t.type === tokenType,
-      );
-      for (const t of tokens) {
-        const coord = t.cells[0];
-
-        const act = activateMap.get(key(coord));
-        if (act) {
-          addOverlay(coord, 'purple', 'activate', () => {
+        if (opt.type === 'action' && opt.action === 'activate' && opt.coord) {
+          addOverlay(opt.coord, 'purple', 'activate', () => {
             cleanup();
-            resolve(act);
+            resolve(opt);
           });
-        } else {
-          addOverlay(coord, 'purple', 'activate');
         }
       }
 
@@ -199,7 +174,10 @@ export class Game implements GameApi {
       buttons.turnRight.addEventListener('click', onTurnRight);
       buttons.pass.addEventListener('click', onPass);
 
-      buttons.activate.disabled = activateMap.size === 0;
+      const hasActivate = options.some(
+        (o) => o.type === 'action' && o.action === 'activate' && o.coord,
+      );
+      buttons.activate.disabled = !hasActivate;
       buttons.move.disabled = !options.some(
         (o) => o.type === 'action' && o.action === 'move',
       );
@@ -221,8 +199,4 @@ export class Game implements GameApi {
   async messageBox(_message: string): Promise<boolean> {
     return true;
   }
-}
-
-function sameCoord(a: Coord, b: Coord): boolean {
-  return a.x === b.x && a.y === b.y;
 }

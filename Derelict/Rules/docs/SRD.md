@@ -10,9 +10,10 @@ Based on these choices made, the game will progress until one player wins.
 
 Initially the rules of the game are very simple; all this is implemented in the Rules:runGame function: 
 
-* The first player controls the marines while the second player controls the aliens.  For the time being, aliens have the same action choices available as marines.
+* The first player controls the marines while the second player controls the aliens and blips.  For the time being, aliens and blips have the same action choices available as marines.
 * The first player must select a cell on the board with a marine in it to activate the marine.  If there are no marines on the board that can be selected, the game is lost and runGame() exits.
-* Once a marine or alien is selected, the controlling player may choose to move one cell forward (in the direction the token is facing) assuming this cell is a corridor and does not contain either a marine or a blip, or turn left, or turn right, or select a different token of the same side to activate it.
+* Once a marine, alien, or blip is selected, the controlling player may choose to move one cell forward (in the direction the token is facing) assuming this cell is a corridor and does not contain a marine, alien, or blip, or turn left, or turn right, or select a different token of the same side to activate it.
+* Marines, blips and aliens all block movement for each other.
 * This selection and movement can continue indefinitely.  At any time, the active player may also choose a "pass" action which ends their activation and hands control to the other player.
 
 This rules module should make the process of choosing for players as simple as possible.  That means that this rules module should examine the boardState and provide an explicit list of possible legal choices

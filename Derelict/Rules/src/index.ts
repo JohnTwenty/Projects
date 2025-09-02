@@ -22,10 +22,12 @@ export class BasicRules implements Rules {
 
   async runGame(p1: Player, p2: Player): Promise<void> {
     let currentPlayer: Player = p1;
-    let currentType: 'marine' | 'alien' = 'marine';
+    let currentSide: 'marine' | 'alien' = 'marine';
     let active: TokenInstance | null = null;
     while (true) {
-      const tokens = this.board.tokens.filter((t) => t.type === currentType);
+      const tokens = this.board.tokens.filter((t) =>
+        currentSide === 'marine' ? t.type === 'marine' : t.type === 'alien' || t.type === 'blip',
+      );
       if (tokens.length === 0) return;
       if (!active || !tokens.includes(active)) {
         active = tokens[0];
@@ -54,7 +56,7 @@ export class BasicRules implements Rules {
               (t) =>
                 t !== doorToken &&
                 t.cells.some((c) => sameCoord(c, cell)) &&
-                (t.type === 'marine' || t.type === 'alien' || t.type === 'blip'),
+                isUnit(t),
             )
           ) {
             // blocked open door, cannot close
@@ -116,7 +118,7 @@ export class BasicRules implements Rules {
         }
         case 'pass':
           currentPlayer = currentPlayer === p1 ? p2 : p1;
-          currentType = currentType === 'marine' ? 'alien' : 'marine';
+          currentSide = currentSide === 'marine' ? 'alien' : 'marine';
           active = null;
           break;
       }
@@ -148,9 +150,7 @@ function canMoveForward(board: BoardState, token: TokenInstance): boolean {
   const cellType = board.getCellType ? board.getCellType(target) : 1;
   if (cellType !== 1) return false; // must be corridor
   const occupied = board.tokens.some(
-    (t) =>
-      t.type !== 'dooropen' &&
-      t.cells.some((c) => sameCoord(c, target)),
+    (t) => blocksMovement(t) && t.cells.some((c) => sameCoord(c, target)),
   );
   if (occupied) return false;
   return true;
@@ -195,4 +195,12 @@ function rightCell(cell: Coord, rot: Rotation): Coord {
     default:
       return cell;
   }
+}
+
+function isUnit(t: { type: string }): boolean {
+  return t.type === 'marine' || t.type === 'alien' || t.type === 'blip';
+}
+
+function blocksMovement(t: TokenInstance): boolean {
+  return t.type === 'door' || isUnit(t);
 }
