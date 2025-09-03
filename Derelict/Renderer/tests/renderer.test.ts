@@ -116,7 +116,7 @@ test('renderer applies token offsets and rotation', () => {
   const translateCalls = calls.translate;
   // second translate for offset
   const offsetCall = translateCalls.find(
-    (c) => Math.abs(c[0] - 0.5) < 1e-6 && Math.abs(c[1] - 1) < 1e-6
+    (c) => Math.abs(c[0] - 1) < 1e-6 && Math.abs(c[1] - 2) < 1e-6
   );
   assert.ok(offsetCall);
   // rotation applied once with 90 degrees
@@ -126,22 +126,36 @@ test('renderer applies token offsets and rotation', () => {
   );
 });
 
-test('renderer scales tokens to cell size', () => {
+test('renderer draws small sprites at native size', () => {
   const renderer = createRenderer();
+  const manifest = loadSpriteManifestFromText(
+    `alien assets/images/alien.png 0 0 0 0 0 0 0\n` +
+      `deactivated assets/images/deactivated.png 0 0 0 0 0 0 0`
+  );
   renderer.setSpriteManifest(manifest);
-  renderer.setAssetResolver(() => ({ width: 64, height: 64 } as any));
-  renderer.resize(32, 32);
+  renderer.setAssetResolver((key) => {
+    if (key.includes('alien.png')) return { width: 64, height: 64 } as any;
+    if (key.includes('deactivated.png')) return { width: 16, height: 16 } as any;
+    return undefined;
+  });
+  renderer.resize(128, 64);
   const { ctx, calls } = makeCtx();
-  const vp: Viewport = { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 };
+  const vp: Viewport = { origin: { x: 0, y: 0 }, scale: 1, cellSize: 64 };
   const st: BoardState = {
-    size: 1,
+    size: 2,
     segments: [],
-    tokens: [{ tokenId: 't', type: 'foo', rot: 0, cells: [{ x: 0, y: 0 }] }],
+    tokens: [
+      { tokenId: 'a', type: 'alien', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { tokenId: 'd', type: 'deactivated', rot: 0, cells: [{ x: 1, y: 0 }] },
+    ],
   } as any;
   renderer.render(ctx as any, st, vp);
-  const args = calls.drawImage[0];
-  assert.equal(args[7], 32);
-  assert.equal(args[8], 32);
+  const alienArgs = calls.drawImage[0];
+  const deactivatedArgs = calls.drawImage[1];
+  assert.equal(alienArgs[7], 64);
+  assert.equal(alienArgs[8], 64);
+  assert.equal(deactivatedArgs[7], 16);
+  assert.equal(deactivatedArgs[8], 16);
 });
 
 test('renderer draws terrain and tokens layered', () => {
