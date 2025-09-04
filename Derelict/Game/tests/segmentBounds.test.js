@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseSegmentDefs } from '../dist/src/segments.js';
-import { createRenderer } from '../../Renderer/dist/renderer.js';
+import { createRenderer } from '../../Renderer/dist/src/renderer.js';
 
 test('renderer uses segment dimensions for bounds', () => {
   const segLib = `segment a 2x2\n1 1\n1 1\nendsegment`;

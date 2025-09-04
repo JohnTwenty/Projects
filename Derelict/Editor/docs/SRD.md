@@ -42,6 +42,7 @@ Provide a browser-based **mission editor** for the Derelict game, separated from
 - Unselect: cancel ghosting, return to selection mode.
 - File operations via modals (New, Load, Save, Play).
 - Confirming **New** clears the board and resets the mission name to "Unnamed Mission".
+ - When loading a mission file that contains a `rules` section (from a saved game), the extra data is ignored.
 - Renderer updates after each change to BoardState.
 
 ## 5. Non-Functional Requirements

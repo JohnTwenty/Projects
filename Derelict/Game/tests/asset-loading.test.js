@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createRenderer } from '../../Renderer/dist/renderer.js';
+import { createRenderer } from '../../Renderer/dist/src/renderer.js';
 
 test('renderer re-renders after image load', async () => {
   class FakeImage {

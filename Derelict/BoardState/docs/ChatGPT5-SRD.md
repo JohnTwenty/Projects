@@ -166,6 +166,9 @@ instances:
 
 tokens:
   <tokenId>: <typeName> pos=(x,y) rot=<0|90|180|270> [attrs=<json>]
+
+rules:
+  <key>: <value>
 ```
 
 **Notes**
@@ -174,6 +177,7 @@ tokens:
 * `profile:` lets tools distinguish authored vs saved; BoardState treats both identically.
 * `attrs=<json>` is a single‑line JSON object; unknown keys are preserved on round‑trip.
 * Token positions are **single‑cell**; multi‑cell tokens are a future extension.
+* `rules:` is optional and holds key/value pairs (numbers, booleans, strings) for game rules state such as turn counters.
 
 **Example**
 
@@ -193,6 +197,10 @@ instances:
 tokens:
   D1: door   pos=(13,12) rot=90
   M1: marine pos=(11,12) rot=180 attrs={"owner":"red","name":"Sergeant"}
+
+rules:
+  turn: 3
+  activeplayer: 1
 ```
 
 ---

@@ -11,10 +11,10 @@ The Game Module interacts with the following other modules:
 	An object implementing the Rules interface, that implements the board game's rules.
 	
 At startup, the user is presented with the "New Game" modal dialog with the following fields:
-1. A list box showing the available server side mission files (the contents of Derelict/public/missions) 
-	The game.html URL parameters are inspected.  Using parameters, it is possible to pre-select a specific server side mission file to start. In this case the appropriate item in the list box is highlighted.
-	
-	There is also a text prompt: "Drag and Drop a savegame file here to load it!" Dropping a legal savegame file will gray the mission selection and display the name of the savegame file about to be loaded. 
+1. A list box showing the available server side mission files (the contents of Derelict/public/missions)
+        The game.html URL parameters are inspected.  Using parameters, it is possible to pre-select a specific server side mission file to start. In this case the appropriate item in the list box is highlighted.
+
+        There is also a text prompt: "Drag and Drop a savegame file here to load it!" Dropping a legal savegame file will gray the mission selection and display the name of the savegame file about to be loaded. Savegames are mission files with an optional `rules` section that records state such as the current turn and active player.
 
 2. A pair of radio buttons to choose "Single Player" or "Two Player" game.
 	We can either have hot seat (2 human) multiplayer or human vs computer controlled enemies. 
@@ -40,7 +40,7 @@ The UI of the game page is as follows:
 * Horizontal bar at the top saying "Derelict Game", just like we have in Editor.
 * Horizontal Button Bar with buttons: "New Game", "Save Game", "Editor", same style like we have in Editor.
 	* The "New Game" button that when pressed, after modal confirmation dialog that gives a chance to cance, start a new game returns us to a "new game" dialog as above.
-	* The "Save Game" button saves the BoardState to a mission file (that gets downloaded to the user's computer.
+        * The "Save Game" button saves the BoardState and current Rules state (e.g. turn and active player) to a mission file that gets downloaded to the user's computer.
 	* The "Editor" button, that when pressed, after modal confirmation dialog that gives a chance to cancel, forwards to index.html which is the editor page. 		
 * The play area viewport that uses the Renderer to display the boardState.
 * A vertical bar to the right of the play area viewport that is horizontally divided into two regions:
@@ -55,14 +55,15 @@ The UI of the game page is as follows:
 		* The "Overwatch" button
                 * The "Guard" button
                 * The "Pass" button (always shown last)
-	* A status region showing information like: (We will describe how to populate this later)
-		* "Turn: n"
-		* "Command points: n"
-		* "Activated Unit Name: xyz" 
-		* "Activated Unit Role: xyz" 
-		* "AP remaining: n"
-		* "AP for action: n" 
-		* "Ammo remaining: n" 
+        * A status region showing information like: (We will describe how to populate this later)
+                * "Turn: n"
+                * "Active player: n"
+                * "Command points: n"
+                * "Activated Unit Name: xyz"
+                * "Activated Unit Role: xyz"
+                * "AP remaining: n"
+                * "AP for action: n"
+                * "Ammo remaining: n"
 	
 ## Control FLow
 
