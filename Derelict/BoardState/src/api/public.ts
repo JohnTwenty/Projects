@@ -3,6 +3,7 @@ import { parseSegmentLibrary } from '../io/segmentLib.parse.js';
 import { parseTokenLibrary } from '../io/tokenLib.parse.js';
 import { parseMission } from '../io/mission.parse.js';
 import { serializeMission } from '../io/mission.serialize.js';
+export type { MissionData } from '../io/mission.parse.js';
 import { createState, resetBoard, placeSegment, removeSegmentAtCoordInternal, placeToken, removeTokenInternal, cellTypeAt, cellsInSameSegment, tokensAt, findByIdInternal } from '../core/boardState.js';
 
 export function newBoard(size: number, segmentLibrary: string, tokenLibrary: string): BoardState {
@@ -13,7 +14,7 @@ export function newBoard(size: number, segmentLibrary: string, tokenLibrary: str
   return state;
 }
 
-export function importBoardText(state: BoardState, text: string): void {
+export function importBoardText(state: BoardState, text: string) {
   const mission = parseMission(text);
   resetBoard(state as any, mission.size || state.size);
   for (const s of mission.segments) {
@@ -22,10 +23,15 @@ export function importBoardText(state: BoardState, text: string): void {
   for (const t of mission.tokens) {
     placeToken(state as any, t);
   }
+  return mission;
 }
 
-export function exportBoardText(state: BoardState, missionName: string): string {
-  return serializeMission(state, missionName);
+export function exportBoardText(
+  state: BoardState,
+  missionName: string,
+  extras?: { rules?: Record<string, unknown> },
+): string {
+  return serializeMission(state, missionName, extras);
 }
 
 // Mutations

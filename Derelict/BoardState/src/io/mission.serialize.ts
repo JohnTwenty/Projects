@@ -1,6 +1,10 @@
 import { BoardState } from '../core/types.js';
 
-export function serializeMission(state: BoardState, missionName = 'Untitled'): string {
+export function serializeMission(
+  state: BoardState,
+  missionName = 'Untitled',
+  extras?: { rules?: Record<string, unknown> },
+): string {
   const lines: string[] = [];
   lines.push(`mission: ${missionName}`);
   lines.push(`profile: mission`);
@@ -21,6 +25,14 @@ export function serializeMission(state: BoardState, missionName = 'Untitled'): s
     const pos = t.cells[0];
     const attr = t.attrs ? ` attrs=${JSON.stringify(t.attrs)}` : '';
     lines.push(`  ${t.instanceId}: ${t.type} pos=(${pos.x},${pos.y}) rot=${t.rot}${attr}`);
+  }
+  if (extras?.rules && Object.keys(extras.rules).length > 0) {
+    lines.push('');
+    lines.push('rules:');
+    const keys = Object.keys(extras.rules).sort();
+    for (const key of keys) {
+      lines.push(`  ${key}: ${extras.rules[key]}`);
+    }
   }
   return lines.join('\n');
 }

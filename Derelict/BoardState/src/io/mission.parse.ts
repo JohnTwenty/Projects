@@ -8,6 +8,7 @@ export interface MissionData {
   size: number;
   segments: SegmentInstance[];
   tokens: TokenInstance[];
+  rules?: Record<string, unknown>;
 }
 
 export function parseMission(text: string): MissionData {
@@ -18,7 +19,8 @@ export function parseMission(text: string): MissionData {
   let size = 0;
   const segments: SegmentInstance[] = [];
   const tokens: TokenInstance[] = [];
-  let mode: 'instances' | 'tokens' | null = null;
+  let rules: Record<string, unknown> | undefined;
+  let mode: 'instances' | 'tokens' | 'rules' | null = null;
 
   for (const line of lines) {
     if (line.startsWith('mission:')) {
@@ -48,6 +50,11 @@ export function parseMission(text: string): MissionData {
       mode = 'tokens';
       continue;
     }
+    if (line.startsWith('rules:')) {
+      mode = 'rules';
+      rules = {};
+      continue;
+    }
     if (mode === 'instances') {
       const m = line.match(/(\S+):\s+(\S+)\s+pos=(\([^\)]+\))\s+rot=(\d+)/);
       if (!m) continue;
@@ -73,6 +80,20 @@ export function parseMission(text: string): MissionData {
       tokens.push(tok);
       continue;
     }
+    if (mode === 'rules') {
+      const m = line.match(/\s*(\S+):\s*(.+)/);
+      if (!m || !rules) continue;
+      let val: unknown = m[2].trim();
+      if (/^-?\d+$/.test(m[2])) {
+        val = parseInt(m[2], 10);
+      } else if (m[2] === 'true') {
+        val = true;
+      } else if (m[2] === 'false') {
+        val = false;
+      }
+      rules[m[1]] = val;
+      continue;
+    }
   }
-  return { name, profile, version, size, segments, tokens };
+  return { name, profile, version, size, segments, tokens, rules };
 }

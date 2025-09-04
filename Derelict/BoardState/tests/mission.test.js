@@ -43,5 +43,15 @@ describe('mission import/export', () => {
     board.tokens.push({ type: 'door', rot: 0, cells: [{ x: 0, y: 0 }] });
     assert.doesNotThrow(() => exportBoardText(board, 'Test'));
   });
-});
+
+  it('parses and serializes rules section', () => {
+    const board = newBoard(40, segLib, tokLib);
+    const textWithRules = missionText + '\n\nrules:\n  turn: 3\n  activeplayer: 2\n';
+    const mission = importBoardText(board, textWithRules);
+    assert.equal(mission.rules.turn, 3);
+    assert.equal(mission.rules.activeplayer, 2);
+    const out = exportBoardText(board, 'Test', { rules: mission.rules });
+      assert.match(out, /rules:\n  activeplayer: 2\n  turn: 3/);
+    });
+  });
 

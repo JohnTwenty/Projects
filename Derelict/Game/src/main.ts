@@ -136,14 +136,10 @@ async function init() {
 
   const status = document.createElement("div");
   status.id = "status-region";
-  status.innerHTML =
-    "Turn: n<br>" +
-    "Command points: n<br>" +
-    "Activated Unit Name: xyz<br>" +
-    "Activated Unit Role: xyz<br>" +
-    "AP remaining: n<br>" +
-    "AP for action: n<br>" +
-    "Ammo remaining: n";
+  const statusTurn = document.createElement("div");
+  const statusPlayer = document.createElement("div");
+  status.appendChild(statusTurn);
+  status.appendChild(statusPlayer);
   side.appendChild(status);
 
   const ctx = canvas.getContext("2d");
@@ -176,6 +172,12 @@ async function init() {
   const viewport: any = { origin: { x: 0, y: 0 }, scale: 1, cellSize: 32 };
   let currentState: any = null;
   let currentBoard: any = null;
+  let currentRules: any = null;
+
+  const updateStatus = (info: { turn: number; activePlayer: number }) => {
+    statusTurn.textContent = `Turn: ${info.turn}`;
+    statusPlayer.textContent = `Active Player: ${info.activePlayer}`;
+  };
   function render(state: any) {
     currentState = state;
     const rect = canvas.getBoundingClientRect();
@@ -212,9 +214,18 @@ async function init() {
     const board: any = BoardState.newBoard(40, segLib, tokLib);
     // ensure renderer knows dimensions for each segment
     board.segmentDefs = segmentDefs;
-    BoardState.importBoardText(board, text);
+    const mission = BoardState.importBoardText(board, text);
     currentBoard = board;
-    const rules = new Rules.BasicRules(board, () => renderer.render(board));
+    const initTurn = typeof mission.rules?.turn === 'number' ? mission.rules.turn : 1;
+    const initPlayer = typeof mission.rules?.activeplayer === 'number' ? mission.rules.activeplayer : 1;
+    const rules = new Rules.BasicRules(
+      board,
+      () => renderer.render(board),
+      updateStatus,
+      { turn: initTurn, activePlayer: initPlayer },
+    );
+    currentRules = rules;
+    updateStatus(rules.getState());
     let game!: Game;
     const p1 = new Players.HumanPlayer({
       choose: (options: any) => game.choose(options),
@@ -229,15 +240,15 @@ async function init() {
     game = new Game(board, renderer, rules, p1, p2, {
       container: wrap,
       cellToRect: (coord: any) => rendererCore.boardToScreen(coord, viewport),
-        buttons: {
-          activate: btnActivate,
-          move: btnMove,
-          turnLeft: btnTurnLeft,
-          turnRight: btnTurnRight,
-          manipulate: btnManipulate,
-          pass: btnPass,
-        },
-      });
+      buttons: {
+        activate: btnActivate,
+        move: btnMove,
+        turnLeft: btnTurnLeft,
+        turnRight: btnTurnRight,
+        manipulate: btnManipulate,
+        pass: btnPass,
+      },
+    });
     try {
       await game.start();
     } catch (e) {
@@ -376,7 +387,12 @@ async function init() {
 
   saveBtn.addEventListener("click", () => {
     if (!currentBoard) return;
-    const text = BoardState.exportBoardText(currentBoard, "savegame");
+    const rulesState = currentRules?.getState();
+    const text = BoardState.exportBoardText(currentBoard, "savegame", {
+      rules: rulesState
+        ? { turn: rulesState.turn, activeplayer: rulesState.activePlayer }
+        : undefined,
+    });
     downloadText("savegame.mission.txt", text);
   });
 

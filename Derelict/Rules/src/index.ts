@@ -9,10 +9,27 @@ export interface Rules {
 // Basic rules implementation allowing a marine to move forward one cell
 export class BasicRules implements Rules {
   private nextDeactId = 1;
+  private turn = 1;
+  private activePlayer = 1;
   constructor(
     private board: BoardState,
     private onChange?: (state: BoardState) => void,
-  ) {}
+    private onStatus?: (info: { turn: number; activePlayer: number }) => void,
+    initialState?: { turn?: number; activePlayer?: number },
+  ) {
+    if (initialState) {
+      if (typeof initialState.turn === 'number') this.turn = initialState.turn;
+      if (typeof initialState.activePlayer === 'number') this.activePlayer = initialState.activePlayer;
+    }
+  }
+
+  getState() {
+    return { turn: this.turn, activePlayer: this.activePlayer };
+  }
+
+  private emitStatus() {
+    this.onStatus?.({ turn: this.turn, activePlayer: this.activePlayer });
+  }
 
   validate(state: BoardState): void {
     const hasMarine = state.tokens.some((t) => t.type === 'marine');
@@ -22,9 +39,10 @@ export class BasicRules implements Rules {
   }
 
   async runGame(p1: Player, p2: Player): Promise<void> {
-    let currentPlayer: Player = p1;
-    let currentSide: 'marine' | 'alien' = 'marine';
+    let currentPlayer: Player = this.activePlayer === 1 ? p1 : p2;
+    let currentSide: 'marine' | 'alien' = this.activePlayer === 1 ? 'marine' : 'alien';
     let active: TokenInstance | null = null;
+    this.emitStatus();
     while (true) {
       const tokens = this.board.tokens.filter((t) =>
         currentSide === 'marine' ? t.type === 'marine' : t.type === 'alien' || t.type === 'blip',
@@ -166,9 +184,12 @@ export class BasicRules implements Rules {
             );
             this.onChange?.(this.board);
           }
+          this.activePlayer = this.activePlayer === 1 ? 2 : 1;
+          if (this.activePlayer === 1) this.turn++;
           currentPlayer = currentPlayer === p1 ? p2 : p1;
           currentSide = currentSide === 'marine' ? 'alien' : 'marine';
           active = null;
+          this.emitStatus();
           break;
       }
     }
