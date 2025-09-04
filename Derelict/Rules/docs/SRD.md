@@ -8,6 +8,8 @@ Rules will read and write the BoardState object.  Rules will also reference two 
 
 Based on these choices made, the game will progress until one player wins.
 
+## General Game Rules
+
 Initially the rules of the game are very simple; all this is implemented in the Rules:runGame function: 
 
 * The first player controls the marines while the second player controls the aliens and blips.  For the time being, aliens and blips have the same action choices available as marines.
@@ -27,4 +29,34 @@ When choices are offered to players, the choices should be provided with informa
 When an activated unit is determining available actions, the rules also inspect the three cells directly forward or diagonally forward from the unit.  Each of these cells is checked for the presence of a "door" or "dooropen" token.  For every such token found, the player is offered a "door" choice that includes the door's cell coordinates.  If a "dooropen" token shares its cell with a "marine", "alien" or "blip" token, the door is considered blocked and no choice to close it is presented.  When a player selects a "door" choice, the corresponding token is swapped between "door" and "dooropen", representing the unit opening or closing that door.
 
 If a player chooses to activate a different unit while one is already active, the formerly active unit receives a "deactivated" token in its cell.  Units that share a cell with a "deactivated" token are not offered as activation choices.  When a player selects "pass", all "deactivated" tokens are removed from the board, allowing those units to be activated again on subsequent turns.
+
+## Game Actions
+
+Each unit type starts its activation with a certain number of action points (AP) as listed in the following table:
+
+| Unit    | Action Points (AP) |
+|---------|--------------------|
+| Marine  | 4                  |
+| Alien   | 6                  |
+| Blip    | 6                  |
+
+The following table lists all the different actions (choices) that are available, and a columns for each of the kind of units that can be activated.  The column of each unit type contains the action point (AP) cost to perform the action in the first column:
+
+| Action        | 	Marines   | 	Aliens	 | Blips   | Notes |
+|---------------|-------------|------------|---------|-------|
+| activate ally | 0           | 0         | 0        |  Generally first action in a turn when no unit has yet been activated. When a unit has been activated, activating the next unit forfeits all remaining action points of the current unit.     |
+| shoot         | 1 or 0      | -         | -        |  Cost for marines is 0 when performed immediately following a move or turn action; else 1. |
+| assault       | 1           | 1         | -        |       |
+| move forward  | 1           | 1         | 1        |       |
+| move backward | 2           | 2         | 1        |       |
+| move sideways | -           | 1         | 1        |       |
+| door open     | 1           | 1         | 1        |       |
+| door close    | 1           | 1         | 1        |       |
+| turn left	    | 1           | 1 or 0    | 0        | Cost for aliens is 0 when performed immediately following a mmove action; else 1. |
+| turn right    | 1           | 1 or 0    | 0        | Cost for aliens is 0 when performed immediately following a mmove action; else 1. |
+| unjam         | 1           | -         | -        |       |
+| overwatch     | 2           | -         | -        |       |
+| guard	        | 2           | -         | -        |       |
+| pass turn     | 0           | 0         | 0        | Concludes the active player's turn.      |
+
 
