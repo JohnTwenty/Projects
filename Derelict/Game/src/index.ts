@@ -45,6 +45,13 @@ export class Game implements GameApi {
     return new Promise<Choice>((resolve) => {
       const { container, cellToRect, buttons } = this.ui!;
 
+      buttons.move.textContent = '(M)ove';
+      buttons.manipulate.textContent = '(E)manipulate';
+      buttons.turnLeft.textContent = 'Turn (L)eft';
+      buttons.turnRight.textContent = 'Turn (R)ight';
+      buttons.turnLeft.style.color = '';
+      buttons.turnRight.style.color = '';
+
       const overlays: { el: HTMLElement; type: 'activate' | 'move' | 'door' | 'turn' }[] = [];
 
       const addOverlay = (
@@ -52,6 +59,7 @@ export class Game implements GameApi {
         color: string,
         type: 'activate' | 'move' | 'door',
         onClick?: () => void,
+        apCost?: number,
       ) => {
         const rect = cellToRect(coord);
         const div = document.createElement('div');
@@ -70,6 +78,14 @@ export class Game implements GameApi {
           });
         } else {
           div.style.pointerEvents = 'none';
+        }
+        if (type === 'move' && typeof apCost === 'number') {
+          div.addEventListener('mouseenter', () => {
+            buttons.move.textContent = `(M)ove: ${apCost} AP`;
+          });
+          div.addEventListener('mouseleave', () => {
+            buttons.move.textContent = '(M)ove';
+          });
         }
         container.appendChild(div);
         overlays.push({ el: div, type });
@@ -92,10 +108,16 @@ export class Game implements GameApi {
 
       for (const opt of options) {
         if (opt.type === 'action' && opt.action === 'move' && opt.coord) {
-          addOverlay(opt.coord, 'green', 'move', () => {
-            cleanup();
-            resolve(opt);
-          });
+          addOverlay(
+            opt.coord,
+            'green',
+            'move',
+            () => {
+              cleanup();
+              resolve(opt);
+            },
+            opt.apCost,
+          );
         }
         if (opt.type === 'action' && opt.action === 'door' && opt.coord) {
           addOverlay(opt.coord, 'blue', 'door', () => {
@@ -115,6 +137,27 @@ export class Game implements GameApi {
             resolve(opt);
           });
         }
+      }
+
+      const doorOpt = options.find(
+        (o) => o.type === 'action' && o.action === 'door',
+      );
+      if (doorOpt) {
+        buttons.manipulate.textContent = `(E)manipulate: ${doorOpt.apCost ?? 0} AP`;
+      }
+      const leftOpt = options.find(
+        (o) => o.type === 'action' && o.action === 'turnLeft',
+      );
+      if (leftOpt) {
+        buttons.turnLeft.textContent = `Turn (L)eft: ${leftOpt.apCost ?? 0} AP`;
+        buttons.turnLeft.style.color = leftOpt.apCost === 0 ? 'green' : '';
+      }
+      const rightOpt = options.find(
+        (o) => o.type === 'action' && o.action === 'turnRight',
+      );
+      if (rightOpt) {
+        buttons.turnRight.textContent = `Turn (R)ight: ${rightOpt.apCost ?? 0} AP`;
+        buttons.turnRight.style.color = rightOpt.apCost === 0 ? 'green' : '';
       }
 
       let filter: 'activate' | 'move' | 'door' | null = null;
@@ -194,6 +237,12 @@ export class Game implements GameApi {
         buttons.activate.classList.remove('active');
         buttons.move.classList.remove('active');
         buttons.manipulate.classList.remove('active');
+        buttons.move.textContent = '(M)ove';
+        buttons.manipulate.textContent = '(E)manipulate';
+        buttons.turnLeft.textContent = 'Turn (L)eft';
+        buttons.turnRight.textContent = 'Turn (R)ight';
+        buttons.turnLeft.style.color = '';
+        buttons.turnRight.style.color = '';
       }
 
       buttons.activate.addEventListener('click', onActivate);

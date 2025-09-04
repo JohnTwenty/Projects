@@ -138,8 +138,10 @@ async function init() {
   status.id = "status-region";
   const statusTurn = document.createElement("div");
   const statusPlayer = document.createElement("div");
+  const statusAP = document.createElement("div");
   status.appendChild(statusTurn);
   status.appendChild(statusPlayer);
+  status.appendChild(statusAP);
   side.appendChild(status);
 
   const ctx = canvas.getContext("2d");
@@ -174,9 +176,11 @@ async function init() {
   let currentBoard: any = null;
   let currentRules: any = null;
 
-  const updateStatus = (info: { turn: number; activePlayer: number }) => {
+  const updateStatus = (info: { turn: number; activePlayer: number; ap?: number }) => {
     statusTurn.textContent = `Turn: ${info.turn}`;
     statusPlayer.textContent = `Active Player: ${info.activePlayer}`;
+    statusAP.textContent =
+      typeof info.ap === "number" ? `AP remaining: ${info.ap}` : "";
   };
   function render(state: any) {
     currentState = state;

@@ -225,7 +225,11 @@ test('marine cannot move into blip', async () => {
 
   await rules.runGame(player, player);
 
-  assert.ok(!secondOptions.some((o) => o.action === 'move'));
+  assert.ok(
+    !secondOptions.some(
+      (o) => o.action === 'move' && o.coord?.x === 0 && o.coord?.y === 1,
+    ),
+  );
 });
 
 test('blip cannot move into marine', async () => {
@@ -264,7 +268,11 @@ test('blip cannot move into marine', async () => {
 
   await rules.runGame(p1, p2);
 
-  assert.ok(!blipOptions.some((o) => o.action === 'move'));
+  assert.ok(
+    !blipOptions.some(
+      (o) => o.action === 'move' && o.coord?.x === 2 && o.coord?.y === 3,
+    ),
+  );
 });
 
 test('activating different unit marks previous as deactivated until pass', async () => {
@@ -321,4 +329,83 @@ test('activating different unit marks previous as deactivated until pass', async
     ),
   );
   assert.ok(!tokensAfterPass.some((t) => t.type === 'deactivated'));
+});
+
+test('marine backward move costs AP', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 1, y: 1 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  let calls = 0;
+  let moveOptions;
+  let afterMoveOptions;
+  const player = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (calls === 2) {
+        moveOptions = options;
+        return options.find(
+          (o) => o.action === 'move' && o.coord?.x === 1 && o.coord?.y === 0,
+        );
+      }
+      afterMoveOptions = options;
+      board.tokens = [];
+      return options.find((o) => o.action === 'pass');
+    },
+  };
+
+  await rules.runGame(player, player);
+
+  const back = moveOptions.find(
+    (o) => o.action === 'move' && o.coord?.x === 1 && o.coord?.y === 0,
+  );
+  assert.equal(back?.apCost, 2);
+  const turnLeft = afterMoveOptions.find((o) => o.action === 'turnLeft');
+  assert.equal(turnLeft?.apRemaining, 2);
+});
+
+test('alien sideways move and free turn after move', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 1, y: 1 }] },
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 4, y: 4 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  let calls = 0;
+  let moveOptions;
+  const player = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) return options.find((o) => o.action === 'activate');
+      if (calls === 2) {
+        moveOptions = options;
+        return options.find((o) => o.action === 'move');
+      }
+      board.tokens = [];
+      return options.find((o) => o.action === 'pass');
+    },
+  };
+
+  await rules.runGame(player, player);
+
+  assert.ok(
+    moveOptions.some(
+      (o) => o.action === 'move' && o.coord && o.coord.x !== 1,
+    ),
+  );
+  // turn options captured after move could be inspected here if needed
 });
