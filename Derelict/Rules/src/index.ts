@@ -14,7 +14,7 @@ export class BasicRules implements Rules {
   constructor(
     private board: BoardState,
     private onChange?: (state: BoardState) => void,
-    private onStatus?: (info: { turn: number; activePlayer: number }) => void,
+    private onStatus?: (info: { turn: number; activePlayer: number; ap?: number }) => void,
     initialState?: { turn?: number; activePlayer?: number },
   ) {
     if (initialState) {
@@ -27,8 +27,8 @@ export class BasicRules implements Rules {
     return { turn: this.turn, activePlayer: this.activePlayer };
   }
 
-  private emitStatus() {
-    this.onStatus?.({ turn: this.turn, activePlayer: this.activePlayer });
+  private emitStatus(ap?: number) {
+    this.onStatus?.({ turn: this.turn, activePlayer: this.activePlayer, ap });
   }
 
   validate(state: BoardState): void {
@@ -42,6 +42,8 @@ export class BasicRules implements Rules {
     let currentPlayer: Player = this.activePlayer === 1 ? p1 : p2;
     let currentSide: 'marine' | 'alien' = this.activePlayer === 1 ? 'marine' : 'alien';
     let active: TokenInstance | null = null;
+    let apRemaining = 0;
+    let lastMove = false;
     this.emitStatus();
     while (true) {
       const tokens = this.board.tokens.filter((t) =>
@@ -50,20 +52,29 @@ export class BasicRules implements Rules {
       if (tokens.length === 0) return;
       if (!active || !tokens.includes(active) || hasDeactivatedToken(this.board, active.cells[0])) {
         active = null;
+        apRemaining = 0;
+        lastMove = false;
       }
 
       const availableTokens = tokens.filter(
         (t) => !hasDeactivatedToken(this.board, t.cells[0]),
       );
 
-      const actionChoices: Choice[] = [{ type: 'action', action: 'pass' }];
+      const actionChoices: Choice[] = [
+        { type: 'action', action: 'pass', apCost: 0, apRemaining },
+      ];
       if (active) {
-        if (canMoveForward(this.board, active)) {
-          actionChoices.push({
-            type: 'action',
-            action: 'move',
-            coord: forwardCell(active.cells[0], active.rot as Rotation),
-          });
+        const moves = getMoveOptions(this.board, active);
+        for (const mv of moves) {
+          if (apRemaining >= mv.cost) {
+            actionChoices.push({
+              type: 'action',
+              action: 'move',
+              coord: mv.coord,
+              apCost: mv.cost,
+              apRemaining,
+            });
+          }
         }
         for (const cell of forwardAndDiagonalCells(
           active.cells[0],
@@ -84,31 +95,42 @@ export class BasicRules implements Rules {
               )
             ) {
               // blocked open door, cannot close
-            } else {
+            } else if (apRemaining >= 1) {
               actionChoices.push({
                 type: 'action',
                 action: 'door',
                 coord: cell,
+                apCost: 1,
+                apRemaining,
               });
             }
           }
         }
-        actionChoices.push({
-          type: 'action',
-          action: 'turnLeft',
-          coord: active.cells[0],
-        });
-        actionChoices.push({
-          type: 'action',
-          action: 'turnRight',
-          coord: active.cells[0],
-        });
+        const tCost = getTurnCost(active, lastMove);
+        if (apRemaining >= tCost) {
+          actionChoices.push({
+            type: 'action',
+            action: 'turnLeft',
+            coord: active.cells[0],
+            apCost: tCost,
+            apRemaining,
+          });
+          actionChoices.push({
+            type: 'action',
+            action: 'turnRight',
+            coord: active.cells[0],
+            apCost: tCost,
+            apRemaining,
+          });
+        }
         for (const t of availableTokens) {
           if (t !== active) {
             actionChoices.push({
               type: 'action',
               action: 'activate',
               coord: t.cells[0],
+              apCost: 0,
+              apRemaining: initialAp(t),
             });
           }
         }
@@ -118,6 +140,8 @@ export class BasicRules implements Rules {
             type: 'action',
             action: 'activate',
             coord: t.cells[0],
+            apCost: 0,
+            apRemaining: initialAp(t),
           });
         }
       }
@@ -125,21 +149,30 @@ export class BasicRules implements Rules {
       const action = await currentPlayer.choose(actionChoices);
       switch (action.action) {
         case 'move':
-          if (active) {
-            moveForward(active);
+          if (active && action.coord && typeof action.apCost === 'number') {
+            moveToken(active, action.coord);
+            apRemaining -= action.apCost;
+            lastMove = true;
             this.onChange?.(this.board);
+            this.emitStatus(apRemaining);
           }
           break;
         case 'turnLeft':
-          if (active) {
+          if (active && typeof action.apCost === 'number') {
             active.rot = (((active.rot + 270) % 360) as Rotation);
+            apRemaining -= action.apCost;
+            lastMove = false;
             this.onChange?.(this.board);
+            this.emitStatus(apRemaining);
           }
           break;
         case 'turnRight':
-          if (active) {
+          if (active && typeof action.apCost === 'number') {
             active.rot = (((active.rot + 90) % 360) as Rotation);
+            apRemaining -= action.apCost;
+            lastMove = false;
             this.onChange?.(this.board);
+            this.emitStatus(apRemaining);
           }
           break;
         case 'activate': {
@@ -160,19 +193,25 @@ export class BasicRules implements Rules {
               }
             }
             active = target;
+            apRemaining = initialAp(target);
+            lastMove = false;
+            this.emitStatus(apRemaining);
           }
           break;
         }
         case 'door': {
           const cell = action.coord;
-          if (cell) {
+          if (cell && typeof action.apCost === 'number') {
             const doorToken = this.board.tokens.find((t) =>
               t.cells.some((c) => sameCoord(c, cell)) &&
               (t.type === 'door' || t.type === 'dooropen'),
             );
             if (doorToken) {
               doorToken.type = doorToken.type === 'door' ? 'dooropen' : 'door';
+              apRemaining -= action.apCost;
+              lastMove = false;
               this.onChange?.(this.board);
+              this.emitStatus(apRemaining);
             }
           }
           break;
@@ -189,6 +228,8 @@ export class BasicRules implements Rules {
           currentPlayer = currentPlayer === p1 ? p2 : p1;
           currentSide = currentSide === 'marine' ? 'alien' : 'marine';
           active = null;
+          apRemaining = 0;
+          lastMove = false;
           this.emitStatus();
           break;
       }
@@ -215,19 +256,66 @@ function forwardCell(cell: Coord, rot: Rotation): Coord {
   }
 }
 
-function canMoveForward(board: BoardState, token: TokenInstance): boolean {
-  const target = forwardCell(token.cells[0], token.rot as Rotation);
+function backwardCell(cell: Coord, rot: Rotation): Coord {
+  return forwardCell(cell, ((rot + 180) % 360) as Rotation);
+}
+
+function canMoveTo(board: BoardState, target: Coord): boolean {
   const cellType = board.getCellType ? board.getCellType(target) : 1;
-  if (cellType !== 1) return false; // must be corridor
+  if (cellType !== 1) return false;
   const occupied = board.tokens.some(
     (t) => blocksMovement(t) && t.cells.some((c) => sameCoord(c, target)),
   );
-  if (occupied) return false;
-  return true;
+  return !occupied;
 }
 
-function moveForward(token: TokenInstance): void {
-  token.cells = token.cells.map((c) => forwardCell(c, token.rot as Rotation));
+function moveToken(token: TokenInstance, target: Coord): void {
+  const dx = target.x - token.cells[0].x;
+  const dy = target.y - token.cells[0].y;
+  token.cells = token.cells.map((c) => ({ x: c.x + dx, y: c.y + dy }));
+}
+
+function getMoveOptions(board: BoardState, token: TokenInstance): { coord: Coord; cost: number }[] {
+  const rot = token.rot as Rotation;
+  const pos = token.cells[0];
+  const res: { coord: Coord; cost: number }[] = [];
+  const forward = forwardCell(pos, rot);
+  if (canMoveTo(board, forward)) res.push({ coord: forward, cost: 1 });
+  const backward = backwardCell(pos, rot);
+  if (token.type === 'marine') {
+    if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 2 });
+  } else if (token.type === 'alien') {
+    if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 2 });
+  } else if (token.type === 'blip') {
+    if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 1 });
+  }
+  if (token.type === 'alien' || token.type === 'blip') {
+    const left = leftCell(pos, rot);
+    if (canMoveTo(board, left)) res.push({ coord: left, cost: 1 });
+    const right = rightCell(pos, rot);
+    if (canMoveTo(board, right)) res.push({ coord: right, cost: 1 });
+  }
+  return res;
+}
+
+function initialAp(token: TokenInstance): number {
+  switch (token.type) {
+    case 'marine':
+      return 4;
+    case 'alien':
+      return 6;
+    case 'blip':
+      return 6;
+    default:
+      return 0;
+  }
+}
+
+function getTurnCost(token: TokenInstance, lastMove: boolean): number {
+  if (token.type === 'marine') return 1;
+  if (token.type === 'alien') return lastMove ? 0 : 1;
+  if (token.type === 'blip') return 0;
+  return 1;
 }
 
 function forwardAndDiagonalCells(cell: Coord, rot: Rotation): Coord[] {
