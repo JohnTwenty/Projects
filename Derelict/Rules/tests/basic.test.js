@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { BasicRules } from '../dist/src/index.js';
+import { BasicRules, hasLineOfSight, marineHasLineOfSight } from '../dist/src/index.js';
 
 test('marine moves forward when choosing move', async () => {
   const board = {
@@ -155,9 +155,10 @@ test('pass hands control to second player who can move blip', async () => {
     size: 5,
     segments: [],
     tokens: [
-      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 4, y: 4 }] },
       { instanceId: 'B1', type: 'blip', rot: 0, cells: [{ x: 2, y: 2 }] },
     ],
+    getCellType: (c) => (c.x === 3 && c.y === 3 ? 0 : 1),
   };
   const rules = new BasicRules(board);
   rules.validate(board);
@@ -408,4 +409,170 @@ test('alien sideways move and free turn after move', async () => {
     ),
   );
   // turn options captured after move could be inspected here if needed
+});
+
+test('hasLineOfSight respects blockers and diagonal corners', () => {
+  const openBoard = { size: 5, segments: [], tokens: [] };
+  assert.equal(hasLineOfSight(openBoard, { x: 0, y: 0 }, { x: 4, y: 0 }), true);
+
+  const doorBoard = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'D1', type: 'door', rot: 0, cells: [{ x: 2, y: 0 }] },
+    ],
+  };
+  assert.equal(hasLineOfSight(doorBoard, { x: 0, y: 0 }, { x: 4, y: 0 }), false);
+
+  const diagBlocked = {
+    size: 5,
+    segments: [],
+    tokens: [],
+    getCellType: (c) =>
+      (c.x === 1 && c.y === 0) || (c.x === 0 && c.y === 1) ? 0 : 1,
+  };
+  assert.equal(hasLineOfSight(diagBlocked, { x: 0, y: 0 }, { x: 2, y: 2 }), false);
+
+  const diagOpen = {
+    size: 5,
+    segments: [],
+    tokens: [],
+    getCellType: (c) => (c.x === 1 && c.y === 0 ? 0 : 1),
+  };
+  assert.equal(hasLineOfSight(diagOpen, { x: 0, y: 0 }, { x: 2, y: 2 }), true);
+});
+
+test('marineHasLineOfSight limited to forward arc', () => {
+  const board = { size: 5, segments: [], tokens: [] };
+  const marine = { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 2, y: 2 }] };
+  assert.equal(
+    marineHasLineOfSight(board, marine, { x: 2, y: 4 }),
+    true,
+  );
+  assert.equal(
+    marineHasLineOfSight(board, marine, { x: 3, y: 3 }),
+    true,
+  );
+  assert.equal(
+    marineHasLineOfSight(board, marine, { x: 4, y: 2 }),
+    false,
+  );
+  assert.equal(
+    marineHasLineOfSight(board, marine, { x: 2, y: 0 }),
+    false,
+  );
+});
+
+test('blip cannot move into line of sight of marine', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'B1', type: 'blip', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'M1', type: 'marine', rot: 180, cells: [{ x: 0, y: 3 }] },
+    ],
+  };
+  const rules = new BasicRules(board, undefined, undefined, { activePlayer: 2 });
+  rules.validate(board);
+
+  let calls = 0;
+  let moveOptions;
+  const p1 = { choose: async () => ({ type: 'action', action: 'pass' }) };
+  const p2 = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find(
+          (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 0,
+        );
+      }
+      moveOptions = options;
+      board.tokens = [];
+      return options.find((o) => o.action === 'pass');
+    },
+  };
+
+  await rules.runGame(p1, p2);
+
+  assert.ok(
+    !moveOptions.some(
+      (o) => o.action === 'move' && o.coord?.x === 0 && o.coord?.y === 1,
+    ),
+  );
+});
+
+test('blip can move outside marine field of view', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'B1', type: 'blip', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 3 }] },
+    ],
+  };
+  const rules = new BasicRules(board, undefined, undefined, { activePlayer: 2 });
+  rules.validate(board);
+
+  let calls = 0;
+  let moveOptions;
+  const p1 = { choose: async () => ({ type: 'action', action: 'pass' }) };
+  const p2 = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find(
+          (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 0,
+        );
+      }
+      moveOptions = options;
+      board.tokens = [];
+      return options.find((o) => o.action === 'pass');
+    },
+  };
+
+  await rules.runGame(p1, p2);
+
+  assert.ok(
+    moveOptions.some(
+      (o) => o.action === 'move' && o.coord?.x === 0 && o.coord?.y === 1,
+    ),
+  );
+});
+
+test('blip cannot move adjacent to marine', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'B1', type: 'blip', rot: 0, cells: [{ x: 0, y: 1 }] },
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 2, y: 2 }] },
+    ],
+  };
+  const rules = new BasicRules(board, undefined, undefined, { activePlayer: 2 });
+  rules.validate(board);
+
+  let calls = 0;
+  let moveOptions;
+  const p1 = { choose: async () => ({ type: 'action', action: 'pass' }) };
+  const p2 = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find(
+          (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 1,
+        );
+      }
+      moveOptions = options;
+      board.tokens = [];
+      return options.find((o) => o.action === 'pass');
+    },
+  };
+
+  await rules.runGame(p1, p2);
+
+  assert.ok(
+    !moveOptions.some(
+      (o) => o.action === 'move' && o.coord?.x === 1 && o.coord?.y === 1,
+    ),
+  );
 });

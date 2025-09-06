@@ -241,6 +241,10 @@ function sameCoord(a: Coord, b: Coord): boolean {
   return a.x === b.x && a.y === b.y;
 }
 
+function isAdjacent(a: Coord, b: Coord): boolean {
+  return Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1;
+}
+
 function forwardCell(cell: Coord, rot: Rotation): Coord {
   switch (rot) {
     case 0:
@@ -278,7 +282,7 @@ function moveToken(token: TokenInstance, target: Coord): void {
 function getMoveOptions(board: BoardState, token: TokenInstance): { coord: Coord; cost: number }[] {
   const rot = token.rot as Rotation;
   const pos = token.cells[0];
-  const res: { coord: Coord; cost: number }[] = [];
+  let res: { coord: Coord; cost: number }[] = [];
   const forward = forwardCell(pos, rot);
   if (canMoveTo(board, forward)) res.push({ coord: forward, cost: 1 });
   const backward = backwardCell(pos, rot);
@@ -294,6 +298,17 @@ function getMoveOptions(board: BoardState, token: TokenInstance): { coord: Coord
     if (canMoveTo(board, left)) res.push({ coord: left, cost: 1 });
     const right = rightCell(pos, rot);
     if (canMoveTo(board, right)) res.push({ coord: right, cost: 1 });
+  }
+  if (token.type === 'blip') {
+    const marines = board.tokens.filter((t) => t.type === 'marine');
+    res = res.filter(
+      (mv) =>
+        !marines.some(
+          (m) =>
+            isAdjacent(m.cells[0], mv.coord) ||
+            marineHasLineOfSight(board, m, mv.coord, [token]),
+        ),
+    );
   }
   return res;
 }
@@ -367,4 +382,102 @@ function hasDeactivatedToken(board: BoardState, coord: Coord): boolean {
   return board.tokens.some(
     (t) => t.type === 'deactivated' && t.cells.some((c) => sameCoord(c, coord)),
   );
+}
+
+export function hasLineOfSight(
+  board: BoardState,
+  from: Coord,
+  to: Coord,
+  ignore: TokenInstance[] = [],
+): boolean {
+  let x0 = from.x;
+  let y0 = from.y;
+  const x1 = to.x;
+  const y1 = to.y;
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  let x = x0;
+  let y = y0;
+  while (x !== x1 || y !== y1) {
+    const prevX = x;
+    const prevY = y;
+    const e2 = err * 2;
+    let movedX = false;
+    let movedY = false;
+    if (e2 > -dy) {
+      err -= dy;
+      x += sx;
+      movedX = true;
+    }
+    if (e2 < dx) {
+      err += dx;
+      y += sy;
+      movedY = true;
+    }
+    const current = { x, y };
+    if (!(x === x1 && y === y1) && isObstructed(board, current, ignore)) return false;
+    if (movedX && movedY) {
+      const c1 = { x, y: prevY };
+      const c2 = { x: prevX, y };
+      if (isObstructed(board, c1, ignore) && isObstructed(board, c2, ignore)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function isObstructed(
+  board: BoardState,
+  coord: Coord,
+  ignore: TokenInstance[],
+): boolean {
+  const cellType = board.getCellType ? board.getCellType(coord) : 1;
+  if (cellType !== 1) return true;
+  return board.tokens.some(
+    (t) => !ignore.includes(t) && blocksSight(t) && t.cells.some((c) => sameCoord(c, coord)),
+  );
+}
+
+function blocksSight(t: TokenInstance): boolean {
+  return t.type === 'door' || t.type === 'marine' || t.type === 'alien' || t.type === 'blip';
+}
+
+function rotVector(rot: Rotation): { x: number; y: number } {
+  switch (rot) {
+    case 0:
+      return { x: 0, y: 1 };
+    case 90:
+      return { x: -1, y: 0 };
+    case 180:
+      return { x: 0, y: -1 };
+    case 270:
+      return { x: 1, y: 0 };
+    default:
+      return { x: 0, y: 0 };
+  }
+}
+
+function withinFov(from: Coord, rot: Rotation, to: Coord): boolean {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (dx === 0 && dy === 0) return true;
+  const f = rotVector(rot);
+  const dot = dx * f.x + dy * f.y;
+  if (dot <= 0) return false;
+  const dist2 = dx * dx + dy * dy;
+  return dot * dot >= dist2 / 2;
+}
+
+export function marineHasLineOfSight(
+  board: BoardState,
+  marine: TokenInstance,
+  to: Coord,
+  ignore: TokenInstance[] = [],
+): boolean {
+  if (!withinFov(marine.cells[0], marine.rot as Rotation, to)) return false;
+  return hasLineOfSight(board, marine.cells[0], to, ignore);
 }
