@@ -481,43 +481,45 @@ test('marineHasLineOfSight limited to forward arc', () => {
   );
 });
 
-test('blip cannot move into line of sight of marine', async () => {
-  const board = {
-    size: 5,
-    segments: [],
-    tokens: [
-      { instanceId: 'B1', type: 'blip', rot: 0, cells: [{ x: 0, y: 0 }] },
-      { instanceId: 'M1', type: 'marine', rot: 180, cells: [{ x: 0, y: 3 }] },
-    ],
-  };
-  const rules = new BasicRules(board, undefined, undefined, { activePlayer: 2 });
-  rules.validate(board);
+for (const blipType of ['blip', 'blip_2', 'blip_3']) {
+  test(`${blipType} cannot move into line of sight of marine`, async () => {
+    const board = {
+      size: 5,
+      segments: [],
+      tokens: [
+        { instanceId: 'B1', type: blipType, rot: 0, cells: [{ x: 0, y: 0 }] },
+        { instanceId: 'M1', type: 'marine', rot: 180, cells: [{ x: 0, y: 3 }] },
+      ],
+    };
+    const rules = new BasicRules(board, undefined, undefined, { activePlayer: 2 });
+    rules.validate(board);
 
-  let calls = 0;
-  let moveOptions;
-  const p1 = { choose: async () => ({ type: 'action', action: 'pass' }) };
-  const p2 = {
-    choose: async (options) => {
-      calls++;
-      if (calls === 1) {
-        return options.find(
-          (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 0,
-        );
-      }
-      moveOptions = options;
-      board.tokens = [];
-      return options.find((o) => o.action === 'pass');
-    },
-  };
+    let calls = 0;
+    let moveOptions;
+    const p1 = { choose: async () => ({ type: 'action', action: 'pass' }) };
+    const p2 = {
+      choose: async (options) => {
+        calls++;
+        if (calls === 1) {
+          return options.find(
+            (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 0,
+          );
+        }
+        moveOptions = options;
+        board.tokens = [];
+        return options.find((o) => o.action === 'pass');
+      },
+    };
 
-  await rules.runGame(p1, p2);
+    await rules.runGame(p1, p2);
 
-  assert.ok(
-    !moveOptions.some(
-      (o) => o.action === 'move' && o.coord?.x === 0 && o.coord?.y === 1,
-    ),
-  );
-});
+    assert.ok(
+      !moveOptions.some(
+        (o) => o.action === 'move' && o.coord?.x === 0 && o.coord?.y === 1,
+      ),
+    );
+  });
+}
 
 test('blip can move outside marine field of view', async () => {
   const board = {
@@ -628,19 +630,21 @@ test('getMoveOptions adds diagonal moves for alien', () => {
   assert.ok(coords.includes('3,1:2'));
 });
 
-test('getMoveOptions adds diagonal moves for blip', () => {
-  const board = {
-    size: 5,
-    segments: [],
-    tokens: [
-      { instanceId: 'B1', type: 'blip', rot: 0, cells: [{ x: 1, y: 2 }] },
-      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 4, y: 4 }] },
-    ],
-  };
-  const moves = getMoveOptions(board, board.tokens[0]);
-  const coords = moves.map((m) => `${m.coord.x},${m.coord.y}:${m.cost}`);
-  assert.ok(coords.includes('0,3:1'));
-  assert.ok(coords.includes('2,3:1'));
-  assert.ok(coords.includes('0,1:1'));
-  assert.ok(coords.includes('2,1:1'));
-});
+for (const blipType of ['blip', 'blip_2', 'blip_3']) {
+  test(`getMoveOptions adds diagonal moves for ${blipType}`, () => {
+    const board = {
+      size: 5,
+      segments: [],
+      tokens: [
+        { instanceId: 'B1', type: blipType, rot: 0, cells: [{ x: 1, y: 2 }] },
+        { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 4, y: 4 }] },
+      ],
+    };
+    const moves = getMoveOptions(board, board.tokens[0]);
+    const coords = moves.map((m) => `${m.coord.x},${m.coord.y}:${m.cost}`);
+    assert.ok(coords.includes('0,3:1'));
+    assert.ok(coords.includes('2,3:1'));
+    assert.ok(coords.includes('0,1:1'));
+    assert.ok(coords.includes('2,1:1'));
+  });
+}
