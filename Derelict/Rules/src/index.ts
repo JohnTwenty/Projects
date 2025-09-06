@@ -279,19 +279,31 @@ function moveToken(token: TokenInstance, target: Coord): void {
   token.cells = token.cells.map((c) => ({ x: c.x + dx, y: c.y + dy }));
 }
 
-function getMoveOptions(board: BoardState, token: TokenInstance): { coord: Coord; cost: number }[] {
+export function getMoveOptions(board: BoardState, token: TokenInstance): { coord: Coord; cost: number }[] {
   const rot = token.rot as Rotation;
   const pos = token.cells[0];
   let res: { coord: Coord; cost: number }[] = [];
   const forward = forwardCell(pos, rot);
+  const forwardLeft = leftCell(forward, rot);
+  const forwardRight = rightCell(forward, rot);
   if (canMoveTo(board, forward)) res.push({ coord: forward, cost: 1 });
+  if (canMoveTo(board, forwardLeft)) res.push({ coord: forwardLeft, cost: 1 });
+  if (canMoveTo(board, forwardRight)) res.push({ coord: forwardRight, cost: 1 });
   const backward = backwardCell(pos, rot);
+  const backwardLeft = leftCell(backward, rot);
+  const backwardRight = rightCell(backward, rot);
   if (token.type === 'marine') {
     if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 2 });
+    if (canMoveTo(board, backwardLeft)) res.push({ coord: backwardLeft, cost: 2 });
+    if (canMoveTo(board, backwardRight)) res.push({ coord: backwardRight, cost: 2 });
   } else if (token.type === 'alien') {
     if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 2 });
+    if (canMoveTo(board, backwardLeft)) res.push({ coord: backwardLeft, cost: 2 });
+    if (canMoveTo(board, backwardRight)) res.push({ coord: backwardRight, cost: 2 });
   } else if (token.type === 'blip') {
     if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 1 });
+    if (canMoveTo(board, backwardLeft)) res.push({ coord: backwardLeft, cost: 1 });
+    if (canMoveTo(board, backwardRight)) res.push({ coord: backwardRight, cost: 1 });
   }
   if (token.type === 'alien' || token.type === 'blip') {
     const left = leftCell(pos, rot);

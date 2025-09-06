@@ -14,7 +14,7 @@ Initially the rules of the game are very simple; all this is implemented in the 
 
 * The first player controls the marines while the second player controls the aliens and blips.  For the time being, aliens and blips have the same action choices available as marines.
 * The first player must select a cell on the board with a marine in it to activate the marine, or pass, which yields control to the other player.  If there are no marines on the board that can be selected, the game is lost and runGame() exits.
-* Once a marine, alien, or blip is selected, the controlling player may choose to move one cell forward (in the direction the token is facing) assuming this cell is a corridor and does not contain a marine, alien, or blip, or turn left, or turn right, or select a different token of the same side to activate it.
+* Once a marine, alien, or blip is selected, the controlling player may choose to move one cell forward (in the direction the token is facing), move one cell diagonally forward, move one cell backward, or move one cell diagonally backward (each subject to the appropriate AP cost) assuming the destination cell is a corridor and does not contain a marine, alien, or blip, or turn left, or turn right, or select a different token of the same side to activate it.
 * Marines, blips and aliens all block movement for each other.
 * This selection and movement can continue indefinitely.  At any time, the active player may also choose a "pass" action which ends their activation and hands control to the other player.
 
@@ -49,6 +49,8 @@ The following table lists all the different actions (choices) that are available
 | assault       | 1           | 1         | -        |       |
 | move forward  | 1           | 1         | 1        |       |
 | move backward | 2           | 2         | 1        |       |
+| move forward diagonal | 1 | 1 | 1 | Moves one cell forward-left or forward-right. |
+| move backward diagonal | 2 | 2 | 1 | Moves one cell backward-left or backward-right. |
 | move sideways | -           | 1         | 1        |       |
 | door open     | 1           | 1         | 1        |       |
 | door close    | 1           | 1         | 1        |       |
