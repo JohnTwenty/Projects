@@ -105,6 +105,7 @@ A keyboard key accelerator listed in the Key column has the same effect as click
 | unjam         | clear jam	 | u	 | none		       | none            | on jam token; this could be rename of shoot button rather than distinct weapon |
 | overwatch     | overwatch  | o	 | none	           | none            | ends activation	|
 | guard	        | guard	     | g	 | none	           | none            | ends activation 	|
+| reveal        | reveal     | v	 | none	           | none            | ends activation 	|
 | pass	        | pass	     | p	 | none	           | none            | ends activation; hands control to the other player |
 
 When a highlighted cell is hovered over (or tapped on a touch device) will show the AP cost of the action in the status region.  Tap devices may need an additional confirm button to tap.
