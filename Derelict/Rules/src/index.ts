@@ -47,7 +47,7 @@ export class BasicRules implements Rules {
     this.emitStatus();
     while (true) {
       const tokens = this.board.tokens.filter((t) =>
-        currentSide === 'marine' ? t.type === 'marine' : t.type === 'alien' || t.type === 'blip',
+        currentSide === 'marine' ? t.type === 'marine' : t.type === 'alien' || isBlip(t),
       );
       if (tokens.length === 0) return;
       if (!active || !tokens.includes(active) || hasDeactivatedToken(this.board, active.cells[0])) {
@@ -300,18 +300,18 @@ export function getMoveOptions(board: BoardState, token: TokenInstance): { coord
     if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 2 });
     if (canMoveTo(board, backwardLeft)) res.push({ coord: backwardLeft, cost: 2 });
     if (canMoveTo(board, backwardRight)) res.push({ coord: backwardRight, cost: 2 });
-  } else if (token.type === 'blip') {
+  } else if (isBlip(token)) {
     if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 1 });
     if (canMoveTo(board, backwardLeft)) res.push({ coord: backwardLeft, cost: 1 });
     if (canMoveTo(board, backwardRight)) res.push({ coord: backwardRight, cost: 1 });
   }
-  if (token.type === 'alien' || token.type === 'blip') {
+  if (token.type === 'alien' || isBlip(token)) {
     const left = leftCell(pos, rot);
     if (canMoveTo(board, left)) res.push({ coord: left, cost: 1 });
     const right = rightCell(pos, rot);
     if (canMoveTo(board, right)) res.push({ coord: right, cost: 1 });
   }
-  if (token.type === 'blip') {
+  if (isBlip(token)) {
     const marines = board.tokens.filter((t) => t.type === 'marine');
     res = res.filter(
       (mv) =>
@@ -326,22 +326,15 @@ export function getMoveOptions(board: BoardState, token: TokenInstance): { coord
 }
 
 function initialAp(token: TokenInstance): number {
-  switch (token.type) {
-    case 'marine':
-      return 4;
-    case 'alien':
-      return 6;
-    case 'blip':
-      return 6;
-    default:
-      return 0;
-  }
+  if (token.type === 'marine') return 4;
+  if (token.type === 'alien' || isBlip(token)) return 6;
+  return 0;
 }
 
 function getTurnCost(token: TokenInstance, lastMove: boolean): number {
   if (token.type === 'marine') return 1;
   if (token.type === 'alien') return lastMove ? 0 : 1;
-  if (token.type === 'blip') return 0;
+  if (isBlip(token)) return 0;
   return 1;
 }
 
@@ -382,8 +375,12 @@ function rightCell(cell: Coord, rot: Rotation): Coord {
   }
 }
 
+function isBlip(t: { type: string }): boolean {
+  return t.type.startsWith('blip');
+}
+
 function isUnit(t: { type: string }): boolean {
-  return t.type === 'marine' || t.type === 'alien' || t.type === 'blip';
+  return t.type === 'marine' || t.type === 'alien' || isBlip(t);
 }
 
 function blocksMovement(t: TokenInstance): boolean {
@@ -467,7 +464,7 @@ function isObstructed(
 }
 
 function blocksSight(t: TokenInstance): boolean {
-  return t.type === 'door' || t.type === 'marine' || t.type === 'alien' || t.type === 'blip';
+  return t.type === 'door' || t.type === 'marine' || t.type === 'alien' || isBlip(t);
 }
 
 function rotVector(rot: Rotation): { x: number; y: number } {
