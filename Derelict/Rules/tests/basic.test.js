@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { BasicRules, hasLineOfSight, marineHasLineOfSight } from '../dist/src/index.js';
+import { BasicRules, hasLineOfSight, marineHasLineOfSight, getMoveOptions } from '../dist/src/index.js';
 
 test('marine moves forward when choosing move', async () => {
   const board = {
@@ -593,4 +593,54 @@ test('blip cannot move adjacent to marine', async () => {
       (o) => o.action === 'move' && o.coord?.x === 1 && o.coord?.y === 1,
     ),
   );
+});
+
+test('getMoveOptions adds diagonal moves for marine', () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 2, y: 2 }] },
+    ],
+  };
+  const moves = getMoveOptions(board, board.tokens[0]);
+  const coords = moves.map((m) => `${m.coord.x},${m.coord.y}:${m.cost}`);
+  assert.ok(coords.includes('1,3:1'));
+  assert.ok(coords.includes('3,3:1'));
+  assert.ok(coords.includes('1,1:2'));
+  assert.ok(coords.includes('3,1:2'));
+});
+
+test('getMoveOptions adds diagonal moves for alien', () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 2, y: 2 }] },
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+    ],
+  };
+  const moves = getMoveOptions(board, board.tokens[0]);
+  const coords = moves.map((m) => `${m.coord.x},${m.coord.y}:${m.cost}`);
+  assert.ok(coords.includes('1,3:1'));
+  assert.ok(coords.includes('3,3:1'));
+  assert.ok(coords.includes('1,1:2'));
+  assert.ok(coords.includes('3,1:2'));
+});
+
+test('getMoveOptions adds diagonal moves for blip', () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'B1', type: 'blip', rot: 0, cells: [{ x: 1, y: 2 }] },
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 4, y: 4 }] },
+    ],
+  };
+  const moves = getMoveOptions(board, board.tokens[0]);
+  const coords = moves.map((m) => `${m.coord.x},${m.coord.y}:${m.cost}`);
+  assert.ok(coords.includes('0,3:1'));
+  assert.ok(coords.includes('2,3:1'));
+  assert.ok(coords.includes('0,1:1'));
+  assert.ok(coords.includes('2,1:1'));
 });
