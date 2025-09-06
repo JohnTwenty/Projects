@@ -384,7 +384,7 @@ function hasDeactivatedToken(board: BoardState, coord: Coord): boolean {
   );
 }
 
-export function hasLineOfSight(
+function hasLineOfSightOneWay(
   board: BoardState,
   from: Coord,
   to: Coord,
@@ -428,6 +428,18 @@ export function hasLineOfSight(
     }
   }
   return true;
+}
+
+export function hasLineOfSight(
+  board: BoardState,
+  from: Coord,
+  to: Coord,
+  ignore: TokenInstance[] = [],
+): boolean {
+  return (
+    hasLineOfSightOneWay(board, from, to, ignore) &&
+    hasLineOfSightOneWay(board, to, from, ignore)
+  );
 }
 
 function isObstructed(

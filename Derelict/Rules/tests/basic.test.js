@@ -442,6 +442,24 @@ test('hasLineOfSight respects blockers and diagonal corners', () => {
   assert.equal(hasLineOfSight(diagOpen, { x: 0, y: 0 }, { x: 2, y: 2 }), true);
 });
 
+test('hasLineOfSight is symmetric', () => {
+  const a = { x: 0, y: 0 };
+  const b = { x: 2, y: 1 };
+
+  const openBoard = { size: 5, segments: [], tokens: [] };
+  assert.equal(hasLineOfSight(openBoard, a, b), true);
+  assert.equal(hasLineOfSight(openBoard, b, a), true);
+
+  const blockedBoard = {
+    size: 5,
+    segments: [],
+    tokens: [],
+    getCellType: (c) => (c.x === 1 && c.y === 1 ? 0 : 1),
+  };
+  assert.equal(hasLineOfSight(blockedBoard, a, b), false);
+  assert.equal(hasLineOfSight(blockedBoard, b, a), false);
+});
+
 test('marineHasLineOfSight limited to forward arc', () => {
   const board = { size: 5, segments: [], tokens: [] };
   const marine = { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 2, y: 2 }] };

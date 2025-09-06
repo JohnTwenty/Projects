@@ -5,7 +5,8 @@ algorithm between them is free of obstructions. A cell is obstructed if it is no
 corridor cell or contains a blocking token such as a closed door, marine, alien or
 blip. When the line steps diagonally between two cells, at least one of the two
 adjacent off-diagonal cells must also be unobstructed; otherwise line of sight is
-blocked.
+blocked. The check is performed in both directions and line of sight exists only
+if both paths are unobstructed.
 
 Marine Field of View
 --------------------
