@@ -17,6 +17,8 @@ export interface ChooseUI {
     turnLeft: HTMLButtonElement;
     turnRight: HTMLButtonElement;
     manipulate: HTMLButtonElement;
+    reveal: HTMLButtonElement;
+    deploy: HTMLButtonElement;
     pass: HTMLButtonElement;
   };
 }
@@ -51,13 +53,15 @@ export class Game implements GameApi {
       buttons.turnRight.textContent = 'Turn (R)ight';
       buttons.turnLeft.style.color = '';
       buttons.turnRight.style.color = '';
+      buttons.reveal.textContent = '(V)reveal';
+      buttons.deploy.textContent = '(D)eploy';
 
-      const overlays: { el: HTMLElement; type: 'activate' | 'move' | 'door' | 'turn' }[] = [];
+      const overlays: { el: HTMLElement; type: 'activate' | 'move' | 'door' | 'turn' | 'deploy' }[] = [];
 
       const addOverlay = (
         coord: Coord,
         color: string,
-        type: 'activate' | 'move' | 'door',
+        type: 'activate' | 'move' | 'door' | 'deploy',
         onClick?: () => void,
         apCost?: number,
       ) => {
@@ -125,6 +129,12 @@ export class Game implements GameApi {
             resolve(opt);
           });
         }
+        if (opt.type === 'action' && opt.action === 'deploy' && opt.coord) {
+          addOverlay(opt.coord, 'green', 'deploy', () => {
+            cleanup();
+            resolve(opt);
+          });
+        }
       }
 
       // Highlight cells that can be activated. The rules already
@@ -160,8 +170,10 @@ export class Game implements GameApi {
         buttons.turnRight.style.color = rightOpt.apCost === 0 ? 'green' : '';
       }
 
-      let filter: 'activate' | 'move' | 'door' | null = null;
-      const setFilter = (f: 'activate' | 'move' | 'door' | null) => {
+      let filter: 'activate' | 'move' | 'door' | 'deploy' | null = null;
+      const setFilter = (
+        f: 'activate' | 'move' | 'door' | 'deploy' | null,
+      ) => {
         filter = f;
         for (const o of overlays) {
           o.el.style.display =
@@ -170,6 +182,7 @@ export class Game implements GameApi {
         buttons.activate.classList.toggle('active', filter === 'activate');
         buttons.move.classList.toggle('active', filter === 'move');
         buttons.manipulate.classList.toggle('active', filter === 'door');
+        buttons.deploy.classList.toggle('active', filter === 'deploy');
       };
 
       function onActivate() {
@@ -183,6 +196,20 @@ export class Game implements GameApi {
       function onManipulate() {
         if (buttons.manipulate.disabled) return;
         setFilter(filter === 'door' ? null : 'door');
+      }
+      function onReveal() {
+        if (buttons.reveal.disabled) return;
+        const opt = options.find(
+          (o) => o.type === 'action' && o.action === 'reveal',
+        );
+        if (opt) {
+          cleanup();
+          resolve(opt);
+        }
+      }
+      function onDeploy() {
+        if (buttons.deploy.disabled) return;
+        setFilter(filter === 'deploy' ? null : 'deploy');
       }
       function onTurnLeft() {
         if (buttons.turnLeft.disabled) return;
@@ -228,6 +255,8 @@ export class Game implements GameApi {
         buttons.activate.removeEventListener('click', onActivate);
         buttons.move.removeEventListener('click', onMove);
         buttons.manipulate.removeEventListener('click', onManipulate);
+        buttons.reveal.removeEventListener('click', onReveal);
+        buttons.deploy.removeEventListener('click', onDeploy);
         buttons.turnLeft.removeEventListener('click', onTurnLeft);
         buttons.turnRight.removeEventListener('click', onTurnRight);
         buttons.pass.removeEventListener('click', onPass);
@@ -237,6 +266,7 @@ export class Game implements GameApi {
         buttons.activate.classList.remove('active');
         buttons.move.classList.remove('active');
         buttons.manipulate.classList.remove('active');
+        buttons.deploy.classList.remove('active');
         buttons.move.textContent = '(M)ove';
         buttons.manipulate.textContent = '(E)manipulate';
         buttons.turnLeft.textContent = 'Turn (L)eft';
@@ -248,6 +278,8 @@ export class Game implements GameApi {
       buttons.activate.addEventListener('click', onActivate);
       buttons.move.addEventListener('click', onMove);
       buttons.manipulate.addEventListener('click', onManipulate);
+      buttons.reveal.addEventListener('click', onReveal);
+      buttons.deploy.addEventListener('click', onDeploy);
       buttons.turnLeft.addEventListener('click', onTurnLeft);
       buttons.turnRight.addEventListener('click', onTurnRight);
       buttons.pass.addEventListener('click', onPass);
@@ -256,6 +288,8 @@ export class Game implements GameApi {
         n: onActivate,
         m: onMove,
         e: onManipulate,
+        v: onReveal,
+        d: onDeploy,
         l: onTurnLeft,
         r: onTurnRight,
         p: onPass,
@@ -286,6 +320,12 @@ export class Game implements GameApi {
       );
       buttons.turnRight.disabled = !options.some(
         (o) => o.type === 'action' && o.action === 'turnRight',
+      );
+      buttons.reveal.disabled = !options.some(
+        (o) => o.type === 'action' && o.action === 'reveal',
+      );
+      buttons.deploy.disabled = !options.some(
+        (o) => o.type === 'action' && o.action === 'deploy',
       );
       buttons.pass.disabled = !options.some(
         (o) => o.type === 'action' && o.action === 'pass',

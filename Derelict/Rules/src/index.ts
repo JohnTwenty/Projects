@@ -9,6 +9,7 @@ export interface Rules {
 // Basic rules implementation allowing a marine to move forward one cell
 export class BasicRules implements Rules {
   private nextDeactId = 1;
+  private nextAlienId = 1;
   private turn = 1;
   private activePlayer = 1;
   constructor(
@@ -123,6 +124,18 @@ export class BasicRules implements Rules {
             apRemaining,
           });
         }
+        if (
+          isBlip(active) &&
+          apRemaining >= 6 &&
+          this.board.tokens.filter((t) => t.type === 'alien').length < 22
+        ) {
+          actionChoices.push({
+            type: 'action',
+            action: 'reveal',
+            apCost: 6,
+            apRemaining,
+          });
+        }
         for (const t of availableTokens) {
           if (t !== active) {
             actionChoices.push({
@@ -172,6 +185,50 @@ export class BasicRules implements Rules {
             apRemaining -= action.apCost;
             lastMove = false;
             this.onChange?.(this.board);
+            this.emitStatus(apRemaining);
+          }
+          break;
+        case 'reveal':
+          if (active && isBlip(active) && typeof action.apCost === 'number') {
+            apRemaining -= action.apCost;
+            const blipType = active.type;
+            const existingAliens = this.board.tokens.filter(
+              (t) => t.type === 'alien',
+            ).length;
+            const maxTotal = Math.min(
+              blipType === 'blip'
+                ? 1
+                : blipType === 'blip_2'
+                ? 2
+                : 3,
+              22 - existingAliens,
+            );
+            active.type = 'alien';
+            this.onChange?.(this.board);
+            for (let i = 1; i < maxTotal; i++) {
+              const deployCells = getDeployCells(this.board, active.cells[0]);
+              if (deployCells.length === 0) break;
+              const choice = await currentPlayer.choose(
+                deployCells.map((c) => ({
+                  type: 'action',
+                  action: 'deploy',
+                  coord: c,
+                  apCost: 0,
+                  apRemaining,
+                })),
+              );
+              if (choice.coord) {
+                this.board.tokens.push({
+                  instanceId: `alien-${this.nextAlienId++}`,
+                  type: 'alien',
+                  rot: active.rot,
+                  cells: [{ ...choice.coord }],
+                });
+                this.onChange?.(this.board);
+              }
+            }
+            active = null;
+            lastMove = false;
             this.emitStatus(apRemaining);
           }
           break;
@@ -321,6 +378,28 @@ export function getMoveOptions(board: BoardState, token: TokenInstance): { coord
             marineHasLineOfSight(board, m, mv.coord, [token]),
         ),
     );
+  }
+  return res;
+}
+
+function getDeployCells(board: BoardState, origin: Coord): Coord[] {
+  const res: Coord[] = [];
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      if (dx === 0 && dy === 0) continue;
+      const c = { x: origin.x + dx, y: origin.y + dy };
+      const cellType = board.getCellType ? board.getCellType(c) : 1;
+      if (cellType !== 1) continue;
+      if (
+        board.tokens.some(
+          (t) => blocksMovement(t) && t.cells.some((cc) => sameCoord(cc, c)),
+        )
+      )
+        continue;
+      const marines = board.tokens.filter((t) => t.type === 'marine');
+      if (marines.some((m) => marineHasLineOfSight(board, m, c))) continue;
+      res.push(c);
+    }
   }
   return res;
 }

@@ -648,3 +648,46 @@ for (const blipType of ['blip', 'blip_2', 'blip_3']) {
     assert.ok(coords.includes('2,1:1'));
   });
 }
+
+test('blip reveal spawns aliens', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'B1', type: 'blip_2', rot: 0, cells: [{ x: 1, y: 1 }] },
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 4, y: 4 }] },
+    ],
+  };
+  const rules = new BasicRules(board, undefined, undefined, { activePlayer: 2 });
+  rules.validate(board);
+
+  let calls = 0;
+  let final;
+  const p1 = { choose: async () => ({ type: 'action', action: 'pass' }) };
+  const p2 = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (calls === 2) {
+        return options.find((o) => o.action === 'reveal');
+      }
+      if (calls === 3) {
+        return options.find(
+          (o) => o.action === 'deploy' && o.coord?.x === 2 && o.coord?.y === 1,
+        );
+      }
+      final = board.tokens.map((t) => ({ type: t.type, cell: { ...t.cells[0] } }));
+      board.tokens = [];
+      return options.find((o) => o.action === 'pass');
+    },
+  };
+
+  await rules.runGame(p1, p2);
+
+  const aliens = final.filter((t) => t.type === 'alien');
+  assert.equal(aliens.length, 2);
+  assert.ok(aliens.some((t) => t.cell.x === 1 && t.cell.y === 1));
+  assert.ok(aliens.some((t) => t.cell.x === 2 && t.cell.y === 1));
+});
