@@ -47,10 +47,8 @@ The following table lists all the different actions (choices) that are available
 | activate ally | 0           | 0         | 0        |  Generally first action in a turn when no unit has yet been activated. When a unit has been activated, activating the next unit forfeits all remaining action points of the current unit.     |
 | shoot         | 1 or 0      | -         | -        |  Cost for marines is 0 when performed immediately following a move or turn action; else 1. |
 | assault       | 1           | 1         | -        |       |
-| move forward  | 1           | 1         | 1        |       |
-| move backward | 2           | 2         | 1        |       |
-| move forward diagonal | 1 | 1 | 1 | Moves one cell forward-left or forward-right. |
-| move backward diagonal | 2 | 2 | 1 | Moves one cell backward-left or backward-right. |
+| move forward  | 1           | 1         | 1        |  Moves one cell forward, forward-left or forward-right.     |
+| move backward | 2           | 2         | 1        |  Moves one cell backward, backward-left or backward-right.     |
 | move sideways | -           | 1         | 1        |       |
 | door open     | 1           | 1         | 1        |       |
 | door close    | 1           | 1         | 1        |       |
@@ -59,6 +57,30 @@ The following table lists all the different actions (choices) that are available
 | unjam         | 1           | -         | -        |       |
 | overwatch     | 2           | -         | -        |       |
 | guard	        | 2           | -         | -        |       |
+| reveal        | -           | -         | 6        | Voluntary conversion to alien(s). |
 | pass turn     | 0           | 0         | 0        | Concludes the active player's turn.      |
 
 
+## Line of Sight
+
+Line of sight between two cells exists when every cell touched by the Bresenham line
+algorithm between them is free of obstructions. A cell is obstructed if it is not a
+corridor cell or contains a blocking token such as a closed door, marine, alien or
+blip. When the line steps diagonally between two cells, at least one of the two
+adjacent off-diagonal cells must also be unobstructed; otherwise line of sight is
+blocked. The check is performed in both directions and line of sight exists only
+if both paths are unobstructed.
+
+## Marine Field of View
+
+Marines can only see within a 90-degree arc centered on their facing direction.
+Cells outside this field of view are never considered visible to the marine,
+even if unobstructed.
+
+## Blip Movement Restriction
+
+Blips may not move into any cell that has line of sight to a cell containing a
+marine. This uses the marine's field of view and line-of-sight rules above.
+Blips also cannot move into any of the eight cells directly adjacent to a
+marine, regardless of visibility. The rules filter available blip movement
+options to enforce these restrictions.
