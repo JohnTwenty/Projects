@@ -77,6 +77,11 @@ Marines can only see within a 90-degree arc centered on their facing direction.
 Cells outside this field of view are never considered visible to the marine,
 even if unobstructed.
 
+## Cells visible to a Marine
+
+A cell is said to be visible to a marine if it is both within the field of view of the 
+marine and there is a line of sight between the cell and the marine.
+
 ## Blip Movement Restriction
 
 Blips may not move into any cell that has line of sight to a cell containing a
@@ -84,3 +89,15 @@ marine. This uses the marine's field of view and line-of-sight rules above.
 Blips also cannot move into any of the eight cells directly adjacent to a
 marine, regardless of visibility. The rules filter available blip movement
 options to enforce these restrictions.
+
+## Voluntary Conversion of Blips
+
+The second player controlling aliens and blips may decide to reveal an activated blip, which costs the entire 6 AP budget of the blip.  
+Blips are represented using "blip", "blip_2" or "blip_3" tokens.  The regular "blip" token transforms into a single alien, "blip_2" transforms into two aliens, and "blip_3" transforms into three aliens.
+The first alien is placed on the cell that the blip was occupying.  The one or two additional aliens when available may be placed by the alien player in any empty cell adjacent to first alien that is not visible to any marine.
+If there are insufficient cells meeting this condition for placement, the additional aliens that cannot be placed are forfeited. Aliens are also forfeited if placing them would increase the number of aliens on the board above 22.
+
+When a player choses the reveal action for a blip, the first alien is immediately converted.
+If there is a second aliens to be placed, the adjacent cells meeting the above placement condition are determined, and if there is at least one, they are offered to the player as "deploy" actions with the apropriate cell as a parameter, similar to how a move action would be offered.  An alien is placed in the chosen cell.
+If there is a third alien to be placed, the adjacent cells meeting the above placement condition are again determined, and if there is at least one, they are again offered to the player as "place" actions, and again an alien is placed in the chosen cell.
+Afterwards, the player is offered the choices to activate any not yet activated allies or to pass the turn.
