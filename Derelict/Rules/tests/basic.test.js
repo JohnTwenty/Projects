@@ -745,8 +745,53 @@ for (const blipType of ['blip', 'blip_2', 'blip_3']) {
 
     assert.ok(firstOpts.some((o) => o.action === 'turnLeft' && o.apCost === 0));
     assert.ok(firstOpts.some((o) => o.action === 'deploy'));
+    assert.ok(!firstOpts.some((o) => o.action === 'pass'));
     assert.ok(afterTurnOpts.some((o) => o.action === 'deploy'));
     assert.ok(afterTurnOpts.some((o) => o.action === 'turnRight'));
+    assert.ok(!afterTurnOpts.some((o) => o.action === 'pass'));
     assert.ok(secondOpts.some((o) => o.action === 'turnLeft'));
     assert.ok(secondOpts.some((o) => o.action === 'pass'));
+  });
+
+  test('blip reveal forfeits extra aliens when no space', async () => {
+    const board = {
+      size: 5,
+      segments: [],
+      tokens: [
+        { instanceId: 'B1', type: 'blip_3', rot: 0, cells: [{ x: 1, y: 1 }] },
+        { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 4, y: 4 }] },
+      ],
+      getCellType: (c) => (c.x === 1 && c.y === 1) || (c.x === 2 && c.y === 1) ? 1 : 0,
+    };
+    const rules = new BasicRules(board, undefined, undefined, { activePlayer: 2 });
+    rules.validate(board);
+
+    let calls = 0;
+    let finalOpts;
+    const p1 = { choose: async () => ({ type: 'action', action: 'pass' }) };
+    const p2 = {
+      choose: async (options) => {
+        calls++;
+        if (calls === 1) {
+          return options.find((o) => o.action === 'activate');
+        }
+        if (calls === 2) {
+          return options.find((o) => o.action === 'reveal');
+        }
+        if (calls === 3) {
+          return options.find((o) => o.action === 'deploy');
+        }
+        if (calls === 4) {
+          finalOpts = options;
+          board.tokens = [];
+          return options.find((o) => o.action === 'pass');
+        }
+        return options[0];
+      },
+    };
+
+    await rules.runGame(p1, p2);
+
+    assert.ok(finalOpts.some((o) => o.action === 'pass'));
+    assert.ok(!finalOpts.some((o) => o.action === 'deploy'));
   });

@@ -223,31 +223,33 @@ export class BasicRules implements Rules {
                   })),
                 );
               }
-              // allow activating allies or passing to end orientation
-              const avail = this.board.tokens.filter(
-                (t) =>
-                  (currentSide === 'marine'
-                    ? t.type === 'marine'
-                    : t.type === 'alien' || isBlip(t)) &&
-                  !hasDeactivatedToken(this.board, t.cells[0]),
-              );
-              for (const t of avail) {
-                if (t !== current) {
-                  extras.push({
-                    type: 'action' as const,
-                    action: 'activate' as const,
-                    coord: t.cells[0],
-                    apCost: 0,
-                    apRemaining: initialAp(t),
-                  });
+              if (remaining === 0 || deployCells.length === 0) {
+                // allow activating allies or passing only when no more aliens can be deployed
+                const avail = this.board.tokens.filter(
+                  (t) =>
+                    (currentSide === 'marine'
+                      ? t.type === 'marine'
+                      : t.type === 'alien' || isBlip(t)) &&
+                    !hasDeactivatedToken(this.board, t.cells[0]),
+                );
+                for (const t of avail) {
+                  if (t !== current) {
+                    extras.push({
+                      type: 'action' as const,
+                      action: 'activate' as const,
+                      coord: t.cells[0],
+                      apCost: 0,
+                      apRemaining: initialAp(t),
+                    });
+                  }
                 }
+                extras.push({
+                  type: 'action' as const,
+                  action: 'pass' as const,
+                  apCost: 0,
+                  apRemaining,
+                });
               }
-              extras.push({
-                type: 'action' as const,
-                action: 'pass' as const,
-                apCost: 0,
-                apRemaining,
-              });
               const choice = await orientAlien(
                 currentPlayer,
                 current,
