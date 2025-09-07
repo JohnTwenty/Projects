@@ -11,16 +11,16 @@ export interface ChooseUI {
   cellToRect: (
     coord: Coord,
   ) => { x: number; y: number; width: number; height: number };
-  buttons: {
-    activate: HTMLButtonElement;
-    move: HTMLButtonElement;
-    turnLeft: HTMLButtonElement;
-    turnRight: HTMLButtonElement;
-    manipulate: HTMLButtonElement;
-    reveal: HTMLButtonElement;
-    deploy: HTMLButtonElement;
-    pass: HTMLButtonElement;
-  };
+    buttons: {
+      activate: HTMLButtonElement;
+      move: HTMLButtonElement;
+      turnLeft: HTMLButtonElement;
+      turnRight: HTMLButtonElement;
+      manipulate: HTMLButtonElement;
+      reveal: HTMLButtonElement;
+      deploy: HTMLButtonElement;
+      pass: HTMLButtonElement;
+    };
 }
 
 // Core game orchestrator providing the GameApi for human players
@@ -54,9 +54,9 @@ export class Game implements GameApi {
       buttons.turnLeft.style.color = '';
       buttons.turnRight.style.color = '';
       buttons.reveal.textContent = '(V)reveal';
-      buttons.deploy.textContent = '(D)eploy';
+        buttons.deploy.textContent = '(D)eploy';
 
-      const overlays: { el: HTMLElement; type: 'activate' | 'move' | 'door' | 'turn' | 'deploy' }[] = [];
+        const overlays: { el: HTMLElement; type: 'activate' | 'move' | 'door' | 'turn' | 'deploy' }[] = [];
 
       const addOverlay = (
         coord: Coord,
@@ -110,32 +110,39 @@ export class Game implements GameApi {
         overlays.push({ el: div, type: 'turn' });
       };
 
-      for (const opt of options) {
-        if (opt.type === 'action' && opt.action === 'move' && opt.coord) {
-          addOverlay(
-            opt.coord,
-            'green',
-            'move',
-            () => {
+        for (const opt of options) {
+          if (opt.type === 'action' && opt.action === 'move' && opt.coord) {
+            addOverlay(
+              opt.coord,
+              'green',
+              'move',
+              () => {
+                cleanup();
+                resolve(opt);
+              },
+              opt.apCost,
+            );
+          }
+          if (opt.type === 'action' && opt.action === 'door' && opt.coord) {
+            addOverlay(opt.coord, 'blue', 'door', () => {
               cleanup();
               resolve(opt);
-            },
-            opt.apCost,
-          );
+            });
+          }
+          if (opt.type === 'action' && opt.action === 'deploy' && opt.coord) {
+            addOverlay(opt.coord, 'green', 'deploy', () => {
+              cleanup();
+              resolve(opt);
+            });
+          }
         }
-        if (opt.type === 'action' && opt.action === 'door' && opt.coord) {
-          addOverlay(opt.coord, 'blue', 'door', () => {
-            cleanup();
-            resolve(opt);
-          });
+
+        const doneOpt = options.find(
+          (o) => o.type === 'action' && o.action === 'done',
+        );
+        if (doneOpt) {
+          buttons.deploy.textContent = '(D)one';
         }
-        if (opt.type === 'action' && opt.action === 'deploy' && opt.coord) {
-          addOverlay(opt.coord, 'green', 'deploy', () => {
-            cleanup();
-            resolve(opt);
-          });
-        }
-      }
 
       // Highlight cells that can be activated. The rules already
       // specify which coordinates are valid, so we don't need to
@@ -207,10 +214,18 @@ export class Game implements GameApi {
           resolve(opt);
         }
       }
-      function onDeploy() {
-        if (buttons.deploy.disabled) return;
-        setFilter(filter === 'deploy' ? null : 'deploy');
-      }
+        function onDeploy() {
+          if (buttons.deploy.disabled) return;
+          const doneOpt = options.find(
+            (o) => o.type === 'action' && o.action === 'done',
+          );
+          if (doneOpt) {
+            cleanup();
+            resolve(doneOpt);
+            return;
+          }
+          setFilter(filter === 'deploy' ? null : 'deploy');
+        }
       function onTurnLeft() {
         if (buttons.turnLeft.disabled) return;
         const opt = options.find(
@@ -324,9 +339,11 @@ export class Game implements GameApi {
       buttons.reveal.disabled = !options.some(
         (o) => o.type === 'action' && o.action === 'reveal',
       );
-      buttons.deploy.disabled = !options.some(
-        (o) => o.type === 'action' && o.action === 'deploy',
-      );
+        buttons.deploy.disabled = !options.some(
+          (o) =>
+            o.type === 'action' &&
+            (o.action === 'deploy' || o.action === 'done'),
+        );
       buttons.pass.disabled = !options.some(
         (o) => o.type === 'action' && o.action === 'pass',
       );

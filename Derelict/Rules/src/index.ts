@@ -205,27 +205,51 @@ export class BasicRules implements Rules {
             );
             active.type = 'alien';
             this.onChange?.(this.board);
-            for (let i = 1; i < maxTotal; i++) {
-              const deployCells = getDeployCells(this.board, active.cells[0]);
-              if (deployCells.length === 0) break;
-              const choice = await currentPlayer.choose(
-                deployCells.map((c) => ({
-                  type: 'action',
-                  action: 'deploy',
-                  coord: c,
-                  apCost: 0,
-                  apRemaining,
-                })),
+            const origin = { ...active.cells[0] };
+            let remaining = maxTotal - 1;
+            let current = active;
+            while (true) {
+              const deployCells =
+                remaining > 0 ? getDeployCells(this.board, origin) : [];
+              const extras: Choice[] =
+                deployCells.length > 0 && remaining > 0
+                  ? deployCells.map((c) => ({
+                      type: 'action' as const,
+                      action: 'deploy' as const,
+                      coord: c,
+                      apCost: 0,
+                      apRemaining,
+                    }))
+                  : [
+                      {
+                        type: 'action' as const,
+                        action: 'done' as const,
+                        apCost: 0,
+                        apRemaining,
+                      },
+                    ];
+              const choice = await orientAlien(
+                currentPlayer,
+                current,
+                extras,
+                this.board,
+                this.onChange?.bind(this),
+                apRemaining,
               );
-              if (choice.coord) {
-                this.board.tokens.push({
+              if (choice.action === 'deploy' && choice.coord) {
+                const newAlien = {
                   instanceId: `alien-${this.nextAlienId++}`,
                   type: 'alien',
-                  rot: active.rot,
+                  rot: current.rot,
                   cells: [{ ...choice.coord }],
-                });
+                };
+                this.board.tokens.push(newAlien);
                 this.onChange?.(this.board);
+                current = newAlien;
+                remaining--;
+                continue;
               }
+              break;
             }
             active = null;
             lastMove = false;
@@ -334,6 +358,46 @@ function moveToken(token: TokenInstance, target: Coord): void {
   const dx = target.x - token.cells[0].x;
   const dy = target.y - token.cells[0].y;
   token.cells = token.cells.map((c) => ({ x: c.x + dx, y: c.y + dy }));
+}
+
+async function orientAlien(
+  player: Player,
+  token: TokenInstance,
+  extras: Choice[],
+  board: BoardState,
+  onChange?: (state: BoardState) => void,
+  apRemaining = 0,
+): Promise<Choice> {
+  while (true) {
+    const choice = await player.choose([
+      ...extras,
+      {
+        type: 'action',
+        action: 'turnLeft',
+        coord: token.cells[0],
+        apCost: 0,
+        apRemaining,
+      },
+      {
+        type: 'action',
+        action: 'turnRight',
+        coord: token.cells[0],
+        apCost: 0,
+        apRemaining,
+      },
+    ]);
+    if (choice.action === 'turnLeft') {
+      token.rot = (((token.rot + 270) % 360) as Rotation);
+      onChange?.(board);
+      continue;
+    }
+    if (choice.action === 'turnRight') {
+      token.rot = (((token.rot + 90) % 360) as Rotation);
+      onChange?.(board);
+      continue;
+    }
+    return choice;
+  }
 }
 
 export function getMoveOptions(board: BoardState, token: TokenInstance): { coord: Coord; cost: number }[] {
