@@ -4,7 +4,15 @@ import { Coord } from 'derelict-boardstate';
 export interface Choice {
   type: 'marine' | 'action';
   coord?: Coord;
-  action?: 'move' | 'turnLeft' | 'turnRight' | 'activate' | 'door' | 'pass';
+  action?:
+    | 'move'
+    | 'turnLeft'
+    | 'turnRight'
+    | 'activate'
+    | 'door'
+    | 'reveal'
+    | 'deploy'
+    | 'pass';
   apCost?: number;
   apRemaining?: number;
 }

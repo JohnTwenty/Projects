@@ -9,6 +9,7 @@ export interface Rules {
 // Basic rules implementation allowing a marine to move forward one cell
 export class BasicRules implements Rules {
   private nextDeactId = 1;
+  private nextAlienId = 1;
   private turn = 1;
   private activePlayer = 1;
   constructor(
@@ -45,7 +46,7 @@ export class BasicRules implements Rules {
     let apRemaining = 0;
     let lastMove = false;
     this.emitStatus();
-    while (true) {
+    mainLoop: while (true) {
       const tokens = this.board.tokens.filter((t) =>
         currentSide === 'marine' ? t.type === 'marine' : t.type === 'alien' || isBlip(t),
       );
@@ -123,6 +124,18 @@ export class BasicRules implements Rules {
             apRemaining,
           });
         }
+        if (
+          isBlip(active) &&
+          apRemaining >= 6 &&
+          this.board.tokens.filter((t) => t.type === 'alien').length < 22
+        ) {
+          actionChoices.push({
+            type: 'action',
+            action: 'reveal',
+            apCost: 6,
+            apRemaining,
+          });
+        }
         for (const t of availableTokens) {
           if (t !== active) {
             actionChoices.push({
@@ -172,6 +185,125 @@ export class BasicRules implements Rules {
             apRemaining -= action.apCost;
             lastMove = false;
             this.onChange?.(this.board);
+            this.emitStatus(apRemaining);
+          }
+          break;
+        case 'reveal':
+          if (active && isBlip(active) && typeof action.apCost === 'number') {
+            apRemaining -= action.apCost;
+            const blipType = active.type;
+            const existingAliens = this.board.tokens.filter(
+              (t) => t.type === 'alien',
+            ).length;
+            const maxTotal = Math.min(
+              blipType === 'blip'
+                ? 1
+                : blipType === 'blip_2'
+                ? 2
+                : 3,
+              22 - existingAliens,
+            );
+            active.type = 'alien';
+            this.onChange?.(this.board);
+            const origin = { ...active.cells[0] };
+            let remaining = maxTotal - 1;
+            let current = active;
+            while (true) {
+              const deployCells =
+                remaining > 0 ? getDeployCells(this.board, origin) : [];
+              const extras: Choice[] = [];
+              if (deployCells.length > 0 && remaining > 0) {
+                extras.push(
+                  ...deployCells.map((c) => ({
+                    type: 'action' as const,
+                    action: 'deploy' as const,
+                    coord: c,
+                    apCost: 0,
+                    apRemaining,
+                  })),
+                );
+              }
+              if (remaining === 0 || deployCells.length === 0) {
+                // allow activating allies or passing only when no more aliens can be deployed
+                const avail = this.board.tokens.filter(
+                  (t) =>
+                    (currentSide === 'marine'
+                      ? t.type === 'marine'
+                      : t.type === 'alien' || isBlip(t)) &&
+                    !hasDeactivatedToken(this.board, t.cells[0]),
+                );
+                for (const t of avail) {
+                  if (t !== current) {
+                    extras.push({
+                      type: 'action' as const,
+                      action: 'activate' as const,
+                      coord: t.cells[0],
+                      apCost: 0,
+                      apRemaining: initialAp(t),
+                    });
+                  }
+                }
+                extras.push({
+                  type: 'action' as const,
+                  action: 'pass' as const,
+                  apCost: 0,
+                  apRemaining,
+                });
+              }
+              const choice = await orientAlien(
+                currentPlayer,
+                current,
+                extras,
+                this.board,
+                this.onChange?.bind(this),
+                apRemaining,
+              );
+              if (choice.action === 'deploy' && choice.coord) {
+                const newAlien = {
+                  instanceId: `alien-${this.nextAlienId++}`,
+                  type: 'alien',
+                  rot: current.rot,
+                  cells: [{ ...choice.coord }],
+                };
+                this.board.tokens.push(newAlien);
+                this.onChange?.(this.board);
+                current = newAlien;
+                remaining--;
+                continue;
+              }
+              if (choice.action === 'activate' && choice.coord) {
+                const target = this.board.tokens.find((t) =>
+                  sameCoord(t.cells[0], choice.coord!),
+                );
+                if (target) {
+                  active = target;
+                  apRemaining = initialAp(target);
+                  lastMove = false;
+                  this.emitStatus(apRemaining);
+                }
+                continue mainLoop;
+              }
+              if (choice.action === 'pass') {
+                if (this.board.tokens.some((t) => t.type === 'deactivated')) {
+                  this.board.tokens = this.board.tokens.filter(
+                    (t) => t.type !== 'deactivated',
+                  );
+                  this.onChange?.(this.board);
+                }
+                this.activePlayer = this.activePlayer === 1 ? 2 : 1;
+                if (this.activePlayer === 1) this.turn++;
+                currentPlayer = currentPlayer === p1 ? p2 : p1;
+                currentSide = currentSide === 'marine' ? 'alien' : 'marine';
+                active = null;
+                apRemaining = 0;
+                lastMove = false;
+                this.emitStatus();
+                continue mainLoop;
+              }
+              break;
+            }
+            active = null;
+            lastMove = false;
             this.emitStatus(apRemaining);
           }
           break;
@@ -279,6 +411,46 @@ function moveToken(token: TokenInstance, target: Coord): void {
   token.cells = token.cells.map((c) => ({ x: c.x + dx, y: c.y + dy }));
 }
 
+async function orientAlien(
+  player: Player,
+  token: TokenInstance,
+  extras: Choice[],
+  board: BoardState,
+  onChange?: (state: BoardState) => void,
+  apRemaining = 0,
+): Promise<Choice> {
+  while (true) {
+    const choice = await player.choose([
+      ...extras,
+      {
+        type: 'action',
+        action: 'turnLeft',
+        coord: token.cells[0],
+        apCost: 0,
+        apRemaining,
+      },
+      {
+        type: 'action',
+        action: 'turnRight',
+        coord: token.cells[0],
+        apCost: 0,
+        apRemaining,
+      },
+    ]);
+    if (choice.action === 'turnLeft') {
+      token.rot = (((token.rot + 270) % 360) as Rotation);
+      onChange?.(board);
+      continue;
+    }
+    if (choice.action === 'turnRight') {
+      token.rot = (((token.rot + 90) % 360) as Rotation);
+      onChange?.(board);
+      continue;
+    }
+    return choice;
+  }
+}
+
 export function getMoveOptions(board: BoardState, token: TokenInstance): { coord: Coord; cost: number }[] {
   const rot = token.rot as Rotation;
   const pos = token.cells[0];
@@ -321,6 +493,28 @@ export function getMoveOptions(board: BoardState, token: TokenInstance): { coord
             marineHasLineOfSight(board, m, mv.coord, [token]),
         ),
     );
+  }
+  return res;
+}
+
+function getDeployCells(board: BoardState, origin: Coord): Coord[] {
+  const res: Coord[] = [];
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      if (dx === 0 && dy === 0) continue;
+      const c = { x: origin.x + dx, y: origin.y + dy };
+      const cellType = board.getCellType ? board.getCellType(c) : 1;
+      if (cellType !== 1) continue;
+      if (
+        board.tokens.some(
+          (t) => blocksMovement(t) && t.cells.some((cc) => sameCoord(cc, c)),
+        )
+      )
+        continue;
+      const marines = board.tokens.filter((t) => t.type === 'marine');
+      if (marines.some((m) => marineHasLineOfSight(board, m, c))) continue;
+      res.push(c);
+    }
   }
   return res;
 }

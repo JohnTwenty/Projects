@@ -100,4 +100,6 @@ If there are insufficient cells meeting this condition for placement, the additi
 When a player choses the reveal action for a blip, the first alien is immediately converted.
 If there is a second aliens to be placed, the adjacent cells meeting the above placement condition are determined, and if there is at least one, they are offered to the player as "deploy" actions with the apropriate cell as a parameter, similar to how a move action would be offered.  An alien is placed in the chosen cell.
 If there is a third alien to be placed, the adjacent cells meeting the above placement condition are again determined, and if there is at least one, they are again offered to the player as "place" actions, and again an alien is placed in the chosen cell.
-Afterwards, the player is offered the choices to activate any not yet activated allies or to pass the turn.
+Immediately after each alien is placed in this way, the alien player may turn that alien left or right any number of times at no AP cost before proceeding, allowing each deployed alien to be oriented as desired.
+As long as there are remaining aliens to place and at least one eligible cell, the alien player must deploy another alien.
+Only when no further aliens can be deployed are the choices to activate any not yet activated allies or to pass the turn offered.

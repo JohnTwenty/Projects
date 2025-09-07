@@ -60,6 +60,8 @@ test('choose highlights activation options for different token types', async () 
       turnLeft: new DummyButton(),
       turnRight: new DummyButton(),
       manipulate: new DummyButton(),
+      reveal: new DummyButton(),
+      deploy: new DummyButton(),
       pass: new DummyButton(),
     },
   };

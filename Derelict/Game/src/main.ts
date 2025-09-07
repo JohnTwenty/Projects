@@ -130,6 +130,14 @@ async function init() {
   btnActivate.textContent = "Activate Ally (N)";
   actionButtons.appendChild(btnActivate);
 
+  const btnReveal = document.createElement("button");
+  btnReveal.textContent = "(V)reveal";
+  actionButtons.appendChild(btnReveal);
+
+  const btnDeploy = document.createElement("button");
+  btnDeploy.textContent = "(D)eploy";
+  actionButtons.appendChild(btnDeploy);
+
   const btnPass = document.createElement("button");
   btnPass.textContent = "(P)ass";
   actionButtons.appendChild(btnPass);
@@ -250,6 +258,8 @@ async function init() {
         turnLeft: btnTurnLeft,
         turnRight: btnTurnRight,
         manipulate: btnManipulate,
+        reveal: btnReveal,
+        deploy: btnDeploy,
         pass: btnPass,
       },
     });
