@@ -46,7 +46,7 @@ export class BasicRules implements Rules {
     let apRemaining = 0;
     let lastMove = false;
     this.emitStatus();
-    while (true) {
+    mainLoop: while (true) {
       const tokens = this.board.tokens.filter((t) =>
         currentSide === 'marine' ? t.type === 'marine' : t.type === 'alien' || isBlip(t),
       );
@@ -211,23 +211,43 @@ export class BasicRules implements Rules {
             while (true) {
               const deployCells =
                 remaining > 0 ? getDeployCells(this.board, origin) : [];
-              const extras: Choice[] =
-                deployCells.length > 0 && remaining > 0
-                  ? deployCells.map((c) => ({
-                      type: 'action' as const,
-                      action: 'deploy' as const,
-                      coord: c,
-                      apCost: 0,
-                      apRemaining,
-                    }))
-                  : [
-                      {
-                        type: 'action' as const,
-                        action: 'done' as const,
-                        apCost: 0,
-                        apRemaining,
-                      },
-                    ];
+              const extras: Choice[] = [];
+              if (deployCells.length > 0 && remaining > 0) {
+                extras.push(
+                  ...deployCells.map((c) => ({
+                    type: 'action' as const,
+                    action: 'deploy' as const,
+                    coord: c,
+                    apCost: 0,
+                    apRemaining,
+                  })),
+                );
+              }
+              // allow activating allies or passing to end orientation
+              const avail = this.board.tokens.filter(
+                (t) =>
+                  (currentSide === 'marine'
+                    ? t.type === 'marine'
+                    : t.type === 'alien' || isBlip(t)) &&
+                  !hasDeactivatedToken(this.board, t.cells[0]),
+              );
+              for (const t of avail) {
+                if (t !== current) {
+                  extras.push({
+                    type: 'action' as const,
+                    action: 'activate' as const,
+                    coord: t.cells[0],
+                    apCost: 0,
+                    apRemaining: initialAp(t),
+                  });
+                }
+              }
+              extras.push({
+                type: 'action' as const,
+                action: 'pass' as const,
+                apCost: 0,
+                apRemaining,
+              });
               const choice = await orientAlien(
                 currentPlayer,
                 current,
@@ -248,6 +268,35 @@ export class BasicRules implements Rules {
                 current = newAlien;
                 remaining--;
                 continue;
+              }
+              if (choice.action === 'activate' && choice.coord) {
+                const target = this.board.tokens.find((t) =>
+                  sameCoord(t.cells[0], choice.coord!),
+                );
+                if (target) {
+                  active = target;
+                  apRemaining = initialAp(target);
+                  lastMove = false;
+                  this.emitStatus(apRemaining);
+                }
+                continue mainLoop;
+              }
+              if (choice.action === 'pass') {
+                if (this.board.tokens.some((t) => t.type === 'deactivated')) {
+                  this.board.tokens = this.board.tokens.filter(
+                    (t) => t.type !== 'deactivated',
+                  );
+                  this.onChange?.(this.board);
+                }
+                this.activePlayer = this.activePlayer === 1 ? 2 : 1;
+                if (this.activePlayer === 1) this.turn++;
+                currentPlayer = currentPlayer === p1 ? p2 : p1;
+                currentSide = currentSide === 'marine' ? 'alien' : 'marine';
+                active = null;
+                apRemaining = 0;
+                lastMove = false;
+                this.emitStatus();
+                continue mainLoop;
               }
               break;
             }

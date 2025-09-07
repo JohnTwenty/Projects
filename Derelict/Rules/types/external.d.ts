@@ -29,7 +29,6 @@ declare module 'derelict-players' {
       | 'door'
       | 'reveal'
       | 'deploy'
-      | 'done'
       | 'pass';
     apCost?: number;
     apRemaining?: number;

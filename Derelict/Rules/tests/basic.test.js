@@ -679,11 +679,14 @@ for (const blipType of ['blip', 'blip_2', 'blip_3']) {
         );
       }
       if (calls === 4) {
-        return options.find((o) => o.action === 'done');
+        final = board.tokens.map((t) => ({
+          type: t.type,
+          cell: { ...t.cells[0] },
+        }));
+        board.tokens = [];
+        return options.find((o) => o.action === 'pass');
       }
-      final = board.tokens.map((t) => ({ type: t.type, cell: { ...t.cells[0] } }));
-      board.tokens = [];
-      return options.find((o) => o.action === 'pass');
+      return options[0];
     },
   };
 
@@ -731,9 +734,9 @@ for (const blipType of ['blip', 'blip_2', 'blip_3']) {
         }
         if (calls === 5) {
           secondOpts = options;
-          return options.find((o) => o.action === 'done');
+          board.tokens = [];
+          return options.find((o) => o.action === 'pass');
         }
-        board.tokens = [];
         return options[0];
       },
     };
@@ -745,5 +748,5 @@ for (const blipType of ['blip', 'blip_2', 'blip_3']) {
     assert.ok(afterTurnOpts.some((o) => o.action === 'deploy'));
     assert.ok(afterTurnOpts.some((o) => o.action === 'turnRight'));
     assert.ok(secondOpts.some((o) => o.action === 'turnLeft'));
-    assert.ok(secondOpts.some((o) => o.action === 'done'));
+    assert.ok(secondOpts.some((o) => o.action === 'pass'));
   });

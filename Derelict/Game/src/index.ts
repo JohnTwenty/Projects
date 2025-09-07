@@ -137,13 +137,6 @@ export class Game implements GameApi {
           }
         }
 
-        const doneOpt = options.find(
-          (o) => o.type === 'action' && o.action === 'done',
-        );
-        if (doneOpt) {
-          buttons.deploy.textContent = '(D)one';
-        }
-
       // Highlight cells that can be activated. The rules already
       // specify which coordinates are valid, so we don't need to
       // inspect the board or filter by token type here.
@@ -214,18 +207,10 @@ export class Game implements GameApi {
           resolve(opt);
         }
       }
-        function onDeploy() {
-          if (buttons.deploy.disabled) return;
-          const doneOpt = options.find(
-            (o) => o.type === 'action' && o.action === 'done',
-          );
-          if (doneOpt) {
-            cleanup();
-            resolve(doneOpt);
-            return;
-          }
-          setFilter(filter === 'deploy' ? null : 'deploy');
-        }
+      function onDeploy() {
+        if (buttons.deploy.disabled) return;
+        setFilter(filter === 'deploy' ? null : 'deploy');
+      }
       function onTurnLeft() {
         if (buttons.turnLeft.disabled) return;
         const opt = options.find(
@@ -339,11 +324,9 @@ export class Game implements GameApi {
       buttons.reveal.disabled = !options.some(
         (o) => o.type === 'action' && o.action === 'reveal',
       );
-        buttons.deploy.disabled = !options.some(
-          (o) =>
-            o.type === 'action' &&
-            (o.action === 'deploy' || o.action === 'done'),
-        );
+      buttons.deploy.disabled = !options.some(
+        (o) => o.type === 'action' && o.action === 'deploy',
+      );
       buttons.pass.disabled = !options.some(
         (o) => o.type === 'action' && o.action === 'pass',
       );
