@@ -123,6 +123,6 @@ Immediately after the alien is placed, the alien player may turn that alien left
 The additional one or two aliens may be placed in any empty cell adjacent to the first alien.  (Whether or not they can be seen by any marine is irrelevant here.)  The cell to place them in is chosen by the marine player irrespective of which player's turn the involuntary reveal happens in.
 If the first alien placed received a "deactivated" token, the additional placed aliens also receive a deactivated token.  Each time the marine player choses a cell to place an additional alien, the alien player may turn that alien left or right any number of times at no AP cost before proceeding, 
 allowing each deployed alien to be oriented as desired.  The alien player also receives a "pass" option to indicate that the turning of the alien has concluded.
-If there are insufficient cells meeting this condition for placement, the additional aliens that cannot be placed are forfeited. 
+If there are insufficient cells meeting this condition for placement, the additional aliens that cannot be placed are forfeited. Aliens are also forfeited if placing them would increase the number of aliens on the board above 22.
 
 When the involuntary reveal(s) are complete, the game continues from where it left off.
