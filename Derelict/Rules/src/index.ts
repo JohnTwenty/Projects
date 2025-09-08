@@ -28,8 +28,8 @@ export class BasicRules implements Rules {
     return { turn: this.turn, activePlayer: this.activePlayer };
   }
 
-  private emitStatus(ap?: number) {
-    this.onStatus?.({ turn: this.turn, activePlayer: this.activePlayer, ap });
+  private emitStatus(ap?: number, activePlayer = this.activePlayer) {
+    this.onStatus?.({ turn: this.turn, activePlayer, ap });
   }
 
   validate(state: BoardState): void {
@@ -45,6 +45,83 @@ export class BasicRules implements Rules {
     let active: TokenInstance | null = null;
     let apRemaining = 0;
     let lastMove = false;
+    const checkInvoluntaryReveals = async () => {
+      while (true) {
+        const marines = this.board.tokens.filter((t) => t.type === 'marine');
+        const blips = this.board.tokens.filter((t) => isBlip(t));
+        const target = blips.find((b) =>
+          marines.some((m) => marineHasLineOfSight(this.board, m, b.cells[0])),
+        );
+        if (!target) break;
+        const blipType = target.type;
+        const existingAliens = this.board.tokens.filter(
+          (t) => t.type === 'alien',
+        ).length;
+        const maxTotal = Math.min(
+          blipType === 'blip'
+            ? 1
+            : blipType === 'blip_2'
+            ? 2
+            : 3,
+          22 - existingAliens,
+        );
+        target.type = 'alien';
+        const origin = { ...target.cells[0] };
+        const hadDeact = hasDeactivatedToken(this.board, origin);
+        this.onChange?.(this.board);
+        this.emitStatus(undefined, 2);
+        await orientAlien(
+          p2,
+          target,
+          [{ type: 'action', action: 'pass', apCost: 0, apRemaining: 0 }],
+          this.board,
+          this.onChange?.bind(this),
+          0,
+        );
+        let remaining = maxTotal - 1;
+        while (remaining > 0) {
+          const deployCells = getDeployCells(this.board, origin, true);
+          if (deployCells.length === 0) break;
+          this.emitStatus(undefined, 1);
+          const choice = await p1.choose(
+            deployCells.map((c) => ({
+              type: 'action' as const,
+              action: 'deploy' as const,
+              coord: c,
+              apCost: 0,
+              apRemaining: 0,
+            })),
+          );
+          if (choice.action !== 'deploy' || !choice.coord) break;
+          const newAlien: TokenInstance = {
+            instanceId: `alien-${this.nextAlienId++}`,
+            type: 'alien',
+            rot: target.rot,
+            cells: [{ ...choice.coord }],
+          };
+          this.board.tokens.push(newAlien);
+          if (hadDeact) {
+            this.board.tokens.push({
+              instanceId: `deactivated-${this.nextDeactId++}`,
+              type: 'deactivated',
+              rot: 0,
+              cells: [{ ...choice.coord }],
+            });
+          }
+          this.onChange?.(this.board);
+          this.emitStatus(undefined, 2);
+          await orientAlien(
+            p2,
+            newAlien,
+            [{ type: 'action', action: 'pass', apCost: 0, apRemaining: 0 }],
+            this.board,
+            this.onChange?.bind(this),
+            0,
+          );
+          remaining--;
+        }
+      }
+    };
     this.emitStatus();
     mainLoop: while (true) {
       const tokens = this.board.tokens.filter((t) =>
@@ -167,6 +244,7 @@ export class BasicRules implements Rules {
             apRemaining -= action.apCost;
             lastMove = true;
             this.onChange?.(this.board);
+            await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
           }
           break;
@@ -176,6 +254,7 @@ export class BasicRules implements Rules {
             apRemaining -= action.apCost;
             lastMove = false;
             this.onChange?.(this.board);
+            await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
           }
           break;
@@ -185,6 +264,7 @@ export class BasicRules implements Rules {
             apRemaining -= action.apCost;
             lastMove = false;
             this.onChange?.(this.board);
+            await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
           }
           break;
@@ -343,6 +423,7 @@ export class BasicRules implements Rules {
               apRemaining -= action.apCost;
               lastMove = false;
               this.onChange?.(this.board);
+              await checkInvoluntaryReveals();
               this.emitStatus(apRemaining);
             }
           }
@@ -497,7 +578,11 @@ export function getMoveOptions(board: BoardState, token: TokenInstance): { coord
   return res;
 }
 
-function getDeployCells(board: BoardState, origin: Coord): Coord[] {
+function getDeployCells(
+  board: BoardState,
+  origin: Coord,
+  allowVisible = false,
+): Coord[] {
   const res: Coord[] = [];
   for (let dx = -1; dx <= 1; dx++) {
     for (let dy = -1; dy <= 1; dy++) {
@@ -511,8 +596,10 @@ function getDeployCells(board: BoardState, origin: Coord): Coord[] {
         )
       )
         continue;
-      const marines = board.tokens.filter((t) => t.type === 'marine');
-      if (marines.some((m) => marineHasLineOfSight(board, m, c))) continue;
+      if (!allowVisible) {
+        const marines = board.tokens.filter((t) => t.type === 'marine');
+        if (marines.some((m) => marineHasLineOfSight(board, m, c))) continue;
+      }
       res.push(c);
     }
   }
