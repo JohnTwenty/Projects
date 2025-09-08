@@ -111,9 +111,9 @@ Blips cannot deliberately move into a cell that is visible to any marine.  Howev
 happen either in the marine or alien turn.  To deal with this, we must add the following checks to the rules: 
 
 * When any blocked cell becomes unblocked for the purpose of visibility due to:
-  - A blip, marine, or alien moving out from the cell to another cell
-  - A blip, marine, or alien getting removed from play (e.g. due to being shot or assaulted)
-  - A door opening
+  - A blip, marine, or alien moving out from the cell to another cell.
+  - A blip, marine, or alien getting removed from play (e.g. due to being shot or assaulted).
+  - A door opening.
 the set of marines M who can see this cell must be determined.  Then, the set of blips B with a line of sight to this cell must also be determined.  Finally, each marine in M must check if it has visibility to each blip in B.  If this test passes for any blip, the blip experiences an involuntary reveal and must immediately be converted to alien(s).
 * When any marine moves or turns left or right, it must also check visibility to each blip in play.  If this test passes for any blip, the blip experiences an involuntary reveal and must immediately be converted to alien(s).
 
