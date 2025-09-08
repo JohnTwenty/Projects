@@ -186,7 +186,10 @@ async function init() {
 
   const updateStatus = (info: { turn: number; activePlayer: number; ap?: number }) => {
     statusTurn.textContent = `Turn: ${info.turn}`;
-    statusPlayer.textContent = `Active Player: ${info.activePlayer}`;
+    statusPlayer.textContent =
+      info.activePlayer === 1
+        ? "Active Player: 1 (Marines)"
+        : "Active Player: 2 (Aliens)";
     statusAP.textContent =
       typeof info.ap === "number" ? `AP remaining: ${info.ap}` : "";
   };
