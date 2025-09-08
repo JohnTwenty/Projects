@@ -100,6 +100,29 @@ If there are insufficient cells meeting this condition for placement, the additi
 When a player choses the reveal action for a blip, the first alien is immediately converted.
 If there is a second aliens to be placed, the adjacent cells meeting the above placement condition are determined, and if there is at least one, they are offered to the player as "deploy" actions with the apropriate cell as a parameter, similar to how a move action would be offered.  An alien is placed in the chosen cell.
 If there is a third alien to be placed, the adjacent cells meeting the above placement condition are again determined, and if there is at least one, they are again offered to the player as "place" actions, and again an alien is placed in the chosen cell.
+
 Immediately after each alien is placed in this way, the alien player may turn that alien left or right any number of times at no AP cost before proceeding, allowing each deployed alien to be oriented as desired.
 As long as there are remaining aliens to place and at least one eligible cell, the alien player must deploy another alien.
 Only when no further aliens can be deployed are the choices to activate any not yet activated allies or to pass the turn offered.
+
+## Involuntary Conversion of Blips
+
+Blips cannot deliberately move into a cell that is visible to any marine.  However, they can involuntarily become visible if either the marine moves to a cell from which it can see the blip, or something else that was blocking line of sight moves out of the way -- which can include a door opening.  This can
+happen either in the marine or alien turn.  To deal with this, we must add the following checks to the rules: 
+
+* When any blocked cell becomes unblocked for the purpose of visibility due to:
+  - A blip, marine, or alien moving out from the cell to another cell
+  - A blip, marine, or alien getting removed from play (e.g. due to being shot or assaulted)
+  - A door opening
+the set of marines M who can see this cell must be determined.  Then, the set of blips B with a line of sight to this cell must also be determined.  Finally, each marine in M must check if it has visibility to each blip in B.  If this test passes for any blip, the blip experiences an involuntary reveal and must immediately be converted to alien(s).
+* When any marine moves or turns left or right, it must also check visibility to each blip in play.  If this test passes for any blip, the blip experiences an involuntary reveal and must immediately be converted to alien(s).
+
+As with voluntary conversions, the regular "blip" token transforms into a single alien, "blip_2" transforms into two aliens, and "blip_3" transforms into three aliens.
+First, the blip is immediately replaced with an alien.  If the blip's cell had a "deactivated" token, this token stays in place to mark the placed alien as also being deactivated.
+Immediately after the alien is placed, the alien player may turn that alien left or right any number of times at no AP cost before proceeding, allowing the deployed alien to be oriented as desired.  The alien player also receives a "pass" option to indicate that the turning of the alien has concluded.
+The additional one or two aliens may be placed in any empty cell adjacent to the first alien.  (Whether or not they can be seen by any marine is irrelevant here.)  The cell to place them in is chosen by the marine player irrespective of which player's turn the involuntary reveal happens in.
+If the first alien placed received a "deactivated" token, the additional placed aliens also receive a deactivated token.  Each time the marine player choses a cell to place an additional alien, the alien player may turn that alien left or right any number of times at no AP cost before proceeding, 
+allowing each deployed alien to be oriented as desired.  The alien player also receives a "pass" option to indicate that the turning of the alien has concluded.
+If there are insufficient cells meeting this condition for placement, the additional aliens that cannot be placed are forfeited. 
+
+When the involuntary reveal(s) are complete, the game continues from where it left off.
