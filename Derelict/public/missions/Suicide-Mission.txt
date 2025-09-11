@@ -33,11 +33,11 @@ tokens:
   tok-1755897771283: alien_entry pos=(30,20) rot=90
   tok-1755897776437: alien_entry pos=(23,19) rot=180
   tok-1755897799295: alien_entry pos=(23,23) rot=0
-  tok-1755897850999: marine_start pos=(12,12) rot=270
-  tok-1755897851665: marine_start pos=(13,12) rot=270
-  tok-1755897852316: marine_start pos=(14,12) rot=270
-  tok-1755897852882: marine_start pos=(15,12) rot=270
-  tok-1755897853425: marine_start pos=(16,12) rot=270
+  tok-1755897850999: start_marine pos=(12,12) rot=270
+  tok-1755897851665: start_marine pos=(13,12) rot=270
+  tok-1755897852316: start_marine pos=(14,12) rot=270
+  tok-1755897852882: start_marine pos=(15,12) rot=270
+  tok-1755897853425: start_marine pos=(16,12) rot=270
   tok-1755897859930: door pos=(17,12) rot=0
   tok-1755897862374: door pos=(21,12) rot=0
   tok-1755897864843: door pos=(22,21) rot=0
