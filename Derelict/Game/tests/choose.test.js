@@ -82,3 +82,79 @@ test('choose highlights activation options for different token types', async () 
   globalThis.document = origDoc;
 });
 
+test('move option takes precedence over door option on same cell', async () => {
+  const board = { size: 1, segments: [], tokens: [] };
+  const renderer = { render() {} };
+  const rules = { validate() {}, runGame: async () => {} };
+  const player = { choose: async () => ({ type: 'action', action: 'pass' }) };
+
+  class DummyElement {
+    constructor() {
+      this.style = {};
+      this.children = [];
+      this.listeners = {};
+      this.classList = { toggle() {}, remove() {}, add() {} };
+    }
+    appendChild(el) {
+      this.children.push(el);
+    }
+    addEventListener(name, fn) {
+      this.listeners[name] = fn;
+    }
+    removeEventListener(name) {
+      delete this.listeners[name];
+    }
+    remove() {}
+  }
+  class DummyButton extends DummyElement {
+    constructor() {
+      super();
+      this.disabled = false;
+    }
+  }
+
+  const created = [];
+  const origDoc = globalThis.document;
+  globalThis.document = {
+    createElement: () => {
+      const el = new DummyElement();
+      created.push(el);
+      return el;
+    },
+  };
+
+  const ui = {
+    container: new DummyElement(),
+    cellToRect: () => ({ x: 0, y: 0, width: 1, height: 1 }),
+    buttons: {
+      activate: new DummyButton(),
+      move: new DummyButton(),
+      turnLeft: new DummyButton(),
+      turnRight: new DummyButton(),
+      manipulate: new DummyButton(),
+      reveal: new DummyButton(),
+      deploy: new DummyButton(),
+      pass: new DummyButton(),
+    },
+  };
+
+  const game = new Game(board, renderer, rules, player, player, ui);
+  const moveOpt = { type: 'action', action: 'move', coord: { x: 0, y: 0 } };
+  const doorOpt = { type: 'action', action: 'door', coord: { x: 0, y: 0 } };
+  const options = [doorOpt, moveOpt];
+
+  const promise = game.choose(options);
+  assert.equal(created.length, 2);
+
+  const moveOverlay = created.find((e) => e.style.border === '2px solid green');
+  const doorOverlay = created.find((e) => e.style.border === '2px solid blue');
+  assert.ok(moveOverlay && doorOverlay);
+  assert.ok(Number(moveOverlay.style.zIndex) > Number(doorOverlay.style.zIndex));
+
+  moveOverlay.listeners.click({ stopPropagation() {} });
+  const result = await promise;
+  assert.deepEqual(result, moveOpt);
+
+  globalThis.document = origDoc;
+});
+
