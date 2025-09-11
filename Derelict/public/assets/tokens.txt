@@ -2,6 +2,8 @@ version: 1
 type=door
 type=dooropen
 type=marine
+type=marine_flame
+type=marine_sarge
 type=alien
 type=blip
 type=blip_2

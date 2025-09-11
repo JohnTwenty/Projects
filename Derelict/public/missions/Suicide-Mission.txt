@@ -1,0 +1,58 @@
+mission: Suicide Mission
+profile: mission
+version: 1
+board: 40
+
+instances:
+  seg-1755896454266: C_room_5x5 pos=(30,0) rot=180
+  seg-1755896501448: corridor_3 pos=(31,5) rot=90
+  seg-1755896530216: corridor_3 pos=(28,8) rot=180
+  seg-1755896534852: corridor_3 pos=(34,8) rot=180
+  seg-1755896542900: corridor_3 pos=(34,11) rot=180
+  seg-1755896544484: corridor_3 pos=(28,11) rot=180
+  seg-1755896556372: corridor_3 pos=(22,11) rot=180
+  seg-1755896594742: T_room_3x3 pos=(37,11) rot=270
+  seg-1755896595928: T_room_3x3 pos=(37,8) rot=270
+  seg-1755896614367: T_room_3x3 pos=(25,11) rot=0
+  seg-1755896630651: L_room_3x3 pos=(25,8) rot=180
+  seg-1755896682792: T_room_5x5 pos=(17,10) rot=180
+  seg-1755896703806: corridor_5 pos=(12,11) rot=0
+  seg-1755896707451: endcap pos=(10,11) rot=0
+  seg-1755896747046: corridor_4 pos=(18,15) rot=90
+  seg-1755896785542: L_room_5x5 pos=(17,19) rot=90
+  seg-1755896817863: T_room_3x3 pos=(22,20) rot=270
+  seg-1755896871387: corridor_5 pos=(31,14) rot=90
+  seg-1755896878075: T_room_3x3 pos=(31,19) rot=0
+  seg-1755896949255: X_room_3x3 pos=(31,8) rot=0
+  seg-1755896950390: X_room_3x3 pos=(31,11) rot=0
+
+tokens:
+  tok-1755897753008: alien_entry pos=(38,14) rot=0
+  tok-1755897758077: alien_entry pos=(38,7) rot=180
+  tok-1755897767446: alien_entry pos=(34,20) rot=270
+  tok-1755897771283: alien_entry pos=(30,20) rot=90
+  tok-1755897776437: alien_entry pos=(23,19) rot=180
+  tok-1755897799295: alien_entry pos=(23,23) rot=0
+  tok-1755897850999: marine_start pos=(12,12) rot=270
+  tok-1755897851665: marine_start pos=(13,12) rot=270
+  tok-1755897852316: marine_start pos=(14,12) rot=270
+  tok-1755897852882: marine_start pos=(15,12) rot=270
+  tok-1755897853425: marine_start pos=(16,12) rot=270
+  tok-1755897859930: door pos=(17,12) rot=0
+  tok-1755897862374: door pos=(21,12) rot=0
+  tok-1755897864843: door pos=(22,21) rot=0
+  tok-1755897869489: door pos=(27,9) rot=0
+  tok-1755897873463: door pos=(19,19) rot=90
+  tok-1755897877265: door pos=(32,4) rot=90
+  tok-1755897883483: door pos=(19,14) rot=90
+  tok-1755897909240: objective pos=(32,1) rot=0
+  tok-1757618288255: marine pos=(12,12) rot=270
+  tok-1757618300875: marine pos=(13,12) rot=270
+  tok-1757618327276: marine pos=(14,12) rot=270
+  tok-1757618346463: marine_flame pos=(15,12) rot=270
+  tok-1757618351266: marine_sarge pos=(16,12) rot=270
+  tok-1757618395737: alien pos=(19,21) rot=0
+  tok-1757618410058: blip pos=(32,15) rot=180
+  tok-1757618421960: blip_3 pos=(32,6) rot=0
+  tok-1757618429550: blip pos=(32,19) rot=180
+  tok-1757618435932: blip_3 pos=(23,21) rot=90
