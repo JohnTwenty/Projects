@@ -48,11 +48,11 @@ function readFileAsText(f: File): Promise<string> {
 }
 
 function downloadText(name: string, text: string) {
-  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
-  a.download = name.endsWith('.mission.txt') ? name : name + '.mission.txt';
+  a.download = name.endsWith(".mission.txt") ? name : name + ".mission.txt";
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -157,10 +157,10 @@ async function init() {
 
   const [{ createRenderer }, BoardState, Rules, Players] = await Promise.all([
     import(
-      new URL("../../../Renderer/dist/src/renderer.js", import.meta.url).href,
+      new URL("../../../Renderer/dist/src/renderer.js", import.meta.url).href
     ),
     import(
-      new URL("../../../BoardState/dist/api/public.js", import.meta.url).href,
+      new URL("../../../BoardState/dist/api/public.js", import.meta.url).href
     ),
     import(new URL("../../../Rules/dist/src/index.js", import.meta.url).href),
     import(new URL("../../../Players/dist/src/index.js", import.meta.url).href),
@@ -183,8 +183,13 @@ async function init() {
   let currentState: any = null;
   let currentBoard: any = null;
   let currentRules: any = null;
+  let currentGame: Game | null = null;
 
-  const updateStatus = (info: { turn: number; activePlayer: number; ap?: number }) => {
+  const updateStatus = (info: {
+    turn: number;
+    activePlayer: number;
+    ap?: number;
+  }) => {
     statusTurn.textContent = `Turn: ${info.turn}`;
     statusPlayer.textContent =
       info.activePlayer === 1
@@ -226,13 +231,18 @@ async function init() {
   const renderer = { render };
 
   async function startGameFromText(text: string, twoPlayer: boolean) {
+    currentGame?.dispose();
     const board: any = BoardState.newBoard(40, segLib, tokLib);
     // ensure renderer knows dimensions for each segment
     board.segmentDefs = segmentDefs;
     const mission = BoardState.importBoardText(board, text);
     currentBoard = board;
-    const initTurn = typeof mission.rules?.turn === 'number' ? mission.rules.turn : 1;
-    const initPlayer = typeof mission.rules?.activeplayer === 'number' ? mission.rules.activeplayer : 1;
+    const initTurn =
+      typeof mission.rules?.turn === "number" ? mission.rules.turn : 1;
+    const initPlayer =
+      typeof mission.rules?.activeplayer === "number"
+        ? mission.rules.activeplayer
+        : 1;
     const rules = new Rules.BasicRules(
       board,
       () => renderer.render(board),
@@ -266,6 +276,7 @@ async function init() {
         pass: btnPass,
       },
     });
+    currentGame = game;
     try {
       await game.start();
     } catch (e) {
@@ -274,7 +285,13 @@ async function init() {
         body.textContent = String(e);
         let ref: { close(): void };
         ref = showModal("Error", body, [
-          { label: "OK", onClick: () => { ref.close(); resolve(); } },
+          {
+            label: "OK",
+            onClick: () => {
+              ref.close();
+              resolve();
+            },
+          },
         ]);
       });
     }
@@ -284,9 +301,10 @@ async function init() {
   async function newGameDialog() {
     const missions = await fetchMissionList();
     const params = new URLSearchParams(window.location.search);
-    let selected = params.get("mission") && missions.includes(params.get("mission")!)
-      ? params.get("mission")!
-      : missions[0] || "";
+    let selected =
+      params.get("mission") && missions.includes(params.get("mission")!)
+        ? params.get("mission")!
+        : missions[0] || "";
     let droppedText: string | null = null;
 
     const body = createEl("div");
@@ -395,6 +413,11 @@ async function init() {
         label: "OK",
         onClick: () => {
           ref.close();
+          currentGame?.dispose();
+          currentGame = null;
+          currentState = null;
+          currentBoard = null;
+          currentRules = null;
           newGameDialog();
         },
       },
