@@ -13,17 +13,16 @@ The Game Module interacts with the following other modules:
 At startup, the user is presented with the "New Game" modal dialog with the following fields:
 1. A list box showing the available server side mission files (the contents of Derelict/public/missions)
         The game.html URL parameters are inspected.  Using parameters, it is possible to pre-select a specific server side mission file to start. In this case the appropriate item in the list box is highlighted.
-
         There is also a text prompt: "Drag and Drop a savegame file here to load it!" Dropping a legal savegame file will gray the mission selection and display the name of the savegame file about to be loaded. Savegames are mission files with an optional `rules` section that records state such as the current turn and active player.
 
-2. A pair of radio buttons to choose "Single Player" or "Two Player" game.
+3. A pair of radio buttons to choose "Single Player" or "Two Player" game.
 	We can either have hot seat (2 human) multiplayer or human vs computer controlled enemies. 
 	We do this even if this is a savegame, in case second human player is not available and we want to transition to single player.
 	Based on this the two player abstractions are instanced.
 
-3. We also choose a game ruleset, for now we will only have a single default "Derelict" Rules module to pick from a list box.
+4. We also choose a game ruleset, for now we will only have a single default "Derelict" Rules module to pick from a list box.
 
-4. The dialog has an OK button that can be pressed to start the game.
+5. The dialog has an OK button that can be pressed to start the game.
 
 When this button is pressed the "New Game" dialog is dismissed and the following things happen:
 
