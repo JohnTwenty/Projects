@@ -84,6 +84,13 @@ export class Game implements GameApi {
         div.style.height = `${rect.height}px`;
         div.style.boxSizing = "border-box";
         div.style.border = `2px solid ${color}`;
+        const zMap: Record<"activate" | "move" | "door" | "deploy", number> = {
+          activate: 3,
+          move: 2,
+          door: 1,
+          deploy: 0,
+        };
+        div.style.zIndex = String(zMap[type]);
         if (onClick) {
           div.style.cursor = "pointer";
           div.addEventListener("click", (e) => {
