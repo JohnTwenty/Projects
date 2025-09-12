@@ -42,6 +42,7 @@ The UI of the game page is as follows:
     * The "Save Game" button saves the BoardState and current Rules state (e.g. turn and active player) to a mission file that gets downloaded to the user's computer.
 	* The "Editor" button, that when pressed, after modal confirmation dialog that gives a chance to cancel, forwards to index.html which is the editor page. 		
 * The play area viewport that uses the Renderer to display the boardState.
+* A horizontal scrollable text log area under the viewport.  This log supports printing colored text to it.
 * A vertical bar to the right of the play area viewport that is horizontally divided into two regions:
     * A top region showing buttons including:
     * The "Move" button 
