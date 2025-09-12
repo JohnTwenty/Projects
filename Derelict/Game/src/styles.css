@@ -36,15 +36,16 @@ html, body {
 #play-area {
   display: flex;
   flex-direction: column;
-  flex: none;
+  height: 100%;
   width: 2560px;
+  overflow: hidden;
 }
 
 #viewport-wrap {
   position: relative;
-  flex: none;
+  flex: 1 1 auto;
   width: 2560px;
-  height: 2560px;
+  overflow: hidden;
 }
 
 #viewport {
