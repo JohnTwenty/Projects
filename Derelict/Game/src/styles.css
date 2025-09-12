@@ -33,6 +33,13 @@ html, body {
   overflow: hidden;
 }
 
+#play-area {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 2560px;
+}
+
 #viewport-wrap {
   position: relative;
   flex: none;
@@ -45,6 +52,17 @@ html, body {
   height: 100%;
   background: #000;
   display: block;
+}
+
+#log {
+  flex: none;
+  height: 80px;
+  background: #111;
+  color: #fff;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-family: monospace;
+  padding: 4px;
 }
 
 #side-bar {

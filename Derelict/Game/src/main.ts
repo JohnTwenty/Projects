@@ -94,13 +94,21 @@ async function init() {
   main.id = "main";
   app.appendChild(main);
 
+  const play = document.createElement("div");
+  play.id = "play-area";
+  main.appendChild(play);
+
   const wrap = document.createElement("div");
   wrap.id = "viewport-wrap";
-  main.appendChild(wrap);
+  play.appendChild(wrap);
 
   const canvas = document.createElement("canvas");
   canvas.id = "viewport";
   wrap.appendChild(canvas);
+
+  const logArea = document.createElement("div");
+  logArea.id = "log";
+  play.appendChild(logArea);
 
   const side = document.createElement("div");
   side.id = "side-bar";
@@ -185,6 +193,14 @@ async function init() {
   let currentRules: any = null;
   let currentGame: Game | null = null;
 
+  const logMessage = (text: string, color?: string) => {
+    const span = document.createElement("span");
+    if (color) span.style.color = color;
+    span.textContent = text + " ";
+    logArea.appendChild(span);
+    logArea.scrollLeft = logArea.scrollWidth;
+  };
+
   const updateStatus = (info: {
     turn: number;
     activePlayer: number;
@@ -232,6 +248,7 @@ async function init() {
 
   async function startGameFromText(text: string, twoPlayer: boolean) {
     currentGame?.dispose();
+    logArea.textContent = "";
     const board: any = BoardState.newBoard(40, segLib, tokLib);
     // ensure renderer knows dimensions for each segment
     board.segmentDefs = segmentDefs;
@@ -248,6 +265,7 @@ async function init() {
       () => renderer.render(board),
       updateStatus,
       { turn: initTurn, activePlayer: initPlayer },
+      logMessage,
     );
     currentRules = rules;
     updateStatus(rules.getState());
@@ -255,11 +273,13 @@ async function init() {
     const p1 = new Players.HumanPlayer({
       choose: (options: any) => game.choose(options),
       messageBox: (msg: string) => game.messageBox(msg),
+      log: (msg: string, color?: string) => game.log(msg, color),
     });
     const p2 = twoPlayer
       ? new Players.HumanPlayer({
           choose: (options: any) => game.choose(options),
           messageBox: (msg: string) => game.messageBox(msg),
+          log: (msg: string, color?: string) => game.log(msg, color),
         })
       : new Players.RandomAI();
     game = new Game(board, renderer, rules, p1, p2, {
@@ -275,7 +295,7 @@ async function init() {
         deploy: btnDeploy,
         pass: btnPass,
       },
-    });
+    }, logMessage);
     currentGame = game;
     try {
       await game.start();
