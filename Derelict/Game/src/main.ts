@@ -104,6 +104,8 @@ async function init() {
 
   const canvas = document.createElement("canvas");
   canvas.id = "viewport";
+  canvas.width = 2560;
+  canvas.height = 2560;
   wrap.appendChild(canvas);
 
   const logArea = document.createElement("div");
@@ -216,12 +218,12 @@ async function init() {
   };
   function render(state: any) {
     currentState = state;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-    rendererCore.resize(rect.width, rect.height);
+    const size = 2560;
+    canvas.width = size;
+    canvas.height = size;
+    rendererCore.resize(size, size);
     viewport.dpr = window.devicePixelRatio || 1;
-    const base = Math.min(rect.width, rect.height) / state.size;
+    const base = size / state.size;
     viewport.cellSize = Math.min(base, 64);
     rendererCore.render(ctx, state, viewport);
   }
