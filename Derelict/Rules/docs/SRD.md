@@ -148,7 +148,9 @@ The assault action is offered to an activated marine when the cell directly in f
 The token performing the assault action will be refered to as the attacker, while the token being targeted will be referred to as the defender.
 Blips cannot take part in assault actions either as attaker or defender since they would have been revealed and converted into aliens due to the conversion rules above.
 The assault action costs 1 ap, and the action is only offered when ap is available.
-Dice must be rolled to decide the outcome of the assault action.  Whether attacking or defending, the number of dice we roll for a token depends on its type:
+
+When a marine of the specific token type marine_chain attacks a door, the door token is removed from the board.
+Otherwise, dice must be rolled to decide the outcome of the assault action.  Whether attacking or defending, the number of dice we roll for a token depends on its type:
 
 | Token   | Nr. of Dice to Roll |
 |---------|---------------------|
@@ -156,12 +158,28 @@ Dice must be rolled to decide the outcome of the assault action.  Whether attack
 | Alien   | 3                   |
 | Door    | 0                   |
 
-When the marine is facing the alien, whether as attacker or defender, it might modify the above base die counts if it is one of the following particular marine types:  
+When a marine is facing directly toward an alien, whether as attacker or defender, we modify the above base die counts if the marine is one of the following types:  
 
-| Token           | Modifier 
-|-----------------|---------------------|
-| marine_hammer   | -1 alien dice       |
-| marine_claws    | +1 marine dice      |
+| Token           | Modifier                |
+|-----------------|-------------------------|
+| marine_hammer   | -1 alien dice to roll   |
+| marine_claws    | +1 marine dice to roll  |
+
+These modifiers are not applied when attacking a door.
+
+The rules module rolls the possibly modified number of dice for the attacker and then for the defender.
+When a marine is facing directly toward an alien, whether as attacker or defender, we modify each of the marine die results if the marine is one of the following types:
+
+| Token           | Modifier                   |
+|-----------------|----------------------------|
+| marine_hammer   | +2 to marine dice results  |
+| marine_claws    | +1 to marine dice results  |
+| marine_sarge    | +1 to marine dice results  |
+
+These modifiers are not applied when attacking a door.
+
+
+
 
 
 
