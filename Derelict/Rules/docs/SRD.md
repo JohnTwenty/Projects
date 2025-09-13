@@ -141,3 +141,27 @@ After placing the guard token the marine's activation automatically ends, all it
 After performing the guard action, the marine player may either activatge a different marine available for activation or pass. 
 All guard tokens are removed at start of marine turn.
 
+## Assault Action
+
+The assault action is offered to an activated alien when the cell directly in front contains a marine, open door, or closed door.
+The assault action is offered to an activated marine when the cell directly in front contains an alien, open door, or closed door.
+The token performing the assault action will be refered to as the attacker, while the token being targeted will be referred to as the defender.
+Blips cannot take part in assault actions either as attaker or defender since they would have been revealed and converted into aliens due to the conversion rules above.
+The assault action costs 1 ap, and the action is only offered when ap is available.
+Dice must be rolled to decide the outcome of the assault action.  Whether attacking or defending, the number of dice we roll for a token depends on its type:
+
+| Token   | Nr. of Dice to Roll |
+|---------|---------------------|
+| Marine  | 1                   |
+| Alien   | 3                   |
+| Door    | 0                   |
+
+When the marine is facing the alien, whether as attacker or defender, it might modify the above base die counts if it is one of the following particular marine types:  
+
+| Token           | Modifier 
+|-----------------|---------------------|
+| marine_hammer   | -1 alien dice       |
+| marine_claws    | +1 marine dice      |
+
+
+
