@@ -136,6 +136,10 @@ async function init() {
   btnManipulate.textContent = "Manipulat(e)";
   actionButtons.appendChild(btnManipulate);
 
+  const btnAssault = document.createElement("button");
+  btnAssault.textContent = "(A)ssault";
+  actionButtons.appendChild(btnAssault);
+
   const btnActivate = document.createElement("button");
   btnActivate.textContent = "Activate Ally (N)";
   actionButtons.appendChild(btnActivate);
@@ -151,6 +155,14 @@ async function init() {
   const btnGuard = document.createElement("button");
   btnGuard.textContent = "(G)uard";
   actionButtons.appendChild(btnGuard);
+
+  const btnReroll = document.createElement("button");
+  btnReroll.textContent = "Reroll (X)";
+  actionButtons.appendChild(btnReroll);
+
+  const btnAccept = document.createElement("button");
+  btnAccept.textContent = "Accept (Y)";
+  actionButtons.appendChild(btnAccept);
 
   const btnPass = document.createElement("button");
   btnPass.textContent = "(P)ass";
@@ -295,12 +307,15 @@ async function init() {
       buttons: {
         activate: btnActivate,
         move: btnMove,
+        assault: btnAssault,
         turnLeft: btnTurnLeft,
         turnRight: btnTurnRight,
         manipulate: btnManipulate,
         reveal: btnReveal,
         deploy: btnDeploy,
         guard: btnGuard,
+        reroll: btnReroll,
+        accept: btnAccept,
         pass: btnPass,
       },
     }, logMessage);

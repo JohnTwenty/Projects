@@ -57,12 +57,15 @@ test('choose highlights activation options for different token types', async () 
     buttons: {
       activate: new DummyButton(),
       move: new DummyButton(),
+      assault: new DummyButton(),
       turnLeft: new DummyButton(),
       turnRight: new DummyButton(),
       manipulate: new DummyButton(),
       reveal: new DummyButton(),
       deploy: new DummyButton(),
       guard: new DummyButton(),
+      reroll: new DummyButton(),
+      accept: new DummyButton(),
       pass: new DummyButton(),
     },
   };
@@ -130,12 +133,15 @@ test('move option takes precedence over door option on same cell', async () => {
     buttons: {
       activate: new DummyButton(),
       move: new DummyButton(),
+      assault: new DummyButton(),
       turnLeft: new DummyButton(),
       turnRight: new DummyButton(),
       manipulate: new DummyButton(),
       reveal: new DummyButton(),
       deploy: new DummyButton(),
       guard: new DummyButton(),
+      reroll: new DummyButton(),
+      accept: new DummyButton(),
       pass: new DummyButton(),
     },
   };
@@ -156,6 +162,161 @@ test('move option takes precedence over door option on same cell', async () => {
   moveOverlay.listeners.click({ stopPropagation() {} });
   const result = await promise;
   assert.deepEqual(result, moveOpt);
+
+  globalThis.document = origDoc;
+});
+
+test('assault option takes precedence over move option on same cell', async () => {
+  const board = { size: 1, segments: [], tokens: [] };
+  const renderer = { render() {} };
+  const rules = { validate() {}, runGame: async () => {} };
+  const player = { choose: async () => ({ type: 'action', action: 'pass' }) };
+
+  class DummyElement {
+    constructor() {
+      this.style = {};
+      this.children = [];
+      this.listeners = {};
+      this.classList = { toggle() {}, remove() {}, add() {} };
+    }
+    appendChild(el) {
+      this.children.push(el);
+    }
+    addEventListener(name, fn) {
+      this.listeners[name] = fn;
+    }
+    removeEventListener(name) {
+      delete this.listeners[name];
+    }
+    remove() {}
+  }
+  class DummyButton extends DummyElement {
+    constructor() {
+      super();
+      this.disabled = false;
+    }
+  }
+
+  const created = [];
+  const origDoc = globalThis.document;
+  globalThis.document = {
+    createElement: () => {
+      const el = new DummyElement();
+      created.push(el);
+      return el;
+    },
+  };
+
+  const ui = {
+    container: new DummyElement(),
+    cellToRect: () => ({ x: 0, y: 0, width: 1, height: 1 }),
+    buttons: {
+      activate: new DummyButton(),
+      move: new DummyButton(),
+      assault: new DummyButton(),
+      turnLeft: new DummyButton(),
+      turnRight: new DummyButton(),
+      manipulate: new DummyButton(),
+      reveal: new DummyButton(),
+      deploy: new DummyButton(),
+      guard: new DummyButton(),
+      reroll: new DummyButton(),
+      accept: new DummyButton(),
+      pass: new DummyButton(),
+    },
+  };
+
+  const game = new Game(board, renderer, rules, player, player, ui);
+  const assaultOpt = { type: 'action', action: 'assault', coord: { x: 0, y: 0 } };
+  const moveOpt = { type: 'action', action: 'move', coord: { x: 0, y: 0 } };
+  const options = [moveOpt, assaultOpt];
+
+  const promise = game.choose(options);
+  assert.equal(created.length, 2);
+
+  const assaultOverlay = created.find(
+    (e) => e.style.border === '2px solid red'
+  );
+  const moveOverlay = created.find(
+    (e) => e.style.border === '2px solid green'
+  );
+  assert.ok(assaultOverlay && moveOverlay);
+  assert.ok(
+    Number(assaultOverlay.style.zIndex) > Number(moveOverlay.style.zIndex)
+  );
+
+  assaultOverlay.listeners.click({ stopPropagation() {} });
+  const result = await promise;
+  assert.deepEqual(result, assaultOpt);
+
+  globalThis.document = origDoc;
+});
+
+test('reroll and accept buttons resolve options', async () => {
+  const board = { size: 1, segments: [], tokens: [] };
+  const renderer = { render() {} };
+  const rules = { validate() {}, runGame: async () => {} };
+  const player = { choose: async () => ({ type: 'action', action: 'pass' }) };
+
+  class DummyElement {
+    constructor() {
+      this.style = {};
+      this.children = [];
+      this.listeners = {};
+      this.classList = { toggle() {}, remove() {}, add() {} };
+    }
+    appendChild(el) {
+      this.children.push(el);
+    }
+    addEventListener(name, fn) {
+      this.listeners[name] = fn;
+    }
+    removeEventListener(name) {
+      delete this.listeners[name];
+    }
+    remove() {}
+  }
+  class DummyButton extends DummyElement {
+    constructor() {
+      super();
+      this.disabled = false;
+    }
+  }
+
+  const origDoc = globalThis.document;
+  globalThis.document = { createElement: () => new DummyElement() };
+
+  const ui = {
+    container: new DummyElement(),
+    cellToRect: () => ({ x: 0, y: 0, width: 1, height: 1 }),
+    buttons: {
+      activate: new DummyButton(),
+      move: new DummyButton(),
+      assault: new DummyButton(),
+      turnLeft: new DummyButton(),
+      turnRight: new DummyButton(),
+      manipulate: new DummyButton(),
+      reveal: new DummyButton(),
+      deploy: new DummyButton(),
+      guard: new DummyButton(),
+      reroll: new DummyButton(),
+      accept: new DummyButton(),
+      pass: new DummyButton(),
+    },
+  };
+
+  const game = new Game(board, renderer, rules, player, player, ui);
+  const rerollOpt = { type: 'action', action: 'reroll' };
+  const acceptOpt = { type: 'action', action: 'accept' };
+  const options = [rerollOpt, acceptOpt];
+
+  const promise = game.choose(options);
+  assert.equal(ui.buttons.reroll.disabled, false);
+  assert.equal(ui.buttons.accept.disabled, false);
+
+  ui.buttons.reroll.listeners.click({});
+  const result = await promise;
+  assert.deepEqual(result, rerollOpt);
 
   globalThis.document = origDoc;
 });

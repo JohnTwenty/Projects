@@ -875,3 +875,127 @@ test('guard action ends activation and clears on next marine turn', async () => 
   assert.equal(hadGuard, true);
   assert.equal(guardCleared, true);
 });
+
+test('assault action offered and removes alien on win', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 0, y: 1 }] },
+    ],
+  };
+  const logs = [];
+  const rules = new BasicRules(board, undefined, undefined, undefined, (m) =>
+    logs.push(m),
+  );
+  rules.validate(board);
+
+  let calls = 0;
+  let secondOpts;
+  let tokensAfter;
+  const originalRandom = Math.random;
+  const seq = [0.9, 0.1, 0.1, 0.1];
+  Math.random = () => seq.shift() || 0;
+  const player = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) return options.find((o) => o.action === 'activate');
+      if (calls === 2) {
+        secondOpts = options;
+        return options.find((o) => o.action === 'assault');
+      }
+      if (calls === 3) {
+        tokensAfter = board.tokens.map((t) => t.type);
+        board.tokens = [];
+        return options[0];
+      }
+      return options[0];
+    },
+  };
+
+  await rules.runGame(player, player);
+  Math.random = originalRandom;
+
+  assert.ok(secondOpts.some((o) => o.action === 'assault'));
+  assert.ok(!tokensAfter.includes('alien'));
+  assert.ok(
+    logs.some((m) => m.includes('Rolling 1 marine dice vs 3 alien dice')),
+  );
+  assert.ok(logs.some((m) => m.includes('Marine rolls')));
+  assert.ok(logs.some((m) => m.includes('Alien rolls')));
+  assert.ok(logs.some((m) => m.includes('Attacker wins assault')));
+});
+
+test('marine_chain assault destroys door', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine_chain', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'D1', type: 'door', rot: 0, cells: [{ x: 0, y: 1 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  let calls = 0;
+  let doorPresent;
+  const player = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) return options.find((o) => o.action === 'activate');
+      if (calls === 2) return options.find((o) => o.action === 'assault');
+      if (calls === 3) {
+        doorPresent = board.tokens.some((t) => t.instanceId === 'D1');
+        board.tokens = [];
+        return options[0];
+      }
+      return options[0];
+    },
+  };
+
+  await rules.runGame(player, player);
+
+  assert.equal(doorPresent, false);
+});
+
+test('marine_hammer assault logs modifiers', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine_hammer', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 0, y: 1 }] },
+    ],
+  };
+  const logs = [];
+  const rules = new BasicRules(board, undefined, undefined, undefined, (m) =>
+    logs.push(m),
+  );
+  rules.validate(board);
+
+  let calls = 0;
+  const originalRandom = Math.random;
+  const seq = [0.1, 0.9, 0.9];
+  Math.random = () => seq.shift() || 0;
+  const player = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) return options.find((o) => o.action === 'activate');
+      if (calls === 2) return options.find((o) => o.action === 'assault');
+      if (calls === 3) return options.find((o) => o.action === 'accept');
+      if (calls === 4) {
+        board.tokens = [];
+        return options[0];
+      }
+      return options[0];
+    },
+  };
+
+  await rules.runGame(player, player);
+  Math.random = originalRandom;
+
+  assert.ok(logs.some((m) => m.includes('Hammer reduces alien dice')));
+  assert.ok(logs.some((m) => m.includes('Hammer adds +2 to marine rolls')));
+});
