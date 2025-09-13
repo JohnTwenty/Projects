@@ -135,10 +135,10 @@ When the involuntary reveal(s) are complete, the game continues from where it le
 
 ## Guard Action
 
-An activated marine can perform the guard action to spend 2 AP to get guard token; 
+An activated marine can perform the guard action to spend 2 AP to get a guard token; 
 if the marine had an overwatch token, this is removed.
-After placing the guard token the marine's activation automatically ends, all its remaining ap are lost, and it receives a deactivated token.
-After performing the guard action, the marine player may either activatge a different marine available for activation or pass. 
+After placing the guard token in the marine's cell, the marine's activation automatically ends, all its remaining ap are lost, and it receives a deactivated token.
+After performing the guard action, the marine player may either activate a different marine available for activation or pass. 
 All guard tokens are removed at start of marine turn.
 
 ## Assault Action
@@ -149,7 +149,7 @@ The token performing the assault action will be refered to as the attacker, whil
 Blips cannot take part in assault actions either as attaker or defender since they would have been revealed and converted into aliens due to the conversion rules above.
 The assault action costs 1 ap, and the action is only offered when ap is available.
 
-When a marine of the specific token type marine_chain attacks a door, the door token is removed from the board.
+When a marine of the specific token type marine_chain attacks a door, the door token is removed from the board, and the assault action is concluded.
 Otherwise, dice must be rolled to decide the outcome of the assault action.  Whether attacking or defending, the number of dice we roll for a token depends on its type:
 
 | Token   | Nr. of Dice to Roll |
@@ -158,14 +158,16 @@ Otherwise, dice must be rolled to decide the outcome of the assault action.  Whe
 | Alien   | 3                   |
 | Door    | 0                   |
 
+When attacking a door, this base number of die are rolled for the attacker.  If there is at least one 6 among the results, the door token is removed from the board. Either way, the assault action is concluded.
+
+When the assault happens between a marine and an alien, we need to deal with further modifiers:
+
 When a marine is facing directly toward an alien, whether as attacker or defender, we modify the above base die counts if the marine is one of the following types:  
 
 | Token           | Modifier                |
 |-----------------|-------------------------|
 | marine_hammer   | -1 alien dice to roll   |
 | marine_claws    | +1 marine dice to roll  |
-
-These modifiers are not applied when attacking a door.
 
 The rules module rolls the possibly modified number of dice for the attacker and then for the defender.
 When a marine is facing directly toward an alien, whether as attacker or defender, we modify each of the marine die results if the marine is one of the following types:
@@ -176,7 +178,16 @@ When a marine is facing directly toward an alien, whether as attacker or defende
 | marine_claws    | +1 to marine dice results  |
 | marine_sarge    | +1 to marine dice results  |
 
-These modifiers are not applied when attacking a door.
+If one side has rolled a higher result on any of its dice than the highest result of the other side, then this side is the winner.
+If both sides have the same highest die roll desult, then the assault is tied.
+
+When a marine of specific token type marine_sarge is facing directly toward an alien, whether as attacker or defender, and did not win the assault, it must be offered the choice to re-roll the alien's highest scoring die or accept the outcome.
+After a potential re-roll the win or tie situation is re-evaluated.
+After this first potential re-roll, when a marine is on guard (it has a guard token in its cell), and it has not won the assault, it must be offered the choice to re-roll all its dice for a second chance, or accept the outcome.  
+After a potential re-roll the win or tie situation is re-evaluated.
+
+
+
 
 
 
