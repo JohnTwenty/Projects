@@ -61,6 +61,7 @@ html, body {
   background: #111;
   color: #fff;
   overflow-x: auto;
+  overflow-y: auto;
   white-space: nowrap;
   font-family: monospace;
   padding: 4px;

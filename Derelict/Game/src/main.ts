@@ -196,11 +196,12 @@ async function init() {
   let currentGame: Game | null = null;
 
   const logMessage = (text: string, color?: string) => {
-    const span = document.createElement("span");
-    if (color) span.style.color = color;
-    span.textContent = text + " ";
-    logArea.appendChild(span);
+    const line = document.createElement("div");
+    if (color) line.style.color = color;
+    line.textContent = text;
+    logArea.appendChild(line);
     logArea.scrollLeft = logArea.scrollWidth;
+    logArea.scrollTop = logArea.scrollHeight;
   };
 
   const updateStatus = (info: {
