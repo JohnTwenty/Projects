@@ -24,6 +24,8 @@ export interface ChooseUI {
     reveal: HTMLButtonElement;
     deploy: HTMLButtonElement;
     guard: HTMLButtonElement;
+    reroll: HTMLButtonElement;
+    accept: HTMLButtonElement;
     pass: HTMLButtonElement;
   };
 }
@@ -67,6 +69,8 @@ export class Game implements GameApi {
       buttons.reveal.textContent = "(V)reveal";
       buttons.deploy.textContent = "(D)eploy";
       buttons.guard.textContent = "(G)uard";
+      buttons.reroll.textContent = "Reroll (X)";
+      buttons.accept.textContent = "Accept (Y)";
 
       const overlays: {
         el: HTMLElement;
@@ -292,6 +296,26 @@ export class Game implements GameApi {
           resolve(opt);
         }
       }
+      function onReroll() {
+        if (buttons.reroll.disabled) return;
+        const opt = options.find(
+          (o) => o.type === "action" && (o.action as any) === "reroll",
+        );
+        if (opt) {
+          cleanup();
+          resolve(opt);
+        }
+      }
+      function onAccept() {
+        if (buttons.accept.disabled) return;
+        const opt = options.find(
+          (o) => o.type === "action" && (o.action as any) === "accept",
+        );
+        if (opt) {
+          cleanup();
+          resolve(opt);
+        }
+      }
       function onTurnLeft() {
         if (buttons.turnLeft.disabled) return;
         const opt = options.find(
@@ -340,6 +364,8 @@ export class Game implements GameApi {
         buttons.reveal.removeEventListener("click", onReveal);
         buttons.deploy.removeEventListener("click", onDeploy);
         buttons.guard.removeEventListener("click", onGuard);
+        buttons.reroll.removeEventListener("click", onReroll);
+        buttons.accept.removeEventListener("click", onAccept);
         buttons.turnLeft.removeEventListener("click", onTurnLeft);
         buttons.turnRight.removeEventListener("click", onTurnRight);
         buttons.pass.removeEventListener("click", onPass);
@@ -360,6 +386,8 @@ export class Game implements GameApi {
         buttons.assault.style.color = "";
         buttons.turnLeft.style.color = "";
         buttons.turnRight.style.color = "";
+        buttons.reroll.textContent = "Reroll (X)";
+        buttons.accept.textContent = "Accept (Y)";
         this.cleanup = undefined;
       };
       this.cleanup = cleanup;
@@ -371,6 +399,8 @@ export class Game implements GameApi {
       buttons.reveal.addEventListener("click", onReveal);
       buttons.deploy.addEventListener("click", onDeploy);
       buttons.guard.addEventListener("click", onGuard);
+       buttons.reroll.addEventListener("click", onReroll);
+       buttons.accept.addEventListener("click", onAccept);
       buttons.turnLeft.addEventListener("click", onTurnLeft);
       buttons.turnRight.addEventListener("click", onTurnRight);
       buttons.pass.addEventListener("click", onPass);
@@ -385,6 +415,8 @@ export class Game implements GameApi {
         g: onGuard,
         l: onTurnLeft,
         r: onTurnRight,
+        x: onReroll,
+        y: onAccept,
         p: onPass,
       };
       const onKey = (e: KeyboardEvent) => {
@@ -425,6 +457,12 @@ export class Game implements GameApi {
       );
       buttons.guard.disabled = !options.some(
         (o) => o.type === "action" && o.action === "guard",
+      );
+      buttons.reroll.disabled = !options.some(
+        (o) => o.type === "action" && (o.action as any) === "reroll",
+      );
+      buttons.accept.disabled = !options.some(
+        (o) => o.type === "action" && (o.action as any) === "accept",
       );
       buttons.pass.disabled = !options.some(
         (o) => o.type === "action" && o.action === "pass",

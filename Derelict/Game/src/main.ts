@@ -156,6 +156,14 @@ async function init() {
   btnGuard.textContent = "(G)uard";
   actionButtons.appendChild(btnGuard);
 
+  const btnReroll = document.createElement("button");
+  btnReroll.textContent = "Reroll (X)";
+  actionButtons.appendChild(btnReroll);
+
+  const btnAccept = document.createElement("button");
+  btnAccept.textContent = "Accept (Y)";
+  actionButtons.appendChild(btnAccept);
+
   const btnPass = document.createElement("button");
   btnPass.textContent = "(P)ass";
   actionButtons.appendChild(btnPass);
@@ -306,6 +314,8 @@ async function init() {
         reveal: btnReveal,
         deploy: btnDeploy,
         guard: btnGuard,
+        reroll: btnReroll,
+        accept: btnAccept,
         pass: btnPass,
       },
     }, logMessage);
