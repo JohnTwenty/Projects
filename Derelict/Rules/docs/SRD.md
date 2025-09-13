@@ -137,7 +137,7 @@ When the involuntary reveal(s) are complete, the game continues from where it le
 
 An activated marine can perform the guard action to spend 2 AP to get guard token; 
 if the marine had an overwatch token, this is removed.
-After placing the guard token the marine's activation automatically ends, all its remaining ap are lost, and it receives a "deactivated" token.
+After placing the guard token the marine's activation automatically ends, all its remaining ap are lost, and it receives a deactivated token.
 After performing the guard action, the marine player may either activatge a different marine available for activation or pass. 
 All guard tokens are removed at start of marine turn.
 
