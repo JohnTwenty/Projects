@@ -17,6 +17,7 @@ export class BasicRules implements Rules {
     private onChange?: (state: BoardState) => void,
     private onStatus?: (info: { turn: number; activePlayer: number; ap?: number }) => void,
     initialState?: { turn?: number; activePlayer?: number },
+    private onLog?: (message: string, color?: string) => void,
   ) {
     if (initialState) {
       if (typeof initialState.turn === 'number') this.turn = initialState.turn;
@@ -123,6 +124,7 @@ export class BasicRules implements Rules {
       }
     };
     this.emitStatus();
+    this.onLog?.(`Player ${this.activePlayer} begins turn ${this.turn}`);
     mainLoop: while (true) {
       const tokens = this.board.tokens.filter((t) =>
         currentSide === 'marine' ? isMarine(t) : t.type === 'alien' || isBlip(t),
@@ -360,6 +362,9 @@ export class BasicRules implements Rules {
                   apRemaining = initialAp(target);
                   lastMove = false;
                   this.emitStatus(apRemaining);
+                  this.onLog?.(
+                    `Player ${this.activePlayer} activated ${target.type} at (${choice.coord.x}, ${choice.coord.y})`,
+                  );
                 }
                 continue mainLoop;
               }
@@ -378,6 +383,7 @@ export class BasicRules implements Rules {
                 apRemaining = 0;
                 lastMove = false;
                 this.emitStatus();
+                this.onLog?.(`Player ${this.activePlayer} begins turn ${this.turn}`);
                 continue mainLoop;
               }
               break;
@@ -408,6 +414,9 @@ export class BasicRules implements Rules {
             apRemaining = initialAp(target);
             lastMove = false;
             this.emitStatus(apRemaining);
+            this.onLog?.(
+              `Player ${this.activePlayer} activated ${target.type} at (${target.cells[0].x}, ${target.cells[0].y})`,
+            );
           }
           break;
         }
@@ -444,6 +453,7 @@ export class BasicRules implements Rules {
           apRemaining = 0;
           lastMove = false;
           this.emitStatus();
+          this.onLog?.(`Player ${this.activePlayer} begins turn ${this.turn}`);
           break;
       }
     }

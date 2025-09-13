@@ -21,6 +21,7 @@ export interface Choice {
 export interface GameApi {
   choose(options: Choice[]): Promise<Choice>;
   messageBox(message: string): Promise<boolean>;
+  log?(message: string, color?: string): void;
 }
 
 // Basic player interface used by the rules engine
@@ -33,7 +34,7 @@ export class HumanPlayer implements Player {
   constructor(private game: GameApi) {}
 
   choose(options: Choice[]): Promise<Choice> {
-    console.log('Player choices', options);
+    this.game.log?.('Player choices requested');
     return this.game.choose(options);
   }
 }

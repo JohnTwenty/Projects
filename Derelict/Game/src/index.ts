@@ -37,6 +37,7 @@ export class Game implements GameApi {
     private player1: Player,
     private player2: Player,
     private ui?: ChooseUI,
+    private logger?: (msg: string, color?: string) => void,
   ) {}
 
   async start(): Promise<void> {
@@ -355,6 +356,10 @@ export class Game implements GameApi {
   // Clean up any in-progress UI interactions
   dispose(): void {
     this.cleanup?.();
+  }
+
+  log(message: string, color?: string): void {
+    this.logger?.(message, color);
   }
 
   async messageBox(_message: string): Promise<boolean> {

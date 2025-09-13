@@ -94,13 +94,23 @@ async function init() {
   main.id = "main";
   app.appendChild(main);
 
+  const play = document.createElement("div");
+  play.id = "play-area";
+  main.appendChild(play);
+
   const wrap = document.createElement("div");
   wrap.id = "viewport-wrap";
-  main.appendChild(wrap);
+  play.appendChild(wrap);
 
   const canvas = document.createElement("canvas");
   canvas.id = "viewport";
+  canvas.width = 2560;
+  canvas.height = 2560;
   wrap.appendChild(canvas);
+
+  const logArea = document.createElement("div");
+  logArea.id = "log";
+  play.appendChild(logArea);
 
   const side = document.createElement("div");
   side.id = "side-bar";
@@ -185,6 +195,15 @@ async function init() {
   let currentRules: any = null;
   let currentGame: Game | null = null;
 
+  const logMessage = (text: string, color?: string) => {
+    const line = document.createElement("div");
+    if (color) line.style.color = color;
+    line.textContent = text;
+    logArea.appendChild(line);
+    logArea.scrollLeft = logArea.scrollWidth;
+    logArea.scrollTop = logArea.scrollHeight;
+  };
+
   const updateStatus = (info: {
     turn: number;
     activePlayer: number;
@@ -200,12 +219,12 @@ async function init() {
   };
   function render(state: any) {
     currentState = state;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-    rendererCore.resize(rect.width, rect.height);
+    const size = 2560;
+    canvas.width = size;
+    canvas.height = size;
+    rendererCore.resize(size, size);
     viewport.dpr = window.devicePixelRatio || 1;
-    const base = Math.min(rect.width, rect.height) / state.size;
+    const base = size / state.size;
     viewport.cellSize = Math.min(base, 64);
     rendererCore.render(ctx, state, viewport);
   }
@@ -232,6 +251,7 @@ async function init() {
 
   async function startGameFromText(text: string, twoPlayer: boolean) {
     currentGame?.dispose();
+    logArea.textContent = "";
     const board: any = BoardState.newBoard(40, segLib, tokLib);
     // ensure renderer knows dimensions for each segment
     board.segmentDefs = segmentDefs;
@@ -248,6 +268,7 @@ async function init() {
       () => renderer.render(board),
       updateStatus,
       { turn: initTurn, activePlayer: initPlayer },
+      logMessage,
     );
     currentRules = rules;
     updateStatus(rules.getState());
@@ -255,11 +276,13 @@ async function init() {
     const p1 = new Players.HumanPlayer({
       choose: (options: any) => game.choose(options),
       messageBox: (msg: string) => game.messageBox(msg),
+      log: (msg: string, color?: string) => game.log(msg, color),
     });
     const p2 = twoPlayer
       ? new Players.HumanPlayer({
           choose: (options: any) => game.choose(options),
           messageBox: (msg: string) => game.messageBox(msg),
+          log: (msg: string, color?: string) => game.log(msg, color),
         })
       : new Players.RandomAI();
     game = new Game(board, renderer, rules, p1, p2, {
@@ -275,7 +298,7 @@ async function init() {
         deploy: btnDeploy,
         pass: btnPass,
       },
-    });
+    }, logMessage);
     currentGame = game;
     try {
       await game.start();
