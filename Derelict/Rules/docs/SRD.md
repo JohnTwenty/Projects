@@ -184,7 +184,15 @@ If both sides have the same highest die roll desult, then the assault is tied.
 When a marine of specific token type marine_sarge is facing directly toward an alien, whether as attacker or defender, and did not win the assault, it must be offered the choice to re-roll the alien's highest scoring die or accept the outcome.
 After a potential re-roll the win or tie situation is re-evaluated.
 After this first potential re-roll, when a marine is on guard (it has a guard token in its cell), and it has not won the assault, it must be offered the choice to re-roll all its dice for a second chance, or accept the outcome.  
-After a potential re-roll the win or tie situation is re-evaluated.
+After a potential re-roll the win or tie situation is re-evaluated, and now the results are final:
+
+If the attacker wins, the defender is removed from he board, including any guard, overwatch, or jam tokens in their cell.
+If a defenderfacing directly toward the attacker wins, the attacker is removed from the board, including any guard, overwatch, or jam tokens in their cell.
+If a defender with any other facing wins or ties, the choice to turn to face the attacker is offered to the defender player.
+In any other case, nothing else happens. With this the assault action is concluded, and the assaulting player is offered to choose from any of its usual actions that come in question with its remaining ap budget.
+
+
+
 
 
 
