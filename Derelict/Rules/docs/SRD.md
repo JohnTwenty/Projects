@@ -133,7 +133,7 @@ If there are insufficient cells meeting this condition for placement, the additi
 
 When the involuntary reveal(s) are complete, the game continues from where it left off.
 
-## Guard action
+## Guard Action
 
 An activated marine can perform the guard action to spend 2 AP to get guard token; 
 if the marine had an overwatch token, this is removed.
