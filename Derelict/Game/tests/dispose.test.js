@@ -60,6 +60,7 @@ test("dispose clears overlays and listeners", () => {
       manipulate: new DummyButton(),
       reveal: new DummyButton(),
       deploy: new DummyButton(),
+      guard: new DummyButton(),
       pass: new DummyButton(),
     },
   };

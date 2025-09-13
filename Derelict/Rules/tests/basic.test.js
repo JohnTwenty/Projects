@@ -828,3 +828,50 @@ for (const blipType of ['blip', 'blip_2', 'blip_3']) {
     assert.ok(finalOpts.some((o) => o.action === 'pass'));
     assert.ok(!finalOpts.some((o) => o.action === 'deploy'));
   });
+
+test('guard action ends activation and clears on next marine turn', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 4, y: 4 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  let calls = 0;
+  let hadGuard = false;
+  let guardCleared = false;
+  const p1 = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (calls === 2) {
+        return options.find((o) => o.action === 'guard');
+      }
+      if (calls === 3) {
+        hadGuard = board.tokens.some((t) => t.type === 'guard');
+        return options.find((o) => o.action === 'pass');
+      }
+      if (calls === 4) {
+        guardCleared = !board.tokens.some((t) => t.type === 'guard');
+        board.tokens = [];
+        return options.find((o) => o.action === 'pass') || options[0];
+      }
+      return options[0];
+    },
+  };
+  const p2 = {
+    choose: async (options) =>
+      options.find((o) => o.action === 'pass') || options[0],
+  };
+
+  await rules.runGame(p1, p2);
+
+  assert.equal(hadGuard, true);
+  assert.equal(guardCleared, true);
+});

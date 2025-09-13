@@ -22,6 +22,7 @@ export interface ChooseUI {
     manipulate: HTMLButtonElement;
     reveal: HTMLButtonElement;
     deploy: HTMLButtonElement;
+    guard: HTMLButtonElement;
     pass: HTMLButtonElement;
   };
 }
@@ -63,6 +64,7 @@ export class Game implements GameApi {
       buttons.turnRight.style.color = "";
       buttons.reveal.textContent = "(V)reveal";
       buttons.deploy.textContent = "(D)eploy";
+      buttons.guard.textContent = "(G)uard";
 
       const overlays: {
         el: HTMLElement;
@@ -229,6 +231,16 @@ export class Game implements GameApi {
         if (buttons.deploy.disabled) return;
         setFilter(filter === "deploy" ? null : "deploy");
       }
+      function onGuard() {
+        if (buttons.guard.disabled) return;
+        const opt = options.find(
+          (o) => o.type === "action" && o.action === "guard",
+        );
+        if (opt) {
+          cleanup();
+          resolve(opt);
+        }
+      }
       function onTurnLeft() {
         if (buttons.turnLeft.disabled) return;
         const opt = options.find(
@@ -275,6 +287,7 @@ export class Game implements GameApi {
         buttons.manipulate.removeEventListener("click", onManipulate);
         buttons.reveal.removeEventListener("click", onReveal);
         buttons.deploy.removeEventListener("click", onDeploy);
+        buttons.guard.removeEventListener("click", onGuard);
         buttons.turnLeft.removeEventListener("click", onTurnLeft);
         buttons.turnRight.removeEventListener("click", onTurnRight);
         buttons.pass.removeEventListener("click", onPass);
@@ -285,6 +298,7 @@ export class Game implements GameApi {
         buttons.move.classList.remove("active");
         buttons.manipulate.classList.remove("active");
         buttons.deploy.classList.remove("active");
+        buttons.guard.classList.remove("active");
         buttons.move.textContent = "(M)ove";
         buttons.manipulate.textContent = "(E)manipulate";
         buttons.turnLeft.textContent = "Turn (L)eft";
@@ -300,6 +314,7 @@ export class Game implements GameApi {
       buttons.manipulate.addEventListener("click", onManipulate);
       buttons.reveal.addEventListener("click", onReveal);
       buttons.deploy.addEventListener("click", onDeploy);
+      buttons.guard.addEventListener("click", onGuard);
       buttons.turnLeft.addEventListener("click", onTurnLeft);
       buttons.turnRight.addEventListener("click", onTurnRight);
       buttons.pass.addEventListener("click", onPass);
@@ -310,6 +325,7 @@ export class Game implements GameApi {
         e: onManipulate,
         v: onReveal,
         d: onDeploy,
+        g: onGuard,
         l: onTurnLeft,
         r: onTurnRight,
         p: onPass,
@@ -346,6 +362,9 @@ export class Game implements GameApi {
       );
       buttons.deploy.disabled = !options.some(
         (o) => o.type === "action" && o.action === "deploy",
+      );
+      buttons.guard.disabled = !options.some(
+        (o) => o.type === "action" && o.action === "guard",
       );
       buttons.pass.disabled = !options.some(
         (o) => o.type === "action" && o.action === "pass",

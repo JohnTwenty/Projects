@@ -62,6 +62,7 @@ test('choose highlights activation options for different token types', async () 
       manipulate: new DummyButton(),
       reveal: new DummyButton(),
       deploy: new DummyButton(),
+      guard: new DummyButton(),
       pass: new DummyButton(),
     },
   };
@@ -134,6 +135,7 @@ test('move option takes precedence over door option on same cell', async () => {
       manipulate: new DummyButton(),
       reveal: new DummyButton(),
       deploy: new DummyButton(),
+      guard: new DummyButton(),
       pass: new DummyButton(),
     },
   };
