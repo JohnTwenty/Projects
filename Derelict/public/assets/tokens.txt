@@ -12,5 +12,4 @@ type=objective
 type=start_marine
 type=alien_entry
 type=deactivated
-
-
+type=guard

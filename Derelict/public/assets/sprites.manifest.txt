@@ -17,3 +17,4 @@ objective assets/images/objective.png     0  0  0  0  10      0    0
 start_marine assets/images/start.png      0  0  0  0  10      0    0
 alien_entry assets/images/entry.png       0  0  0  0  10      0    0
 deactivated assets/images/deactivated.png 0  0  0  0   5      -32  32	
+guard assets/images/guard.png             0  0  0  0   5      -16  32	
