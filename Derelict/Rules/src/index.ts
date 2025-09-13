@@ -319,12 +319,22 @@ export class BasicRules implements Rules {
               apRemaining -= action.apCost;
               lastMove = false;
               if (target.type === 'door' || target.type === 'dooropen') {
+                this.onLog?.(
+                  `${active.type} assaults ${target.type} at (${action.coord.x}, ${action.coord.y})`,
+                );
                 if (isMarine(active) && active.type === 'marine_chain') {
+                  this.onLog?.('Chainfist marine destroys the door automatically');
                   removeToken(this.board, target);
                 } else {
-                  const rolls = rollDice(baseDice(active.type));
+                  const dice = baseDice(active.type);
+                  this.onLog?.(`${active.type} rolls ${dice} dice`);
+                  const rolls = rollDice(dice);
+                  this.onLog?.(`Rolls: ${rolls.join(', ')}`);
                   if (rolls.some((r) => r === 6)) {
+                    this.onLog?.('Door is destroyed');
                     removeToken(this.board, target);
+                  } else {
+                    this.onLog?.('Door holds');
                   }
                 }
                 this.onChange?.(this.board);
@@ -356,20 +366,36 @@ export class BasicRules implements Rules {
                 let marineDice = baseDice(marine.type);
                 let alienDice = baseDice(alien.type);
                 if (marineFacing) {
-                  if (marine.type === 'marine_hammer') alienDice--;
-                  if (marine.type === 'marine_claws') marineDice++;
+                  if (marine.type === 'marine_hammer') {
+                    alienDice--;
+                    this.onLog?.('Hammer reduces alien dice by 1');
+                  }
+                  if (marine.type === 'marine_claws') {
+                    marineDice++;
+                    this.onLog?.('Claws grant +1 marine die');
+                  }
                 }
                 if (alienDice < 0) alienDice = 0;
                 if (marineDice < 0) marineDice = 0;
+                this.onLog?.(`Rolling ${marineDice} marine dice vs ${alienDice} alien dice`);
                 let marineRolls = rollDice(marineDice);
                 let alienRolls = rollDice(alienDice);
+                this.onLog?.(`Marine rolls: ${marineRolls.join(', ')}`);
+                this.onLog?.(`Alien rolls: ${alienRolls.join(', ')}`);
                 if (marineFacing) {
-                  if (marine.type === 'marine_hammer')
+                  if (marine.type === 'marine_hammer') {
                     marineRolls = marineRolls.map((r) => r + 2);
-                  if (marine.type === 'marine_claws')
+                    this.onLog?.('Hammer adds +2 to marine rolls');
+                  }
+                  if (marine.type === 'marine_claws') {
                     marineRolls = marineRolls.map((r) => r + 1);
-                  if (marine.type === 'marine_sarge')
+                    this.onLog?.('Claws add +1 to marine rolls');
+                  }
+                  if (marine.type === 'marine_sarge') {
                     marineRolls = marineRolls.map((r) => r + 1);
+                    this.onLog?.('Sarge adds +1 to marine rolls');
+                  }
+                  this.onLog?.(`Modified marine rolls: ${marineRolls.join(', ')}`);
                 }
                 let attackerRolls = marineIsAttacker ? marineRolls : alienRolls;
                 let defenderRolls = marineIsAttacker ? alienRolls : marineRolls;
@@ -404,9 +430,11 @@ export class BasicRules implements Rules {
                   ]);
                   const cAct = choice.action as string;
                   if (cAct === 'reroll' && alienRolls.length > 0) {
+                    this.onLog?.('Sarge rerolls highest alien die');
                     alienRolls.sort((a, b) => b - a);
                     alienRolls[0] = rollDice(1)[0];
                     alienRolls.sort((a, b) => b - a);
+                    this.onLog?.(`Alien rolls become: ${alienRolls.join(', ')}`);
                     attackerRolls = marineIsAttacker
                       ? marineRolls
                       : alienRolls;
@@ -423,14 +451,25 @@ export class BasicRules implements Rules {
                   ]);
                   const cAct2 = choice.action as string;
                   if (cAct2 === 'reroll') {
+                    this.onLog?.('Guard rerolls all marine dice');
                     marineRolls = rollDice(marineDice);
+                    this.onLog?.(`Marine reroll: ${marineRolls.join(', ')}`);
                     if (marineFacing) {
-                      if (marine.type === 'marine_hammer')
+                      if (marine.type === 'marine_hammer') {
                         marineRolls = marineRolls.map((r) => r + 2);
-                      if (marine.type === 'marine_claws')
+                        this.onLog?.('Hammer adds +2 to marine rolls');
+                      }
+                      if (marine.type === 'marine_claws') {
                         marineRolls = marineRolls.map((r) => r + 1);
-                      if (marine.type === 'marine_sarge')
+                        this.onLog?.('Claws add +1 to marine rolls');
+                      }
+                      if (marine.type === 'marine_sarge') {
                         marineRolls = marineRolls.map((r) => r + 1);
+                        this.onLog?.('Sarge adds +1 to marine rolls');
+                      }
+                      this.onLog?.(
+                        `Modified marine rolls: ${marineRolls.join(', ')}`,
+                      );
                     }
                     attackerRolls = marineIsAttacker
                       ? marineRolls
@@ -442,10 +481,12 @@ export class BasicRules implements Rules {
                   }
                 }
                 if (outcome === 'attacker') {
+                  this.onLog?.('Attacker wins assault');
                   removeToken(this.board, target);
                   this.onChange?.(this.board);
                   await checkInvoluntaryReveals();
                 } else if (outcome === 'defender') {
+                  this.onLog?.('Defender wins assault');
                   const defFacing = sameCoord(
                     forwardCell(target.cells[0], target.rot as Rotation),
                     active.cells[0],
@@ -463,12 +504,14 @@ export class BasicRules implements Rules {
                     ]);
                     const dAct = choice.action as string;
                     if (dAct === 'turn') {
+                      this.onLog?.('Defender turns to face attacker');
                       target.rot = rotationTowards(target.cells[0], active.cells[0]);
                       this.onChange?.(this.board);
                       await checkInvoluntaryReveals();
                     }
                   }
                 } else {
+                  this.onLog?.('Assault tied');
                   const defFacing = sameCoord(
                     forwardCell(target.cells[0], target.rot as Rotation),
                     active.cells[0],
@@ -480,6 +523,7 @@ export class BasicRules implements Rules {
                     ]);
                     const dAct2 = choice.action as string;
                     if (dAct2 === 'turn') {
+                      this.onLog?.('Defender turns to face attacker');
                       target.rot = rotationTowards(target.cells[0], active.cells[0]);
                       this.onChange?.(this.board);
                       await checkInvoluntaryReveals();
