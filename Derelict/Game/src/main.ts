@@ -148,6 +148,10 @@ async function init() {
   btnDeploy.textContent = "(D)eploy";
   actionButtons.appendChild(btnDeploy);
 
+  const btnGuard = document.createElement("button");
+  btnGuard.textContent = "(G)uard";
+  actionButtons.appendChild(btnGuard);
+
   const btnPass = document.createElement("button");
   btnPass.textContent = "(P)ass";
   actionButtons.appendChild(btnPass);
@@ -296,6 +300,7 @@ async function init() {
         manipulate: btnManipulate,
         reveal: btnReveal,
         deploy: btnDeploy,
+        guard: btnGuard,
         pass: btnPass,
       },
     }, logMessage);

@@ -10,6 +10,7 @@ export interface Rules {
 export class BasicRules implements Rules {
   private nextDeactId = 1;
   private nextAlienId = 1;
+  private nextGuardId = 1;
   private turn = 1;
   private activePlayer = 1;
   constructor(
@@ -123,6 +124,12 @@ export class BasicRules implements Rules {
         }
       }
     };
+    if (this.activePlayer === 1) {
+      if (this.board.tokens.some((t) => t.type === 'guard')) {
+        this.board.tokens = this.board.tokens.filter((t) => t.type !== 'guard');
+        this.onChange?.(this.board);
+      }
+    }
     this.emitStatus();
     this.onLog?.(`Player ${this.activePlayer} begins turn ${this.turn}`);
     mainLoop: while (true) {
@@ -197,17 +204,25 @@ export class BasicRules implements Rules {
           });
           actionChoices.push({
             type: 'action',
-            action: 'turnRight',
-            coord: active.cells[0],
-            apCost: tCost,
-            apRemaining,
-          });
-        }
-        if (
-          isBlip(active) &&
-          apRemaining >= 6 &&
-          this.board.tokens.filter((t) => t.type === 'alien').length < 22
-        ) {
+          action: 'turnRight',
+          coord: active.cells[0],
+          apCost: tCost,
+          apRemaining,
+        });
+      }
+      if (isMarine(active) && apRemaining >= 2) {
+        actionChoices.push({
+          type: 'action',
+          action: 'guard',
+          apCost: 2,
+          apRemaining,
+        });
+      }
+      if (
+        isBlip(active) &&
+        apRemaining >= 6 &&
+        this.board.tokens.filter((t) => t.type === 'alien').length < 22
+      ) {
           actionChoices.push({
             type: 'action',
             action: 'reveal',
@@ -267,6 +282,32 @@ export class BasicRules implements Rules {
             lastMove = false;
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
+            this.emitStatus(apRemaining);
+          }
+          break;
+        case 'guard':
+          if (active && isMarine(active) && typeof action.apCost === 'number') {
+            const coord = { ...active.cells[0] };
+            apRemaining -= action.apCost;
+            this.board.tokens = this.board.tokens.filter(
+              (t) => !(t.type === 'overwatch' && t.cells.some((c) => sameCoord(c, coord))),
+            );
+            this.board.tokens.push({
+              instanceId: `guard-${this.nextGuardId++}`,
+              type: 'guard',
+              rot: 0,
+              cells: [coord],
+            });
+            this.board.tokens.push({
+              instanceId: `deactivated-${this.nextDeactId++}`,
+              type: 'deactivated',
+              rot: 0,
+              cells: [coord],
+            });
+            active = null;
+            apRemaining = 0;
+            lastMove = false;
+            this.onChange?.(this.board);
             this.emitStatus(apRemaining);
           }
           break;
@@ -446,7 +487,13 @@ export class BasicRules implements Rules {
             this.onChange?.(this.board);
           }
           this.activePlayer = this.activePlayer === 1 ? 2 : 1;
-          if (this.activePlayer === 1) this.turn++;
+          if (this.activePlayer === 1) {
+            this.turn++;
+            if (this.board.tokens.some((t) => t.type === 'guard')) {
+              this.board.tokens = this.board.tokens.filter((t) => t.type !== 'guard');
+              this.onChange?.(this.board);
+            }
+          }
           currentPlayer = currentPlayer === p1 ? p2 : p1;
           currentSide = currentSide === 'marine' ? 'alien' : 'marine';
           active = null;

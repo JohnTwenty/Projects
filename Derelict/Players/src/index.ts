@@ -12,6 +12,7 @@ export interface Choice {
     | 'door'
     | 'reveal'
     | 'deploy'
+    | 'guard'
     | 'pass';
   apCost?: number;
   apRemaining?: number;
