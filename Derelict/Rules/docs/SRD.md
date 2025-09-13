@@ -28,7 +28,13 @@ When choices are offered to players, the choices should be provided with informa
 
 When an activated unit is determining available actions, the rules also inspect the three cells directly forward or diagonally forward from the unit.  Each of these cells is checked for the presence of a "door" or "dooropen" token.  For every such token found, the player is offered a "door" choice that includes the door's cell coordinates.  If a "dooropen" token shares its cell with a "marine", "alien" or "blip" token, the door is considered blocked and no choice to close it is presented.  When a player selects a "door" choice, the corresponding token is swapped between "door" and "dooropen", representing the unit opening or closing that door.
 
-If a player chooses to activate a different unit while one is already active, the formerly active unit receives a "deactivated" token in its cell.  Units that share a cell with a "deactivated" token are not offered as activation choices.  When a player selects "pass", all "deactivated" tokens are removed from the board, allowing those units to be activated again on subsequent turns.
+If a player chooses to activate a different unit while one is already active, the formerly active unit receives a "deactivated" token in its cell.  Units that share a cell with a deactivated token are not offered as activation choices.  When a player selects "pass", all deactivated tokens are removed from the board, allowing those units to be activated again on subsequent turns.
+
+## Die Rolling
+
+Sometimes the rules call six sided dice to be rolled.  This Game module performs these rolls for all players.  A small number dice of dice may need to be rolled at a time. The desults of dice rolls are communicated to the user via the Game UI's text log display capability.
+When a set of dice are rolled together, the results should be sorted and presented in descending order.  The random number seed should be established when a new game is started, and stored in the mission file when the game is saved to ensure a deterministic continuity in the
+sequence of rolls.
 
 ## Game Actions
 
@@ -118,11 +124,20 @@ the set of marines M who can see this cell must be determined.  Then, the set of
 * When any marine moves or turns left or right, it must also check visibility to each blip in play.  If this test passes for any blip, the blip experiences an involuntary reveal and must immediately be converted to alien(s).
 
 As with voluntary conversions, the regular "blip" token transforms into a single alien, "blip_2" transforms into two aliens, and "blip_3" transforms into three aliens.
-First, the blip is immediately replaced with an alien.  If the blip's cell had a "deactivated" token, this token stays in place to mark the placed alien as also being deactivated.
+First, the blip is immediately replaced with an alien.  If the blip's cell had a deactivated token, this token stays in place to mark the placed alien as also being deactivated.
 Immediately after the alien is placed, the alien player may turn that alien left or right any number of times at no AP cost before proceeding, allowing the deployed alien to be oriented as desired.  The alien player also receives a "pass" option to indicate that the turning of the alien has concluded.
 The additional one or two aliens may be placed in any empty cell adjacent to the first alien.  (Whether or not they can be seen by any marine is irrelevant here.)  The cell to place them in is chosen by the marine player irrespective of which player's turn the involuntary reveal happens in.
-If the first alien placed received a "deactivated" token, the additional placed aliens also receive a deactivated token.  Each time the marine player choses a cell to place an additional alien, the alien player may turn that alien left or right any number of times at no AP cost before proceeding, 
+If the first alien placed received a deactivated token, the additional placed aliens also receive a deactivated token.  Each time the marine player choses a cell to place an additional alien, the alien player may turn that alien left or right any number of times at no AP cost before proceeding, 
 allowing each deployed alien to be oriented as desired.  The alien player also receives a "pass" option to indicate that the turning of the alien has concluded.
 If there are insufficient cells meeting this condition for placement, the additional aliens that cannot be placed are forfeited. Aliens are also forfeited if placing them would increase the number of aliens on the board above 22.
 
 When the involuntary reveal(s) are complete, the game continues from where it left off.
+
+## Guard action
+
+An activated marine can perform the guard action to spend 2 AP to get guard token; 
+if the marine had an overwatch token, this is removed.
+After placing the guard token the marine's activation automatically ends, all its remaining ap are lost, and it receives a deactivated token.
+After performing the guard action, the marine player may either activatge a different marine available for activation or pass. 
+All guard tokens are removed at start of marine turn.
+
