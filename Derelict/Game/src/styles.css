@@ -64,6 +64,7 @@ html, body {
   overflow-y: auto;
   white-space: nowrap;
   font-family: monospace;
+  font-size: 18px;
   padding: 4px;
 }
 
