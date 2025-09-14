@@ -208,9 +208,7 @@ export class BasicRules implements Rules {
           }
         }
         const front = forwardCell(active.cells[0], active.rot as Rotation);
-        const targetToken = this.board.tokens.find((t) =>
-          t.cells.some((c) => sameCoord(c, front)),
-        );
+        const targetToken = getAssaultTarget(this.board, front, active);
         if (
           targetToken &&
           apRemaining >= 1 &&
@@ -324,12 +322,14 @@ export class BasicRules implements Rules {
             this.emitStatus(apRemaining);
           }
           break;
-        case 'assault':
-          if (active && action.coord && typeof action.apCost === 'number') {
-            const target = this.board.tokens.find((t) =>
-              t.cells.some((c) => sameCoord(c, action.coord!)),
-            );
-            if (target) {
+          case 'assault':
+            if (active && action.coord && typeof action.apCost === 'number') {
+              const target = getAssaultTarget(
+                this.board,
+                action.coord,
+                active,
+              );
+              if (target) {
               apRemaining -= action.apCost;
               lastMove = false;
               if (target.type === 'door' || target.type === 'dooropen') {
@@ -1007,6 +1007,24 @@ function isMarine(t: { type: string }): boolean {
 
 function isUnit(t: { type: string }): boolean {
   return isMarine(t) || t.type === 'alien' || isBlip(t);
+}
+
+function getAssaultTarget(
+  board: BoardState,
+  coord: Coord,
+  active: TokenInstance,
+): TokenInstance | undefined {
+  const tokensAt = board.tokens.filter((t) =>
+    t.cells.some((c) => sameCoord(c, coord)),
+  );
+  const enemy = isMarine(active)
+    ? tokensAt.find((t) => t.type === 'alien')
+    : active.type === 'alien'
+    ? tokensAt.find((t) => isMarine(t))
+    : undefined;
+  return (
+    enemy || tokensAt.find((t) => t.type === 'door' || t.type === 'dooropen')
+  );
 }
 
 function blocksMovement(t: TokenInstance): boolean {
