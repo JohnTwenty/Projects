@@ -211,10 +211,40 @@ async function init() {
   let currentRules: any = null;
   let currentGame: Game | null = null;
 
+  const appendAnsiColored = (el: HTMLElement, text: string) => {
+    const regex = /\x1b\[(\d+)m/g;
+    let last = 0;
+    let match: RegExpExecArray | null;
+    let current: string | undefined;
+    while ((match = regex.exec(text))) {
+      const chunk = text.slice(last, match.index);
+      if (chunk) {
+        const span = document.createElement("span");
+        if (current) span.style.color = current;
+        span.textContent = chunk;
+        el.appendChild(span);
+      }
+      current =
+        match[1] === "31"
+          ? "red"
+          : match[1] === "32"
+          ? "green"
+          : undefined;
+      last = regex.lastIndex;
+    }
+    const tail = text.slice(last);
+    if (tail) {
+      const span = document.createElement("span");
+      if (current) span.style.color = current;
+      span.textContent = tail;
+      el.appendChild(span);
+    }
+  };
+
   const logMessage = (text: string, color?: string) => {
     const line = document.createElement("div");
     if (color) line.style.color = color;
-    line.textContent = text;
+    appendAnsiColored(line, text);
     logArea.appendChild(line);
     logArea.scrollLeft = logArea.scrollWidth;
     logArea.scrollTop = logArea.scrollHeight;
