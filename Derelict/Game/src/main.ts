@@ -434,7 +434,7 @@ async function init() {
     r1.type = "radio";
     r1.name = "mode";
     r1.value = "single";
-    r1.checked = true;
+    r1.checked = false;
     singleLabel.appendChild(r1);
     singleLabel.appendChild(document.createTextNode("Single Player"));
     const twoLabel = createEl("label");
@@ -442,6 +442,7 @@ async function init() {
     r2.type = "radio";
     r2.name = "mode";
     r2.value = "two";
+    r2.checked = true;
     twoLabel.appendChild(r2);
     twoLabel.appendChild(document.createTextNode("Two Player"));
     modeDiv.appendChild(singleLabel);

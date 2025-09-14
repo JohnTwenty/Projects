@@ -927,6 +927,51 @@ test('assault action offered and removes alien on win', async () => {
   assert.ok(logs.some((m) => m.includes('Attacker wins assault')));
 });
 
+test('assault ignores open door when enemy present', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 0, y: 1 }] },
+      { instanceId: 'D1', type: 'dooropen', rot: 0, cells: [{ x: 0, y: 1 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  let calls = 0;
+  let secondOpts;
+  let tokensAfter;
+  const originalRandom = Math.random;
+  const seq = [0.9, 0.1, 0.1, 0.1];
+  Math.random = () => seq.shift() || 0;
+  const player = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) return options.find((o) => o.action === 'activate');
+      if (calls === 2) {
+        secondOpts = options;
+        return options.find((o) => o.action === 'assault');
+      }
+      if (calls === 3) {
+        tokensAfter = board.tokens.map((t) => t.type);
+        board.tokens = [];
+        return options[0];
+      }
+      return options[0];
+    },
+  };
+
+  await rules.runGame(player, player);
+  Math.random = originalRandom;
+
+  assert.ok(secondOpts.some((o) => o.action === 'assault'));
+  assert.ok(!secondOpts.some((o) => o.action === 'door'));
+  assert.ok(tokensAfter.includes('dooropen'));
+  assert.ok(!tokensAfter.includes('alien'));
+});
+
 test('marine_chain assault destroys door', async () => {
   const board = {
     size: 5,
