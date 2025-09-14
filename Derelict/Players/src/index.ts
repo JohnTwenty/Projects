@@ -35,7 +35,7 @@ export class HumanPlayer implements Player {
   constructor(private game: GameApi) {}
 
   choose(options: Choice[]): Promise<Choice> {
-    this.game.log?.('Player choices requested');
+//    this.game.log?.('Player choices requested');
     return this.game.choose(options);
   }
 }
