@@ -57,7 +57,7 @@ html, body {
 }
 
 #log {
-  flex: 0 0 80px;
+  flex: 0 0 160px;
   background: #111;
   color: #fff;
   overflow-x: auto;
