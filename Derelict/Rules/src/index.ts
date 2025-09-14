@@ -1,6 +1,16 @@
 import type { BoardState, Coord, TokenInstance, Rotation } from 'derelict-boardstate';
 import type { Player, Choice } from 'derelict-players';
 
+const GREEN = '\x1b[32m';
+const RED = '\x1b[31m';
+const RESET = '\x1b[0m';
+
+function formatRolls(rolls: number[]): string {
+  return rolls
+    .map((r, i) => `${i === 0 ? RED : GREEN}${r}${RESET}`)
+    .join(', ');
+}
+
 export interface Rules {
   validate(state: BoardState): void;
   runGame(p1: Player, p2: Player): Promise<void>;
@@ -72,6 +82,7 @@ export class BasicRules implements Rules {
         const hadDeact = hasDeactivatedToken(this.board, origin);
         this.onChange?.(this.board);
         this.emitStatus(undefined, 2);
+        this.onLog?.('Blip revealed as alien; choose its orientation');
         await orientAlien(
           p2,
           target,
@@ -79,6 +90,7 @@ export class BasicRules implements Rules {
           this.board,
           this.onChange?.bind(this),
           0,
+          this.onLog,
         );
         let remaining = maxTotal - 1;
         while (remaining > 0) {
@@ -112,6 +124,7 @@ export class BasicRules implements Rules {
           }
           this.onChange?.(this.board);
           this.emitStatus(undefined, 2);
+          this.onLog?.('Blip reveals additional alien; choose its orientation');
           await orientAlien(
             p2,
             newAlien,
@@ -119,6 +132,7 @@ export class BasicRules implements Rules {
             this.board,
             this.onChange?.bind(this),
             0,
+            this.onLog,
           );
           remaining--;
         }
@@ -329,7 +343,7 @@ export class BasicRules implements Rules {
                   const dice = baseDice(active.type);
                   this.onLog?.(`${active.type} rolls ${dice} dice`);
                   const rolls = rollDice(dice);
-                  this.onLog?.(`Rolls: ${rolls.join(', ')}`);
+                  this.onLog?.(`Rolls: ${formatRolls(rolls)}`);
                   if (rolls.some((r) => r === 6)) {
                     this.onLog?.('Door is destroyed');
                     removeToken(this.board, target);
@@ -380,8 +394,8 @@ export class BasicRules implements Rules {
                 this.onLog?.(`Rolling ${marineDice} marine dice vs ${alienDice} alien dice`);
                 let marineRolls = rollDice(marineDice);
                 let alienRolls = rollDice(alienDice);
-                this.onLog?.(`Marine rolls: ${marineRolls.join(', ')}`);
-                this.onLog?.(`Alien rolls: ${alienRolls.join(', ')}`);
+                this.onLog?.(`Marine rolls: ${formatRolls(marineRolls)}`);
+                this.onLog?.(`Alien rolls: ${formatRolls(alienRolls)}`);
                 if (marineFacing) {
                   if (marine.type === 'marine_hammer') {
                     marineRolls = marineRolls.map((r) => r + 2);
@@ -395,7 +409,7 @@ export class BasicRules implements Rules {
                     marineRolls = marineRolls.map((r) => r + 1);
                     this.onLog?.('Sarge adds +1 to marine rolls');
                   }
-                  this.onLog?.(`Modified marine rolls: ${marineRolls.join(', ')}`);
+                  this.onLog?.(`Modified marine rolls: ${formatRolls(marineRolls)}`);
                 }
                 let attackerRolls = marineIsAttacker ? marineRolls : alienRolls;
                 let defenderRolls = marineIsAttacker ? alienRolls : marineRolls;
@@ -424,6 +438,9 @@ export class BasicRules implements Rules {
                   marine.type === 'marine_sarge' &&
                   !marineWon()
                 ) {
+                  this.onLog?.(
+                    'Sarge may reroll the highest alien die or accept the result',
+                  );
                   const choice = await marinePlayer.choose([
                     { type: 'action', action: 'reroll' as any, apCost: 0, apRemaining },
                     { type: 'action', action: 'accept' as any, apCost: 0, apRemaining },
@@ -434,7 +451,9 @@ export class BasicRules implements Rules {
                     alienRolls.sort((a, b) => b - a);
                     alienRolls[0] = rollDice(1)[0];
                     alienRolls.sort((a, b) => b - a);
-                    this.onLog?.(`Alien rolls become: ${alienRolls.join(', ')}`);
+                    this.onLog?.(
+                      `Alien rolls become: ${formatRolls(alienRolls)}`,
+                    );
                     attackerRolls = marineIsAttacker
                       ? marineRolls
                       : alienRolls;
@@ -445,6 +464,9 @@ export class BasicRules implements Rules {
                   }
                 }
                 if (marineFacing && marineHasGuard && !marineWon()) {
+                  this.onLog?.(
+                    'Marine on guard may reroll all dice or accept the result',
+                  );
                   const choice = await marinePlayer.choose([
                     { type: 'action', action: 'reroll' as any, apCost: 0, apRemaining },
                     { type: 'action', action: 'accept' as any, apCost: 0, apRemaining },
@@ -453,7 +475,7 @@ export class BasicRules implements Rules {
                   if (cAct2 === 'reroll') {
                     this.onLog?.('Guard rerolls all marine dice');
                     marineRolls = rollDice(marineDice);
-                    this.onLog?.(`Marine reroll: ${marineRolls.join(', ')}`);
+                    this.onLog?.(`Marine reroll: ${formatRolls(marineRolls)}`);
                     if (marineFacing) {
                       if (marine.type === 'marine_hammer') {
                         marineRolls = marineRolls.map((r) => r + 2);
@@ -468,7 +490,7 @@ export class BasicRules implements Rules {
                         this.onLog?.('Sarge adds +1 to marine rolls');
                       }
                       this.onLog?.(
-                        `Modified marine rolls: ${marineRolls.join(', ')}`,
+                        `Modified marine rolls: ${formatRolls(marineRolls)}`,
                       );
                     }
                     attackerRolls = marineIsAttacker
@@ -498,6 +520,9 @@ export class BasicRules implements Rules {
                     this.onChange?.(this.board);
                     await checkInvoluntaryReveals();
                   } else {
+                    this.onLog?.(
+                      'Defender may turn to face attacker or accept the outcome',
+                    );
                     const choice = await defenderPlayer.choose([
                       { type: 'action', action: 'turn' as any, apCost: 0, apRemaining },
                       { type: 'action', action: 'accept' as any, apCost: 0, apRemaining },
@@ -517,6 +542,9 @@ export class BasicRules implements Rules {
                     active.cells[0],
                   );
                   if (!defFacing) {
+                    this.onLog?.(
+                      'Defender may turn to face attacker or accept the outcome',
+                    );
                     const choice = await defenderPlayer.choose([
                       { type: 'action', action: 'turn' as any, apCost: 0, apRemaining },
                       { type: 'action', action: 'accept' as any, apCost: 0, apRemaining },
@@ -623,6 +651,9 @@ export class BasicRules implements Rules {
                   apRemaining,
                 });
               }
+              this.onLog?.(
+                'Alien player: orient the current alien or choose another action',
+              );
               const choice = await orientAlien(
                 currentPlayer,
                 current,
@@ -630,6 +661,7 @@ export class BasicRules implements Rules {
                 this.board,
                 this.onChange?.bind(this),
                 apRemaining,
+                this.onLog,
               );
               if (choice.action === 'deploy' && choice.coord) {
                 const newAlien = {
@@ -806,7 +838,9 @@ async function orientAlien(
   board: BoardState,
   onChange?: (state: BoardState) => void,
   apRemaining = 0,
+  onLog?: (message: string, color?: string) => void,
 ): Promise<Choice> {
+  onLog?.('Alien player: orient the alien or pass to continue');
   while (true) {
     const choice = await player.choose([
       ...extras,
