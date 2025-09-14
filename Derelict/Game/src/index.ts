@@ -145,8 +145,8 @@ export class Game implements GameApi {
         > = {
           activate: 4,
           move: 3,
-          assault: 2,
-          door: 1,
+          door: 2,
+          assault: 1,
           deploy: 0,
         };
         div.style.zIndex = String(zMap[type]);
