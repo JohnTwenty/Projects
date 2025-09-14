@@ -64,8 +64,6 @@ test('choose highlights activation options for different token types', async () 
       reveal: new DummyButton(),
       deploy: new DummyButton(),
       guard: new DummyButton(),
-      reroll: new DummyButton(),
-      accept: new DummyButton(),
       pass: new DummyButton(),
     },
   };
@@ -140,8 +138,6 @@ test('move option takes precedence over door option on same cell', async () => {
       reveal: new DummyButton(),
       deploy: new DummyButton(),
       guard: new DummyButton(),
-      reroll: new DummyButton(),
-      accept: new DummyButton(),
       pass: new DummyButton(),
     },
   };
@@ -220,8 +216,6 @@ test('assault option takes precedence over move option on same cell', async () =
       reveal: new DummyButton(),
       deploy: new DummyButton(),
       guard: new DummyButton(),
-      reroll: new DummyButton(),
-      accept: new DummyButton(),
       pass: new DummyButton(),
     },
   };
@@ -252,7 +246,7 @@ test('assault option takes precedence over move option on same cell', async () =
   globalThis.document = origDoc;
 });
 
-test('reroll and accept buttons resolve options', async () => {
+test('binary action choice uses modal dialog', async () => {
   const board = { size: 1, segments: [], tokens: [] };
   const renderer = { render() {} };
   const rules = { validate() {}, runGame: async () => {} };
@@ -283,8 +277,12 @@ test('reroll and accept buttons resolve options', async () => {
     }
   }
 
+  const body = new DummyElement();
   const origDoc = globalThis.document;
-  globalThis.document = { createElement: () => new DummyElement() };
+  globalThis.document = {
+    createElement: () => new DummyElement(),
+    body,
+  };
 
   const ui = {
     container: new DummyElement(),
@@ -299,8 +297,6 @@ test('reroll and accept buttons resolve options', async () => {
       reveal: new DummyButton(),
       deploy: new DummyButton(),
       guard: new DummyButton(),
-      reroll: new DummyButton(),
-      accept: new DummyButton(),
       pass: new DummyButton(),
     },
   };
@@ -311,10 +307,12 @@ test('reroll and accept buttons resolve options', async () => {
   const options = [rerollOpt, acceptOpt];
 
   const promise = game.choose(options);
-  assert.equal(ui.buttons.reroll.disabled, false);
-  assert.equal(ui.buttons.accept.disabled, false);
-
-  ui.buttons.reroll.listeners.click({});
+  assert.equal(body.children.length, 1);
+  const overlay = body.children[0];
+  const dlg = overlay.children[0];
+  const actions = dlg.children[1];
+  const btn = actions.children[0];
+  btn.listeners.click({});
   const result = await promise;
   assert.deepEqual(result, rerollOpt);
 
