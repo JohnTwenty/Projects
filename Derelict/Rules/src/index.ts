@@ -397,19 +397,26 @@ export class BasicRules implements Rules {
                 this.onLog?.(`Marine rolls: ${formatRolls(marineRolls)}`);
                 this.onLog?.(`Alien rolls: ${formatRolls(alienRolls)}`);
                 if (marineFacing) {
+                  let modified = false;
                   if (marine.type === 'marine_hammer') {
                     marineRolls = marineRolls.map((r) => r + 2);
                     this.onLog?.('Hammer adds +2 to marine rolls');
+                    modified = true;
                   }
                   if (marine.type === 'marine_claws') {
                     marineRolls = marineRolls.map((r) => r + 1);
                     this.onLog?.('Claws add +1 to marine rolls');
+                    modified = true;
                   }
                   if (marine.type === 'marine_sarge') {
                     marineRolls = marineRolls.map((r) => r + 1);
                     this.onLog?.('Sarge adds +1 to marine rolls');
+                    modified = true;
                   }
-                  this.onLog?.(`Modified marine rolls: ${formatRolls(marineRolls)}`);
+                  if (modified)
+                    this.onLog?.(
+                      `Modified marine rolls: ${formatRolls(marineRolls)}`,
+                    );
                 }
                 let attackerRolls = marineIsAttacker ? marineRolls : alienRolls;
                 let defenderRolls = marineIsAttacker ? alienRolls : marineRolls;
