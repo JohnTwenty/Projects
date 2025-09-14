@@ -144,8 +144,8 @@ export class Game implements GameApi {
           number
         > = {
           activate: 4,
-          assault: 3,
-          move: 2,
+          move: 3,
+          assault: 2,
           door: 1,
           deploy: 0,
         };

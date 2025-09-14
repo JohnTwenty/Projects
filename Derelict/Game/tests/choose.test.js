@@ -162,7 +162,7 @@ test('move option takes precedence over door option on same cell', async () => {
   globalThis.document = origDoc;
 });
 
-test('assault option takes precedence over move option on same cell', async () => {
+test('move option takes precedence over assault option on same cell', async () => {
   const board = { size: 1, segments: [], tokens: [] };
   const renderer = { render() {} };
   const rules = { validate() {}, runGame: async () => {} };
@@ -221,7 +221,11 @@ test('assault option takes precedence over move option on same cell', async () =
   };
 
   const game = new Game(board, renderer, rules, player, player, ui);
-  const assaultOpt = { type: 'action', action: 'assault', coord: { x: 0, y: 0 } };
+  const assaultOpt = {
+    type: 'action',
+    action: 'assault',
+    coord: { x: 0, y: 0 },
+  };
   const moveOpt = { type: 'action', action: 'move', coord: { x: 0, y: 0 } };
   const options = [moveOpt, assaultOpt];
 
@@ -236,12 +240,12 @@ test('assault option takes precedence over move option on same cell', async () =
   );
   assert.ok(assaultOverlay && moveOverlay);
   assert.ok(
-    Number(assaultOverlay.style.zIndex) > Number(moveOverlay.style.zIndex)
+    Number(moveOverlay.style.zIndex) > Number(assaultOverlay.style.zIndex)
   );
 
-  assaultOverlay.listeners.click({ stopPropagation() {} });
+  moveOverlay.listeners.click({ stopPropagation() {} });
   const result = await promise;
-  assert.deepEqual(result, assaultOpt);
+  assert.deepEqual(result, moveOpt);
 
   globalThis.document = origDoc;
 });
