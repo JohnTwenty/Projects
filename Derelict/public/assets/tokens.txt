@@ -13,3 +13,6 @@ type=start_marine
 type=alien_entry
 type=deactivated
 type=guard
+type=jam
+type=flame
+type=overwatch
