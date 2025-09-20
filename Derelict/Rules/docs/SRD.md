@@ -88,6 +88,13 @@ even if unobstructed.
 A cell is said to be visible to a marine if it is both within the field of view of the 
 marine and there is a line of sight between the cell and the marine.
 
+## Measuring distances
+
+Some weapons have ranges for which distances must be measured.  Distances are measured by counting horizontal, vertical or diagonal steps on the board as an equal unit of distance.
+This means that the 12 unit range of certain weapons includes a 25x25 square of cells centered on the marine.  We use this convention since diagonal movement is allowed for the 
+same AP point cost as horizontal and vertical movement.
+
+
 ## Blip Movement Restriction
 
 Blips may not move into any cell that has line of sight to a cell containing a
@@ -181,7 +188,7 @@ When a marine is facing directly toward an alien, whether as attacker or defende
 If one side has rolled a higher result on any of its dice than the highest result of the other side, then this side is the winner.
 If both sides have the same highest die roll desult, then the assault is tied.
 
-When a marine of specific token type marine_sarge is facing directly toward an alien, whether as attacker or defender, and did not win the assault, it must be offered the choice to re-roll the alien's highest scoring die or accept the outcome.
+When a marine of specific token types marine_sarge or marine_hammer is facing directly toward an alien, whether as attacker or defender, and did not win the assault, it must be offered the choice to re-roll the alien's highest scoring die or accept the outcome.
 After a potential re-roll the win or tie situation is re-evaluated.
 After this first potential re-roll, when a marine is on guard (it has a guard token in its cell), and it has not won the assault, it must be offered the choice to re-roll all its dice for a second chance, or accept the outcome.  
 After a potential re-roll the win or tie situation is re-evaluated, and now the results are final:
@@ -190,6 +197,29 @@ If the attacker wins, the defender is removed from he board, including any guard
 If a defenderfacing directly toward the attacker wins, the attacker is removed from the board, including any guard, overwatch, or jam tokens in their cell.
 If a defender with any other facing wins or ties, the choice to turn to face the attacker is offered to the defender player.
 In any other case, nothing else happens. With this the assault action is concluded, and the assaulting player is offered to choose from any of its usual actions that come in question with its remaining ap budget.
+
+## Shoot Action
+
+Only Marines with ranged weapons may perform a shoot action.
+There are three ranged weapons in the game: bolter, cannon, and flamer.  The below table shows which ranged weapon each kind of marine is equipped with:
+
+| Token           | Ranged Weapon |
+|-----------------|---------------|
+| marine          | bolter        |
+| marine_chain    | bolter        |
+| marine_sarge    | bolter        |
+| marine_axe      | bolter        |
+| marine_flame    | flamer        |
+| marine_cannon   | cannon        |
+| marine_hammer   | none          |
+| marine_claws    | none          |
+
+The AP costs for shooting a bolter or cannon is 0 when performed immediately following a move or turn action, otherwise it is 1.
+The AP cost for shooting a flamer is 2 AP.  
+
+Shots may target aliens or closed doors in cells that are visible to the marine.
+Additionally, flamers may not shoot at a target further away than 12 cells.
+
 
 
 
