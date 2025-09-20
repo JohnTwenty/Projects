@@ -10,31 +10,23 @@ Based on these choices made, the game will progress until one player wins.
 
 ## General Game Rules
 
-Initially the rules of the game are very simple; all this is implemented in the Rules:runGame function: 
+The first player controls the marines while the second player controls the aliens and blips.  Players alternate taking turns.
 
-* The first player controls the marines while the second player controls the aliens and blips.  For the time being, aliens and blips have the same action choices available as marines.
-* The first player must select a cell on the board with a marine in it to activate the marine, or pass, which yields control to the other player.  If there are no marines on the board that can be selected, the game is lost and runGame() exits.
-* Once a marine, alien, or blip is selected, the controlling player may choose to move one cell forward (in the direction the token is facing), move one cell diagonally forward, move one cell backward, or move one cell diagonally backward (each subject to the appropriate AP cost) assuming the destination cell is a corridor and does not contain a marine, alien, or blip, or turn left, or turn right, or select a different token of the same side to activate it.
-* Marines, blips and aliens all block movement for each other.
-* This selection and movement can continue indefinitely.  At any time, the active player may also choose a "pass" action which ends their activation and hands control to the other player.
+## Clearing tokens at the start of the marine turn
 
-This rules module should make the process of choosing for players as simple as possible.  That means that this rules module should examine the boardState and provide an explicit list of possible legal choices
-to players whenever possible.  So above, the Rules should search the board for cells with marines and provide these cells as an explicit list to the player to choose.
-For the choice of what action to take, the rules should inspect the cell in front of the marine and decide if it meets the above conditions such that it can be moved into.  If not, this choice should not be offered, and only turn left, turn right, or a list of alternative selectable marines should be offered.
-
-The rules should then avait the player to make a choice.  If the player chooses to move or turn a marine, this action should be carried out by mutating the board state, and if necessary, a change should be signaled to the Game module so that the board may be redrawn.
-
-When choices are offered to players, the choices should be provided with information such as cell coordinates, choice type identifiers ("move forward", "turn left") and so on.
-
-When an activated unit is determining available actions, the rules also inspect the three cells directly forward or diagonally forward from the unit.  Each of these cells is checked for the presence of a "door" or "dooropen" token.  For every such token found, the player is offered a "door" choice that includes the door's cell coordinates.  If a "dooropen" token shares its cell with a "marine", "alien" or "blip" token, the door is considered blocked and no choice to close it is presented.  When a player selects a "door" choice, the corresponding token is swapped between "door" and "dooropen", representing the unit opening or closing that door.
-
-If a player chooses to activate a different unit while one is already active, the formerly active unit receives a "deactivated" token in its cell.  Units that share a cell with a deactivated token are not offered as activation choices.  When a player selects "pass", all deactivated tokens are removed from the board, allowing those units to be activated again on subsequent turns.
+At the start of the marine players' turn, all tokens of type overwatch, jam, guard and flame are removed from the board.
+Note that removing flame tokens changes lines of sight, which may result in involuntary blip conversions.  See the section below on involuntary conversions for details.
 
 ## Die Rolling
 
 Sometimes the rules call six sided dice to be rolled.  This Game module performs these rolls for all players.  A small number dice of dice may need to be rolled at a time. The desults of dice rolls are communicated to the user via the Game UI's text log display capability.
 When a set of dice are rolled together, the results should be sorted and presented in descending order.  The random number seed should be established when a new game is started, and stored in the mission file when the game is saved to ensure a deterministic continuity in the
 sequence of rolls.
+
+## Activation
+
+The player whose turn it is must select a cell on the board with a controlled token in it (marine for marine player or alien or blip for alien player) to activate the token, or pass, which yields control to the other player.  
+If there are no tokens on the board that can be activated, the current player loses and the other player wins.
 
 ## Game Actions
 
@@ -51,7 +43,9 @@ The following table lists all the different actions (choices) that are available
 | Action        | 	Marines   | 	Aliens	 | Blips   | Notes |
 |---------------|-------------|------------|---------|-------|
 | activate ally | 0           | 0         | 0        |  Generally first action in a turn when no unit has yet been activated. When a unit has been activated, activating the next unit forfeits all remaining action points of the current unit.     |
-| shoot         | 1 or 0      | -         | -        |  Cost for marines is 0 when performed immediately following a move or turn action; else 1. |
+| shoot bolter  | 1 or 0      | -         | -        |  Cost for marines is 0 when performed immediately following a move or turn action; else 1. |
+| shoot cannon  | 1 or 0      | -         | -        |  Cost for marines is 0 when performed immediately following a move or turn action; else 1. |
+| shoot flamer  | 2           | -         | -        |       |
 | assault       | 1           | 1         | -        |       |
 | move forward  | 1           | 1         | 1        |  Moves one cell forward, forward-left or forward-right.     |
 | move backward | 2           | 2         | 1        |  Moves one cell backward, backward-left or backward-right.     |
@@ -66,6 +60,18 @@ The following table lists all the different actions (choices) that are available
 | reveal        | -           | -         | 6        | Voluntary conversion to alien(s). |
 | pass turn     | 0           | 0         | 0        | Concludes the active player's turn.      |
 
+This rules module should make the process of choosing actions for players as simple as possible.  That means that this rules module should examine the boardState and provide an explicit list of possible legal choices
+to players whenever possible.  So above, the Rules should search the board for cells with marines and provide these cells as an explicit list to the player to choose.
+The rules should then avait the player to make a choice.  If the player chooses to move or turn a marine, this action should be carried out by mutating the board state, and if necessary, a change should be signaled to the Game module so that the board may be redrawn.
+When choices are offered to players, the choices should be provided with information such as cell coordinates, choice type identifiers ("move forward", "turn left") and so on.
+
+If a player chooses to activate a different unit while one is already active, the formerly active unit receives a "deactivated" token in its cell.  Units that share a cell with a deactivated token are not offered as activation choices.  When a player selects "pass", all deactivated tokens are removed from the board, allowing those units to be activated again on subsequent turns.
+
+## Movement
+
+An activated unit may choose to move one cell forward (in the direction the token is facing), move one cell diagonally forward, move one cell backward, or move one cell diagonally backward (each subject to the appropriate AP cost) assuming the destination cell is a corridor and does not contain a closed door, marine, alien, or blip.  AP costs for movement are listed in the table above. Aliens or blips are also allowed to move sideways.  Units may also turn left or right.
+
+A unit in a cell without a flame token may not choose to move into a cell with a flame token.  A unit in a cell with a flame token may attempt to move into a neighboring cell with a flame token, but in this case must roll a die, and they are destroyed on a roll of 2 or higher.
 
 ## Line of Sight
 
@@ -77,6 +83,9 @@ adjacent off-diagonal cells must also be unobstructed; otherwise line of sight i
 blocked. The check is performed in both directions and line of sight exists only
 if both paths are unobstructed.
 
+The start and end cell of a line of sight check may have flame tokens and these do not obstruct the line of sight,
+but flame tokens in any cell inbetween these two cells do count as obstructing the line of sight.
+
 ## Marine Field of View
 
 Marines can only see within a 90-degree arc centered on their facing direction.
@@ -87,6 +96,13 @@ even if unobstructed.
 
 A cell is said to be visible to a marine if it is both within the field of view of the 
 marine and there is a line of sight between the cell and the marine.
+
+## Measuring distances
+
+Some weapons have ranges for which distances must be measured.  Distances are measured by counting horizontal, vertical or diagonal steps on the board as an equal unit of distance.
+This means that the 12 unit range of certain weapons includes a 25x25 square of cells centered on the marine.  We use this convention since diagonal movement is allowed for the 
+same AP point cost as horizontal and vertical movement.
+
 
 ## Blip Movement Restriction
 
@@ -149,6 +165,8 @@ The token performing the assault action will be refered to as the attacker, whil
 Blips cannot take part in assault actions either as attaker or defender since they would have been revealed and converted into aliens due to the conversion rules above.
 The assault action costs 1 ap, and the action is only offered when ap is available.
 
+A marine targeted by a close assault action immediately loses the overwatch token if present.
+
 When a marine of the specific token type marine_chain attacks a door, the door token is removed from the board, and the assault action is concluded.
 Otherwise, dice must be rolled to decide the outcome of the assault action.  Whether attacking or defending, the number of dice we roll for a token depends on its type:
 
@@ -181,7 +199,7 @@ When a marine is facing directly toward an alien, whether as attacker or defende
 If one side has rolled a higher result on any of its dice than the highest result of the other side, then this side is the winner.
 If both sides have the same highest die roll desult, then the assault is tied.
 
-When a marine of specific token type marine_sarge is facing directly toward an alien, whether as attacker or defender, and did not win the assault, it must be offered the choice to re-roll the alien's highest scoring die or accept the outcome.
+When a marine of specific token types marine_sarge or marine_hammer is facing directly toward an alien, whether as attacker or defender, and did not win the assault, it must be offered the choice to re-roll the alien's highest scoring die or accept the outcome.
 After a potential re-roll the win or tie situation is re-evaluated.
 After this first potential re-roll, when a marine is on guard (it has a guard token in its cell), and it has not won the assault, it must be offered the choice to re-roll all its dice for a second chance, or accept the outcome.  
 After a potential re-roll the win or tie situation is re-evaluated, and now the results are final:
@@ -191,7 +209,74 @@ If a defenderfacing directly toward the attacker wins, the attacker is removed f
 If a defender with any other facing wins or ties, the choice to turn to face the attacker is offered to the defender player.
 In any other case, nothing else happens. With this the assault action is concluded, and the assaulting player is offered to choose from any of its usual actions that come in question with its remaining ap budget.
 
+## Shoot Action
 
+Only Marines with ranged weapons may perform a shoot action.
+There are three ranged weapons in the game: bolter, cannon, and flamer.  The below table shows which ranged weapon each kind of marine is equipped with:
+
+| Token           | Ranged Weapon |
+|-----------------|---------------|
+| marine          | bolter        |
+| marine_chain    | bolter        |
+| marine_sarge    | bolter        |
+| marine_axe      | bolter        |
+| marine_flame    | flamer        |
+| marine_cannon   | cannon        |
+| marine_hammer   | none          |
+| marine_claws    | none          |
+
+The AP costs for shooting a bolter or cannon is 0 when performed immediately following a move or turn action, otherwise it is 1.
+The AP cost for shooting a flamer is 2 AP.  
+
+## Resolving Bolter and Cannon Shots
+
+Bolter or Cannon shots may target aliens or closed doors in cells that are visible to the marine. 
+To determine if the shot hits and destroys the target, a number of dice must be rolled and success determined depending on the weapon as shown in the following table: 
+
+Weapon | Number of Dice Rolled | success on first shot  | success on subsequent shots |
+|------|-----------------------|------------------------|-----------------------------|
+Bolter | 2                     | 6+                     | 5+                          |
+Cannon | 3                     | 5+                     | 4+                          |
+
+For example, a marine with a bolter will roll two dice, and will successfully destroy the target (alien or door removed) if either die lands on a 6.
+Sustained fire bonus: When a marine with a bolter or cannon repeats the shoot action to immediately shoot again at the same taget, the success condition from the subsequent shot column is used.
+
+On success, the targeted door or alien token is removed from the board.
+
+## Resolving Flamer Shots
+
+Flamers target any visible cell no further away than 12 cells which is not a wall or contains a closed door token.  
+On the segment that contains the targeted cell, all non-wall cells that do not contain a closed door token receive a flame token.  
+A roll of a single die is made for each marine, blip and alien on any of these cells that have just received a flame token.
+On a result of two or more, the marine, blip or alien is removed from the board, including any guard, overwatch, or jam tokens in their cell.
+
+All flame tokens are removed from the board at the start of the marine players' turn.
+
+## Overwatch
+
+An activated marine can perform the overwatch action by spending 2 AP to get an overwatch token.
+If the marine had a guard token, this is removed. 
+After placing the overwatch token in the marine's cell, the marine's activation automatically ends, all its remaining ap are lost, and it receives a deactivated token. 
+After performing the overwatch action, the marine player may either activate a different marine available for activation or pass. All overwatch tokens are removed at start of the marine players' turn.
+
+## Automatic Shooting on Overwatch
+
+If an alien performs an action and remains in a cell within a range of 12 squares and visible to any marine on overwatch, that marine automatically shoots at the alien at no AP cost. 
+
+If multiple marines on overwatch are able to take a shot at the same alien, they must all resolve the shot, even if the alien has been killed by a prior shot.  This is to take possible jamming and ammo depletion rules into account.
+See the Resolving Bolter and Cannon Shots section on how to resolve shots.
+The sustained fire bonus in this section applies to a marine on overwatch that takes a second or subsequent shot at the same alien. 
+When shooting a bolter in overwatch, if the two dice rolled show identical results, the overwatch token of the marine is removed and replaced with a jam token.
+
+## TODO: Add more rules on the following topics in the future
+
+TODO: command point actions other than unjam must remove guard or overwarch tokens!
+TODO: jams may be cleared only with command points during the aliens' turn.
+TODO: cannon ammunition, cannon reload, malfunction
+
+TODO: marine-hammer is also sarge and may reroll assaults
+TODO: marine-sarge should probably be renamed marine-sword for consistency.
+TODO: flame ammunition
 
 
 

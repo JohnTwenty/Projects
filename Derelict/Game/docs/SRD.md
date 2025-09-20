@@ -97,9 +97,9 @@ A keyboard key accelerator listed in the Key column has the same effect as click
 |---------------|------------|-------|-----------------|-----------------|-------|
 | activate CELL | activate 	 | n	 | available ally  | purple          | |
 | shoot CELL    | shoot  	 | s	 | visible enemy   | orange          | all visible cells when button clicked; ap cost might be free; ammo availability for flamer; may disable on jam; button may name after weapon |
-| assault CELL  | assault    | a	 | adjacent enemy  | red             | |
 | move CELL     | move	     | m	 | legal move cell | green           | marines: fw+back, aliens and blips all 4 dirs. aliens and blips move ap might be free after turn action |
 | door CELL     | manipulate | e	 | adjacent door   | blue            | |	
+| assault CELL  | assault    | a	 | adjacent enemy  | red             | |
 | turn left	    | turn left  | l	 | none	           | none            | ap cost might be 0 after move action |
 | turn right    | turn right | r	 | none	           | none            | ap cost might be 0 after move action |
 | unjam         | clear jam	 | u	 | none		       | none            | on jam token; this could be rename of shoot button rather than distinct weapon |
