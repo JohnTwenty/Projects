@@ -15,6 +15,13 @@ The first player controls the marines while the second player controls the alien
 ## Clearing tokens at the start of the marine turn
 
 At the start of the marine players' turn, all tokens of type overwatch, jam, guard and flame are removed from the board.
+Note that removing flame tokens changes lines of sight, which may result in involuntary blip conversions.  See the section below on involuntary conversions for details.
+
+## Die Rolling
+
+Sometimes the rules call six sided dice to be rolled.  This Game module performs these rolls for all players.  A small number dice of dice may need to be rolled at a time. The desults of dice rolls are communicated to the user via the Game UI's text log display capability.
+When a set of dice are rolled together, the results should be sorted and presented in descending order.  The random number seed should be established when a new game is started, and stored in the mission file when the game is saved to ensure a deterministic continuity in the
+sequence of rolls.
 
 ## Activation
 
@@ -62,14 +69,9 @@ If a player chooses to activate a different unit while one is already active, th
 
 ## Movement
 
-Once a marine, alien, or blip is selected, the controlling player may choose to move one cell forward (in the direction the token is facing), move one cell diagonally forward, move one cell backward, or move one cell diagonally backward (each subject to the appropriate AP cost) assuming the destination cell is a corridor and does not contain a marine, alien, or blip, or turn left, or turn right, or select a different token of the same side to activate it.
-Marines, blips and aliens all block movement for each other.
+An activated unit may choose to move one cell forward (in the direction the token is facing), move one cell diagonally forward, move one cell backward, or move one cell diagonally backward (each subject to the appropriate AP cost) assuming the destination cell is a corridor and does not contain a closed door, marine, alien, or blip.  AP costs for movement are listed in the table above. Aliens or blips are also allowed to move sideways.  Units may also turn left or right.
 
-## Die Rolling
-
-Sometimes the rules call six sided dice to be rolled.  This Game module performs these rolls for all players.  A small number dice of dice may need to be rolled at a time. The desults of dice rolls are communicated to the user via the Game UI's text log display capability.
-When a set of dice are rolled together, the results should be sorted and presented in descending order.  The random number seed should be established when a new game is started, and stored in the mission file when the game is saved to ensure a deterministic continuity in the
-sequence of rolls.
+A unit in a cell without a flame token may not choose to move into a cell with a flame token.  A unit in a cell with a flame token may attempt to move into a neighboring cell with a flame token, but in this case must roll a die, and they are destroyed on a roll of 2 or higher.
 
 ## Line of Sight
 
@@ -80,6 +82,9 @@ blip. When the line steps diagonally between two cells, at least one of the two
 adjacent off-diagonal cells must also be unobstructed; otherwise line of sight is
 blocked. The check is performed in both directions and line of sight exists only
 if both paths are unobstructed.
+
+The start and end cell of a line of sight check may have flame tokens and these do not obstruct the line of sight,
+but flame tokens in any cell inbetween these two cells do count as obstructing the line of sight.
 
 ## Marine Field of View
 
@@ -159,6 +164,8 @@ The assault action is offered to an activated marine when the cell directly in f
 The token performing the assault action will be refered to as the attacker, while the token being targeted will be referred to as the defender.
 Blips cannot take part in assault actions either as attaker or defender since they would have been revealed and converted into aliens due to the conversion rules above.
 The assault action costs 1 ap, and the action is only offered when ap is available.
+
+A marine targeted by a close assault action immediately loses the overwatch token if present.
 
 When a marine of the specific token type marine_chain attacks a door, the door token is removed from the board, and the assault action is concluded.
 Otherwise, dice must be rolled to decide the outcome of the assault action.  Whether attacking or defending, the number of dice we roll for a token depends on its type:
@@ -247,7 +254,29 @@ All flame tokens are removed from the board at the start of the marine players' 
 
 ## Overwatch
 
-The sustained fire bonus may also be taken by a marine on overwatch that thakes a second or subsequent shot at the same target. 
+An activated marine can perform the overwatch action by spending 2 AP to get an overwatch token.
+If the marine had a guard token, this is removed. 
+After placing the overwatch token in the marine's cell, the marine's activation automatically ends, all its remaining ap are lost, and it receives a deactivated token. 
+After performing the overwatch action, the marine player may either activate a different marine available for activation or pass. All overwatch tokens are removed at start of the marine players' turn.
+
+## Automatic Shooting on Overwatch
+
+If an alien performs an action and remains in a cell within a range of 12 squares and visible to any marine on overwatch, that marine automatically shoots at the alien at no AP cost. 
+
+If multiple marines on overwatch are able to take a shot at the same alien, they must all resolve the shot, even if the alien has been killed by a prior shot.  This is to take possible jamming and ammo depletion rules into account.
+See the Resolving Bolter and Cannon Shots section on how to resolve shots.
+The sustained fire bonus in this section applies to a marine on overwatch that takes a second or subsequent shot at the same alien. 
+When shooting a bolter in overwatch, if the two dice rolled show identical results, the overwatch token of the marine is removed and replaced with a jam token.
+
+## TODO: Add more rules on the following topics in the future
+
+TODO: command point actions other than unjam must remove guard or overwarch tokens!
+TODO: jams may be cleared only with command points during the aliens' turn.
+TODO: cannon ammunition, cannon reload, malfunction
+
+TODO: marine-hammer is also sarge and may reroll assaults
+TODO: marine-sarge should probably be renamed marine-sword for consistency.
+TODO: flame ammunition
 
 
 
