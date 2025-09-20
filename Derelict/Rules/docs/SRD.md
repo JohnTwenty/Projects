@@ -10,31 +10,16 @@ Based on these choices made, the game will progress until one player wins.
 
 ## General Game Rules
 
-Initially the rules of the game are very simple; all this is implemented in the Rules:runGame function: 
+The first player controls the marines while the second player controls the aliens and blips.  Players alternate taking turns.
 
-* The first player controls the marines while the second player controls the aliens and blips.  For the time being, aliens and blips have the same action choices available as marines.
-* The first player must select a cell on the board with a marine in it to activate the marine, or pass, which yields control to the other player.  If there are no marines on the board that can be selected, the game is lost and runGame() exits.
-* Once a marine, alien, or blip is selected, the controlling player may choose to move one cell forward (in the direction the token is facing), move one cell diagonally forward, move one cell backward, or move one cell diagonally backward (each subject to the appropriate AP cost) assuming the destination cell is a corridor and does not contain a marine, alien, or blip, or turn left, or turn right, or select a different token of the same side to activate it.
-* Marines, blips and aliens all block movement for each other.
-* This selection and movement can continue indefinitely.  At any time, the active player may also choose a "pass" action which ends their activation and hands control to the other player.
+## Clearing tokens at the start of the marine turn
 
-This rules module should make the process of choosing for players as simple as possible.  That means that this rules module should examine the boardState and provide an explicit list of possible legal choices
-to players whenever possible.  So above, the Rules should search the board for cells with marines and provide these cells as an explicit list to the player to choose.
-For the choice of what action to take, the rules should inspect the cell in front of the marine and decide if it meets the above conditions such that it can be moved into.  If not, this choice should not be offered, and only turn left, turn right, or a list of alternative selectable marines should be offered.
+At the start of the marine players' turn, all tokens of type overwatch, jam, guard and flame are removed from the board.
 
-The rules should then avait the player to make a choice.  If the player chooses to move or turn a marine, this action should be carried out by mutating the board state, and if necessary, a change should be signaled to the Game module so that the board may be redrawn.
+## Activation
 
-When choices are offered to players, the choices should be provided with information such as cell coordinates, choice type identifiers ("move forward", "turn left") and so on.
-
-When an activated unit is determining available actions, the rules also inspect the three cells directly forward or diagonally forward from the unit.  Each of these cells is checked for the presence of a "door" or "dooropen" token.  For every such token found, the player is offered a "door" choice that includes the door's cell coordinates.  If a "dooropen" token shares its cell with a "marine", "alien" or "blip" token, the door is considered blocked and no choice to close it is presented.  When a player selects a "door" choice, the corresponding token is swapped between "door" and "dooropen", representing the unit opening or closing that door.
-
-If a player chooses to activate a different unit while one is already active, the formerly active unit receives a "deactivated" token in its cell.  Units that share a cell with a deactivated token are not offered as activation choices.  When a player selects "pass", all deactivated tokens are removed from the board, allowing those units to be activated again on subsequent turns.
-
-## Die Rolling
-
-Sometimes the rules call six sided dice to be rolled.  This Game module performs these rolls for all players.  A small number dice of dice may need to be rolled at a time. The desults of dice rolls are communicated to the user via the Game UI's text log display capability.
-When a set of dice are rolled together, the results should be sorted and presented in descending order.  The random number seed should be established when a new game is started, and stored in the mission file when the game is saved to ensure a deterministic continuity in the
-sequence of rolls.
+The player whose turn it is must select a cell on the board with a controlled token in it (marine for marine player or alien or blip for alien player) to activate the token, or pass, which yields control to the other player.  
+If there are no tokens on the board that can be activated, the current player loses and the other player wins.
 
 ## Game Actions
 
@@ -51,7 +36,9 @@ The following table lists all the different actions (choices) that are available
 | Action        | 	Marines   | 	Aliens	 | Blips   | Notes |
 |---------------|-------------|------------|---------|-------|
 | activate ally | 0           | 0         | 0        |  Generally first action in a turn when no unit has yet been activated. When a unit has been activated, activating the next unit forfeits all remaining action points of the current unit.     |
-| shoot         | 1 or 0      | -         | -        |  Cost for marines is 0 when performed immediately following a move or turn action; else 1. |
+| shoot bolter  | 1 or 0      | -         | -        |  Cost for marines is 0 when performed immediately following a move or turn action; else 1. |
+| shoot cannon  | 1 or 0      | -         | -        |  Cost for marines is 0 when performed immediately following a move or turn action; else 1. |
+| shoot flamer  | 2           | -         | -        |       |
 | assault       | 1           | 1         | -        |       |
 | move forward  | 1           | 1         | 1        |  Moves one cell forward, forward-left or forward-right.     |
 | move backward | 2           | 2         | 1        |  Moves one cell backward, backward-left or backward-right.     |
@@ -66,6 +53,23 @@ The following table lists all the different actions (choices) that are available
 | reveal        | -           | -         | 6        | Voluntary conversion to alien(s). |
 | pass turn     | 0           | 0         | 0        | Concludes the active player's turn.      |
 
+This rules module should make the process of choosing actions for players as simple as possible.  That means that this rules module should examine the boardState and provide an explicit list of possible legal choices
+to players whenever possible.  So above, the Rules should search the board for cells with marines and provide these cells as an explicit list to the player to choose.
+The rules should then avait the player to make a choice.  If the player chooses to move or turn a marine, this action should be carried out by mutating the board state, and if necessary, a change should be signaled to the Game module so that the board may be redrawn.
+When choices are offered to players, the choices should be provided with information such as cell coordinates, choice type identifiers ("move forward", "turn left") and so on.
+
+If a player chooses to activate a different unit while one is already active, the formerly active unit receives a "deactivated" token in its cell.  Units that share a cell with a deactivated token are not offered as activation choices.  When a player selects "pass", all deactivated tokens are removed from the board, allowing those units to be activated again on subsequent turns.
+
+## Movement
+
+Once a marine, alien, or blip is selected, the controlling player may choose to move one cell forward (in the direction the token is facing), move one cell diagonally forward, move one cell backward, or move one cell diagonally backward (each subject to the appropriate AP cost) assuming the destination cell is a corridor and does not contain a marine, alien, or blip, or turn left, or turn right, or select a different token of the same side to activate it.
+Marines, blips and aliens all block movement for each other.
+
+## Die Rolling
+
+Sometimes the rules call six sided dice to be rolled.  This Game module performs these rolls for all players.  A small number dice of dice may need to be rolled at a time. The desults of dice rolls are communicated to the user via the Game UI's text log display capability.
+When a set of dice are rolled together, the results should be sorted and presented in descending order.  The random number seed should be established when a new game is started, and stored in the mission file when the game is saved to ensure a deterministic continuity in the
+sequence of rolls.
 
 ## Line of Sight
 
@@ -217,11 +221,33 @@ There are three ranged weapons in the game: bolter, cannon, and flamer.  The bel
 The AP costs for shooting a bolter or cannon is 0 when performed immediately following a move or turn action, otherwise it is 1.
 The AP cost for shooting a flamer is 2 AP.  
 
-Shots may target aliens or closed doors in cells that are visible to the marine.
-Additionally, flamers may not shoot at a target further away than 12 cells.
+## Resolving Bolter and Cannon Shots
 
+Bolter or Cannon shots may target aliens or closed doors in cells that are visible to the marine. 
+To determine if the shot hits and destroys the target, a number of dice must be rolled and success determined depending on the weapon as shown in the following table: 
 
+Weapon | Number of Dice Rolled | success on first shot  | success on subsequent shots |
+|------|-----------------------|------------------------|-----------------------------|
+Bolter | 2                     | 6+                     | 5+                          |
+Cannon | 3                     | 5+                     | 4+                          |
 
+For example, a marine with a bolter will roll two dice, and will successfully destroy the target (alien or door removed) if either die lands on a 6.
+Sustained fire bonus: When a marine with a bolter or cannon repeats the shoot action to immediately shoot again at the same taget, the success condition from the subsequent shot column is used.
+
+On success, the targeted door or alien token is removed from the board.
+
+## Resolving Flamer Shots
+
+Flamers target any visible cell no further away than 12 cells which is not a wall or contains a closed door token.  
+On the segment that contains the targeted cell, all non-wall cells that do not contain a closed door token receive a flame token.  
+A roll of a single die is made for each marine, blip and alien on any of these cells that have just received a flame token.
+On a result of two or more, the marine, blip or alien is removed from the board, including any guard, overwatch, or jam tokens in their cell.
+
+All flame tokens are removed from the board at the start of the marine players' turn.
+
+## Overwatch
+
+The sustained fire bonus may also be taken by a marine on overwatch that thakes a second or subsequent shot at the same target. 
 
 
 
