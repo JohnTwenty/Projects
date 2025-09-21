@@ -18,6 +18,7 @@ export interface ChooseUI {
     activate: HTMLButtonElement;
     move: HTMLButtonElement;
     assault: HTMLButtonElement;
+    shoot: HTMLButtonElement;
     turnLeft: HTMLButtonElement;
     turnRight: HTMLButtonElement;
     manipulate: HTMLButtonElement;
@@ -103,20 +104,25 @@ export class Game implements GameApi {
 
       buttons.move.textContent = "(M)ove";
       buttons.assault.textContent = "(A)ssault";
+      buttons.shoot.textContent = "(S)hoot";
       buttons.manipulate.textContent = "(E)manipulate";
       buttons.turnLeft.textContent = "Turn (L)eft";
       buttons.turnRight.textContent = "Turn (R)ight";
       buttons.turnLeft.style.color = "";
       buttons.turnRight.style.color = "";
+      buttons.shoot.style.color = "";
       buttons.reveal.textContent = "(V)reveal";
       buttons.deploy.textContent = "(D)eploy";
       buttons.guard.textContent = "(G)uard";
+
+      let shootLabel = "(S)hoot";
 
       const overlays: {
         el: HTMLElement;
         type:
           | "activate"
           | "assault"
+          | "shoot"
           | "move"
           | "door"
           | "turn"
@@ -126,7 +132,7 @@ export class Game implements GameApi {
       const addOverlay = (
         coord: Coord,
         color: string,
-        type: "activate" | "assault" | "move" | "door" | "deploy",
+        type: "activate" | "assault" | "shoot" | "move" | "door" | "deploy",
         onClick?: () => void,
         apCost?: number,
       ) => {
@@ -140,9 +146,10 @@ export class Game implements GameApi {
         div.style.boxSizing = "border-box";
         div.style.border = `2px solid ${color}`;
         const zMap: Record<
-          "activate" | "assault" | "move" | "door" | "deploy",
+          "activate" | "assault" | "shoot" | "move" | "door" | "deploy",
           number
         > = {
+          shoot: 5,
           activate: 4,
           move: 3,
           door: 2,
@@ -175,6 +182,14 @@ export class Game implements GameApi {
             buttons.assault.textContent = "(A)ssault";
           });
         }
+        if (type === "shoot" && typeof apCost === "number") {
+          div.addEventListener("mouseenter", () => {
+            buttons.shoot.textContent = `(S)hoot: ${apCost} AP`;
+          });
+          div.addEventListener("mouseleave", () => {
+            buttons.shoot.textContent = shootLabel;
+          });
+        }
         container.appendChild(div);
         overlays.push({ el: div, type });
       };
@@ -195,6 +210,18 @@ export class Game implements GameApi {
       };
 
       for (const opt of options) {
+        if (opt.type === "action" && (opt.action as any) === "shoot" && opt.coord) {
+          addOverlay(
+            opt.coord,
+            "orange",
+            "shoot",
+            () => {
+              cleanup();
+              resolve(opt);
+            },
+            opt.apCost,
+          );
+        }
         if (opt.type === "action" && opt.action === "move" && opt.coord) {
           addOverlay(
             opt.coord,
@@ -262,6 +289,18 @@ export class Game implements GameApi {
         buttons.assault.textContent = `(A)ssault: ${assaultOpt.apCost ?? 0} AP`;
         buttons.assault.style.color = assaultOpt.apCost === 0 ? "green" : "";
       }
+      const shootOpt = options.find(
+        (o) => o.type === "action" && (o.action as any) === "shoot",
+      );
+      if (shootOpt) {
+        shootLabel = `(S)hoot: ${shootOpt.apCost ?? 0} AP`;
+        buttons.shoot.textContent = shootLabel;
+        buttons.shoot.style.color = shootOpt.apCost === 0 ? "green" : "";
+      } else {
+        shootLabel = "(S)hoot";
+        buttons.shoot.textContent = shootLabel;
+        buttons.shoot.style.color = "";
+      }
       const leftOpt = options.find(
         (o) => o.type === "action" && o.action === "turnLeft",
       );
@@ -277,10 +316,24 @@ export class Game implements GameApi {
         buttons.turnRight.style.color = rightOpt.apCost === 0 ? "green" : "";
       }
 
-      let filter: "activate" | "assault" | "move" | "door" | "deploy" | null =
+      let filter:
+        | "activate"
+        | "assault"
+        | "shoot"
+        | "move"
+        | "door"
+        | "deploy"
+        | null =
         null;
       const setFilter = (
-        f: "activate" | "assault" | "move" | "door" | "deploy" | null,
+        f:
+          | "activate"
+          | "assault"
+          | "shoot"
+          | "move"
+          | "door"
+          | "deploy"
+          | null,
       ) => {
         filter = f;
         for (const o of overlays) {
@@ -291,6 +344,7 @@ export class Game implements GameApi {
         }
         buttons.activate.classList.toggle("active", filter === "activate");
         buttons.assault.classList.toggle("active", filter === "assault");
+        buttons.shoot.classList.toggle("active", filter === "shoot");
         buttons.move.classList.toggle("active", filter === "move");
         buttons.manipulate.classList.toggle("active", filter === "door");
         buttons.deploy.classList.toggle("active", filter === "deploy");
@@ -307,6 +361,10 @@ export class Game implements GameApi {
       function onAssault() {
         if (buttons.assault.disabled) return;
         setFilter(filter === "assault" ? null : "assault");
+      }
+      function onShoot() {
+        if (buttons.shoot.disabled) return;
+        setFilter(filter === "shoot" ? null : "shoot");
       }
       function onManipulate() {
         if (buttons.manipulate.disabled) return;
@@ -380,6 +438,7 @@ export class Game implements GameApi {
         buttons.activate.removeEventListener("click", onActivate);
         buttons.move.removeEventListener("click", onMove);
         buttons.assault.removeEventListener("click", onAssault);
+        buttons.shoot.removeEventListener("click", onShoot);
         buttons.manipulate.removeEventListener("click", onManipulate);
         buttons.reveal.removeEventListener("click", onReveal);
         buttons.deploy.removeEventListener("click", onDeploy);
@@ -392,16 +451,19 @@ export class Game implements GameApi {
         }
         buttons.activate.classList.remove("active");
         buttons.assault.classList.remove("active");
+        buttons.shoot.classList.remove("active");
         buttons.move.classList.remove("active");
         buttons.manipulate.classList.remove("active");
         buttons.deploy.classList.remove("active");
         buttons.guard.classList.remove("active");
         buttons.move.textContent = "(M)ove";
         buttons.assault.textContent = "(A)ssault";
+        buttons.shoot.textContent = "(S)hoot";
         buttons.manipulate.textContent = "(E)manipulate";
         buttons.turnLeft.textContent = "Turn (L)eft";
         buttons.turnRight.textContent = "Turn (R)ight";
         buttons.assault.style.color = "";
+        buttons.shoot.style.color = "";
         buttons.turnLeft.style.color = "";
         buttons.turnRight.style.color = "";
         this.cleanup = undefined;
@@ -411,6 +473,7 @@ export class Game implements GameApi {
       buttons.activate.addEventListener("click", onActivate);
       buttons.move.addEventListener("click", onMove);
       buttons.assault.addEventListener("click", onAssault);
+      buttons.shoot.addEventListener("click", onShoot);
       buttons.manipulate.addEventListener("click", onManipulate);
       buttons.reveal.addEventListener("click", onReveal);
       buttons.deploy.addEventListener("click", onDeploy);
@@ -423,6 +486,7 @@ export class Game implements GameApi {
         n: onActivate,
         m: onMove,
         a: onAssault,
+        s: onShoot,
         e: onManipulate,
         v: onReveal,
         d: onDeploy,
@@ -451,6 +515,9 @@ export class Game implements GameApi {
       );
       buttons.assault.disabled = !options.some(
         (o) => o.type === "action" && (o.action as any) === "assault",
+      );
+      buttons.shoot.disabled = !options.some(
+        (o) => o.type === "action" && (o.action as any) === "shoot",
       );
       buttons.manipulate.disabled = !options.some(
         (o) => o.type === "action" && o.action === "door",

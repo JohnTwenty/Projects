@@ -231,6 +231,129 @@ test('pass hands control to second player who can move blip', async () => {
   assert.deepEqual(moved, { x: 2, y: 3 });
 });
 
+test('marine offered shoot option when alien visible', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 0, y: 2 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  let calls = 0;
+  const player = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (calls === 2) {
+        const shootOpt = options.find((o) => o.action === 'shoot');
+        assert.ok(shootOpt, 'shoot option should be offered');
+        assert.equal(shootOpt.apCost, 1);
+        board.tokens = [];
+        return options.find((o) => o.action === 'pass');
+      }
+      return options[0];
+    },
+  };
+
+  await rules.runGame(player, player);
+});
+
+test('bolter shot can destroy alien on success', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 0, y: 2 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  const rolls = [0.99, 0.99];
+  const originalRandom = Math.random;
+  Math.random = () => rolls.shift() ?? 0.99;
+  let calls = 0;
+  const player = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (calls === 2) {
+        const shootOpt = options.find((o) => o.action === 'shoot');
+        assert.ok(shootOpt, 'shoot option expected');
+        return shootOpt;
+      }
+      const hasAlien = board.tokens.some((t) => t.type === 'alien');
+      assert.ok(!hasAlien, 'alien should be destroyed after hit');
+      board.tokens = [];
+      return options[0];
+    },
+  };
+
+  try {
+    await rules.runGame(player, player);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test('sustained fire lowers bolter hit threshold', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 0, y: 2 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  const rolls = [0.7, 0.1, 0.7, 0.1];
+  const originalRandom = Math.random;
+  Math.random = () => {
+    const value = rolls.shift();
+    return typeof value === 'number' ? value : 0.7;
+  };
+  let calls = 0;
+  const player = {
+    choose: async (options) => {
+      calls++;
+      if (calls === 1) {
+        return options.find((o) => o.action === 'activate');
+      }
+      if (calls === 2) {
+        const shootOpt = options.find((o) => o.action === 'shoot');
+        assert.ok(shootOpt, 'first shot should be available');
+        return shootOpt;
+      }
+      if (calls === 3) {
+        const shootOpt = options.find((o) => o.action === 'shoot');
+        assert.ok(shootOpt, 'second shot should be available');
+        return shootOpt;
+      }
+      const hasAlien = board.tokens.some((t) => t.type === 'alien');
+      assert.ok(!hasAlien, 'alien should fall to sustained fire');
+      board.tokens = [];
+      return options[0];
+    },
+  };
+
+  try {
+    await rules.runGame(player, player);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
 test('marine cannot move into blip', async () => {
   const board = {
     size: 5,
