@@ -460,15 +460,50 @@ export class BasicRules implements Rules {
       switch (actionType) {
         case 'move':
           if (active && action.coord && typeof action.apCost === 'number') {
-            moveToken(active, action.coord);
+            const fromCoord = { ...active.cells[0] };
+            const originHasFlame = hasFlameToken(this.board, fromCoord);
+            const targetHasFlame = hasFlameToken(this.board, action.coord);
+            if (!originHasFlame && targetHasFlame) {
+              this.onLog?.('Cannot move into flames from a safe cell');
+              break;
+            }
             apRemaining -= action.apCost;
-            lastMove = true;
-            lastAction = 'move';
-            lastShotTargetId = null;
+            let destroyedByFlames = false;
+            if (originHasFlame && targetHasFlame) {
+              this.onLog?.(
+                `${active.type} attempts to move through flames; needs 1 to survive`,
+              );
+              const roll = rollDice(1);
+              this.onLog?.(`Roll: ${formatRolls(roll)}`);
+              if (roll[0] >= 2) {
+                this.onLog?.(`${active.type} is destroyed moving through flames`);
+                if (isMarine(active)) {
+                  this.overwatchHistory.delete(active.instanceId);
+                }
+                removeToken(this.board, active);
+                destroyedByFlames = true;
+              } else {
+                this.onLog?.(`${active.type} survives the flames`);
+              }
+            }
+            if (!destroyedByFlames) {
+              moveToken(active, action.coord);
+              lastMove = true;
+              lastAction = 'move';
+              lastShotTargetId = null;
+            } else {
+              active = null;
+              apRemaining = 0;
+              lastMove = false;
+              lastAction = null;
+              lastShotTargetId = null;
+            }
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
-            await afterAlienAction();
+            if (!destroyedByFlames) {
+              await afterAlienAction();
+            }
           }
           break;
         case 'turnLeft':
@@ -1202,6 +1237,10 @@ function hasTokenAt(board: BoardState, type: string, coord: Coord): boolean {
   );
 }
 
+function hasFlameToken(board: BoardState, coord: Coord): boolean {
+  return hasTokenAt(board, 'flame', coord);
+}
+
 function coordKey(coord: Coord): string {
   return `${coord.x},${coord.y}`;
 }
@@ -1367,33 +1406,39 @@ export function getMoveOptions(board: BoardState, token: TokenInstance): { coord
   const rot = token.rot as Rotation;
   const pos = token.cells[0];
   let res: { coord: Coord; cost: number }[] = [];
+  const originHasFlame = hasFlameToken(board, pos);
+  const considerMove = (coord: Coord, cost: number) => {
+    if (!canMoveTo(board, coord)) return;
+    if (!originHasFlame && hasFlameToken(board, coord)) return;
+    res.push({ coord, cost });
+  };
   const forward = forwardCell(pos, rot);
   const forwardLeft = leftCell(forward, rot);
   const forwardRight = rightCell(forward, rot);
-  if (canMoveTo(board, forward)) res.push({ coord: forward, cost: 1 });
-  if (canMoveTo(board, forwardLeft)) res.push({ coord: forwardLeft, cost: 1 });
-  if (canMoveTo(board, forwardRight)) res.push({ coord: forwardRight, cost: 1 });
+  considerMove(forward, 1);
+  considerMove(forwardLeft, 1);
+  considerMove(forwardRight, 1);
   const backward = backwardCell(pos, rot);
   const backwardLeft = leftCell(backward, rot);
   const backwardRight = rightCell(backward, rot);
   if (isMarine(token)) {
-    if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 2 });
-    if (canMoveTo(board, backwardLeft)) res.push({ coord: backwardLeft, cost: 2 });
-    if (canMoveTo(board, backwardRight)) res.push({ coord: backwardRight, cost: 2 });
+    considerMove(backward, 2);
+    considerMove(backwardLeft, 2);
+    considerMove(backwardRight, 2);
   } else if (token.type === 'alien') {
-    if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 2 });
-    if (canMoveTo(board, backwardLeft)) res.push({ coord: backwardLeft, cost: 2 });
-    if (canMoveTo(board, backwardRight)) res.push({ coord: backwardRight, cost: 2 });
+    considerMove(backward, 2);
+    considerMove(backwardLeft, 2);
+    considerMove(backwardRight, 2);
   } else if (isBlip(token)) {
-    if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 1 });
-    if (canMoveTo(board, backwardLeft)) res.push({ coord: backwardLeft, cost: 1 });
-    if (canMoveTo(board, backwardRight)) res.push({ coord: backwardRight, cost: 1 });
+    considerMove(backward, 1);
+    considerMove(backwardLeft, 1);
+    considerMove(backwardRight, 1);
   }
   if (token.type === 'alien' || isBlip(token)) {
     const left = leftCell(pos, rot);
-    if (canMoveTo(board, left)) res.push({ coord: left, cost: 1 });
+    considerMove(left, 1);
     const right = rightCell(pos, rot);
-    if (canMoveTo(board, right)) res.push({ coord: right, cost: 1 });
+    considerMove(right, 1);
   }
   if (isBlip(token)) {
     const marines = board.tokens.filter((t) => isMarine(t));
@@ -1663,7 +1708,7 @@ function isObstructed(
 }
 
 function blocksSight(t: TokenInstance): boolean {
-  return t.type === 'door' || isUnit(t);
+  return t.type === 'door' || t.type === 'flame' || isUnit(t);
 }
 
 function rotVector(rot: Rotation): { x: number; y: number } {
