@@ -23,6 +23,7 @@ export class BasicRules implements Rules {
   private nextGuardId = 1;
   private nextOverwatchId = 1;
   private nextJamId = 1;
+  private nextFlameId = 1;
   private turn = 1;
   private activePlayer = 1;
   private overwatchHistory = new Map<string, string | null>();
@@ -396,6 +397,19 @@ export class BasicRules implements Rules {
                 apRemaining,
               });
             }
+          } else if (weapon === 'flamer') {
+            if (apRemaining >= 2) {
+              const targets = getFlamerTargets(this.board, active);
+              for (const target of targets) {
+                actionChoices.push({
+                  type: 'action',
+                  action: 'shoot',
+                  coord: target.coord,
+                  apCost: 2,
+                  apRemaining,
+                });
+              }
+            }
           }
         }
         if (isMarine(active) && apRemaining >= 2) {
@@ -446,15 +460,50 @@ export class BasicRules implements Rules {
       switch (actionType) {
         case 'move':
           if (active && action.coord && typeof action.apCost === 'number') {
-            moveToken(active, action.coord);
+            const fromCoord = { ...active.cells[0] };
+            const originHasFlame = hasFlameToken(this.board, fromCoord);
+            const targetHasFlame = hasFlameToken(this.board, action.coord);
+            if (!originHasFlame && targetHasFlame) {
+              this.onLog?.('Cannot move into flames from a safe cell');
+              break;
+            }
             apRemaining -= action.apCost;
-            lastMove = true;
-            lastAction = 'move';
-            lastShotTargetId = null;
+            let destroyedByFlames = false;
+            if (originHasFlame && targetHasFlame) {
+              this.onLog?.(
+                `${active.type} attempts to move through flames; needs 1 to survive`,
+              );
+              const roll = rollDice(1);
+              this.onLog?.(`Roll: ${formatRolls(roll)}`);
+              if (roll[0] >= 2) {
+                this.onLog?.(`${active.type} is destroyed moving through flames`);
+                if (isMarine(active)) {
+                  this.overwatchHistory.delete(active.instanceId);
+                }
+                removeToken(this.board, active);
+                destroyedByFlames = true;
+              } else {
+                this.onLog?.(`${active.type} survives the flames`);
+              }
+            }
+            if (!destroyedByFlames) {
+              moveToken(active, action.coord);
+              lastMove = true;
+              lastAction = 'move';
+              lastShotTargetId = null;
+            } else {
+              active = null;
+              apRemaining = 0;
+              lastMove = false;
+              lastAction = null;
+              lastShotTargetId = null;
+            }
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
-            await afterAlienAction();
+            if (!destroyedByFlames) {
+              await afterAlienAction();
+            }
           }
           break;
         case 'turnLeft':
@@ -485,19 +534,20 @@ export class BasicRules implements Rules {
           break;
         case 'shoot':
           if (active && isMarine(active) && action.coord) {
+            const targetCoord = action.coord;
             const weapon = getMarineWeapon(active.type);
             if (weapon === 'bolter') {
               const previousAction = lastAction;
               const shotCost = previousAction === 'move' || previousAction === 'turn' ? 0 : 1;
               if (apRemaining >= shotCost) {
-                const target = findShootTarget(this.board, action.coord);
+                const target = findShootTarget(this.board, targetCoord);
                 if (target) {
                   const targetId = target.instanceId;
                   const sustained = previousAction === 'shoot' && lastShotTargetId === targetId;
                   apRemaining -= shotCost;
                   lastMove = false;
                   this.onLog?.(
-                    `${active.type} fires bolter at ${target.type} in (${action.coord.x}, ${action.coord.y})`,
+                    `${active.type} fires bolter at ${target.type} in (${targetCoord.x}, ${targetCoord.y})`,
                   );
                   if (shotCost === 0) {
                     this.onLog?.('Bolter shot is free immediately after moving or turning');
@@ -521,6 +571,80 @@ export class BasicRules implements Rules {
                   }
                   lastAction = 'shoot';
                   lastShotTargetId = targetId;
+                  this.emitStatus(apRemaining);
+                }
+              }
+            } else if (weapon === 'flamer') {
+              const flameCost = 2;
+              if (apRemaining >= flameCost) {
+                const targets = getFlamerTargets(this.board, active);
+                const targetInfo = targets.find((t) => sameCoord(t.coord, targetCoord));
+                if (targetInfo) {
+                  apRemaining -= flameCost;
+                  lastMove = false;
+                  lastAction = 'shoot';
+                  lastShotTargetId = null;
+                  this.onLog?.(
+                    `${active.type} fires flamer at (${targetCoord.x}, ${targetCoord.y})`,
+                  );
+                  const newFlameCells: Coord[] = [];
+                  let boardChanged = false;
+                  let removedTokens = false;
+                  for (const cell of targetInfo.cells) {
+                    const cellType = this.board.getCellType
+                      ? this.board.getCellType(cell)
+                      : 1;
+                    if (cellType !== 1) continue;
+                    if (hasTokenAt(this.board, 'door', cell)) continue;
+                    if (!hasTokenAt(this.board, 'flame', cell)) {
+                      const flameCoord = { ...cell };
+                      this.board.tokens.push({
+                        instanceId: `flame-${this.nextFlameId++}`,
+                        type: 'flame',
+                        rot: 0,
+                        cells: [flameCoord],
+                      });
+                      newFlameCells.push(flameCoord);
+                      boardChanged = true;
+                    }
+                  }
+                  for (const cell of newFlameCells) {
+                    const victims = this.board.tokens.filter(
+                      (t) =>
+                        (isMarine(t) || t.type === 'alien' || isBlip(t)) &&
+                        t.cells.some((c) => sameCoord(c, cell)),
+                    );
+                    for (const victim of victims) {
+                      this.onLog?.(
+                        `Flamer attack on ${victim.type} in (${cell.x}, ${cell.y}); needs 2+`,
+                      );
+                      const roll = rollDice(1);
+                      this.onLog?.(`Roll: ${formatRolls(roll)}`);
+                      if (roll[0] >= 2) {
+                        this.onLog?.(`${victim.type} is destroyed by flames`);
+                        if (isMarine(victim)) {
+                          this.overwatchHistory.delete(victim.instanceId);
+                        }
+                        removeToken(this.board, victim);
+                        boardChanged = true;
+                        removedTokens = true;
+                      } else {
+                        this.onLog?.(`${victim.type} survives the flames`);
+                      }
+                    }
+                  }
+                  if (boardChanged) {
+                    this.onChange?.(this.board);
+                  }
+                  if (removedTokens) {
+                    await checkInvoluntaryReveals();
+                  }
+                  if (active && !this.board.tokens.includes(active)) {
+                    active = null;
+                    apRemaining = 0;
+                    lastAction = null;
+                    lastShotTargetId = null;
+                  }
                   this.emitStatus(apRemaining);
                 }
               }
@@ -1113,12 +1237,127 @@ function hasTokenAt(board: BoardState, type: string, coord: Coord): boolean {
   );
 }
 
+function hasFlameToken(board: BoardState, coord: Coord): boolean {
+  return hasTokenAt(board, 'flame', coord);
+}
+
 function coordKey(coord: Coord): string {
   return `${coord.x},${coord.y}`;
 }
 
+function coordFromKey(key: string): Coord {
+  const [xStr, yStr] = key.split(',');
+  return { x: Number(xStr), y: Number(yStr) };
+}
+
 function chebyshevDistance(a: Coord, b: Coord): number {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+}
+
+interface FlamerTarget {
+  coord: Coord;
+  cells: Coord[];
+  segmentId: string;
+  distance: number;
+}
+
+function getFlamerTargets(board: BoardState, marine: TokenInstance): FlamerTarget[] {
+  const origin = marine.cells[0];
+  const segments = new Map<string, FlamerTarget>();
+  for (let dx = -12; dx <= 12; dx++) {
+    for (let dy = -12; dy <= 12; dy++) {
+      const target = { x: origin.x + dx, y: origin.y + dy };
+      const distance = chebyshevDistance(origin, target);
+      if (distance > 12) continue;
+      if (!isWithinBoard(board, target)) continue;
+      const cellType = board.getCellType ? board.getCellType(target) : 1;
+      if (cellType !== 1) continue;
+      if (hasTokenAt(board, 'door', target)) continue;
+      const ignore = board.tokens.filter(
+        (t) => isUnit(t) && t.cells.some((c) => sameCoord(c, target)),
+      );
+      if (!marineHasLineOfSight(board, marine, target, ignore)) continue;
+      const seg = getSegmentInfo(board, target);
+      if (!seg) continue;
+      const existing = segments.get(seg.id);
+      if (
+        !existing ||
+        distance < existing.distance ||
+        (distance === existing.distance &&
+          (target.y < existing.coord.y ||
+            (target.y === existing.coord.y && target.x < existing.coord.x)))
+      ) {
+        segments.set(seg.id, {
+          coord: { ...target },
+          cells: seg.cells.map((c) => ({ ...c })),
+          segmentId: seg.id,
+          distance,
+        });
+      }
+    }
+  }
+  return Array.from(segments.values()).sort((a, b) => {
+    if (a.distance !== b.distance) return a.distance - b.distance;
+    if (a.coord.y !== b.coord.y) return a.coord.y - b.coord.y;
+    return a.coord.x - b.coord.x;
+  });
+}
+
+interface SegmentInfo {
+  id: string;
+  cells: Coord[];
+}
+
+function getSegmentInfo(board: BoardState, coord: Coord): SegmentInfo | null {
+  const direct = (board as any).getCellsInSameSegment?.(coord);
+  if (Array.isArray(direct) && direct.length > 0) {
+    const cells = direct.map((c: Coord) => ({ ...c }));
+    const id = direct
+      .map((c: Coord) => coordKey(c))
+      .sort()
+      .join('|');
+    return { id, cells };
+  }
+  const indices = getBoardIndices(board);
+  if (indices) {
+    const info = indices.segCells.get(coordKey(coord));
+    if (info && info.instanceId !== 'base') {
+      const cells: Coord[] = [];
+      for (const [key, cellInfo] of indices.segCells.entries()) {
+        if (cellInfo.instanceId === info.instanceId) {
+          cells.push(coordFromKey(key));
+        }
+      }
+      return { id: info.instanceId, cells };
+    }
+  }
+  return { id: coordKey(coord), cells: [{ ...coord }] };
+}
+
+type BoardIndicesLike = {
+  segCells: Map<string, { instanceId: string; cellType: number }>;
+  tokenCells?: Map<string, string[]>;
+};
+
+function getBoardIndices(board: BoardState): BoardIndicesLike | null {
+  if (!board) return null;
+  const symbols = Object.getOwnPropertySymbols(board);
+  for (const sym of symbols) {
+    const value = (board as any)[sym];
+    if (
+      value &&
+      typeof value === 'object' &&
+      value.segCells instanceof Map &&
+      value.tokenCells instanceof Map
+    ) {
+      return value as BoardIndicesLike;
+    }
+  }
+  return null;
+}
+
+function isWithinBoard(board: BoardState, coord: Coord): boolean {
+  return coord.x >= 0 && coord.y >= 0 && coord.x < board.size && coord.y < board.size;
 }
 
 async function orientAlien(
@@ -1167,33 +1406,39 @@ export function getMoveOptions(board: BoardState, token: TokenInstance): { coord
   const rot = token.rot as Rotation;
   const pos = token.cells[0];
   let res: { coord: Coord; cost: number }[] = [];
+  const originHasFlame = hasFlameToken(board, pos);
+  const considerMove = (coord: Coord, cost: number) => {
+    if (!canMoveTo(board, coord)) return;
+    if (!originHasFlame && hasFlameToken(board, coord)) return;
+    res.push({ coord, cost });
+  };
   const forward = forwardCell(pos, rot);
   const forwardLeft = leftCell(forward, rot);
   const forwardRight = rightCell(forward, rot);
-  if (canMoveTo(board, forward)) res.push({ coord: forward, cost: 1 });
-  if (canMoveTo(board, forwardLeft)) res.push({ coord: forwardLeft, cost: 1 });
-  if (canMoveTo(board, forwardRight)) res.push({ coord: forwardRight, cost: 1 });
+  considerMove(forward, 1);
+  considerMove(forwardLeft, 1);
+  considerMove(forwardRight, 1);
   const backward = backwardCell(pos, rot);
   const backwardLeft = leftCell(backward, rot);
   const backwardRight = rightCell(backward, rot);
   if (isMarine(token)) {
-    if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 2 });
-    if (canMoveTo(board, backwardLeft)) res.push({ coord: backwardLeft, cost: 2 });
-    if (canMoveTo(board, backwardRight)) res.push({ coord: backwardRight, cost: 2 });
+    considerMove(backward, 2);
+    considerMove(backwardLeft, 2);
+    considerMove(backwardRight, 2);
   } else if (token.type === 'alien') {
-    if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 2 });
-    if (canMoveTo(board, backwardLeft)) res.push({ coord: backwardLeft, cost: 2 });
-    if (canMoveTo(board, backwardRight)) res.push({ coord: backwardRight, cost: 2 });
+    considerMove(backward, 2);
+    considerMove(backwardLeft, 2);
+    considerMove(backwardRight, 2);
   } else if (isBlip(token)) {
-    if (canMoveTo(board, backward)) res.push({ coord: backward, cost: 1 });
-    if (canMoveTo(board, backwardLeft)) res.push({ coord: backwardLeft, cost: 1 });
-    if (canMoveTo(board, backwardRight)) res.push({ coord: backwardRight, cost: 1 });
+    considerMove(backward, 1);
+    considerMove(backwardLeft, 1);
+    considerMove(backwardRight, 1);
   }
   if (token.type === 'alien' || isBlip(token)) {
     const left = leftCell(pos, rot);
-    if (canMoveTo(board, left)) res.push({ coord: left, cost: 1 });
+    considerMove(left, 1);
     const right = rightCell(pos, rot);
-    if (canMoveTo(board, right)) res.push({ coord: right, cost: 1 });
+    considerMove(right, 1);
   }
   if (isBlip(token)) {
     const marines = board.tokens.filter((t) => isMarine(t));
@@ -1463,7 +1708,7 @@ function isObstructed(
 }
 
 function blocksSight(t: TokenInstance): boolean {
-  return t.type === 'door' || isUnit(t);
+  return t.type === 'door' || t.type === 'flame' || isUnit(t);
 }
 
 function rotVector(rot: Rotation): { x: number; y: number } {
