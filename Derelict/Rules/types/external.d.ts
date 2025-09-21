@@ -31,6 +31,7 @@ declare module 'derelict-players' {
       | 'reveal'
       | 'deploy'
       | 'guard'
+      | 'overwatch'
       | 'pass';
     apCost?: number;
     apRemaining?: number;

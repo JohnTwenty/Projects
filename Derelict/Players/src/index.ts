@@ -14,6 +14,7 @@ export interface Choice {
     | 'reveal'
     | 'deploy'
     | 'guard'
+    | 'overwatch'
     | 'pass';
   apCost?: number;
   apRemaining?: number;

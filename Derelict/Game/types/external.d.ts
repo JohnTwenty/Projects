@@ -26,9 +26,11 @@ declare module 'derelict-players' {
       | 'turnRight'
       | 'activate'
       | 'door'
+      | 'shoot'
       | 'reveal'
       | 'deploy'
       | 'guard'
+      | 'overwatch'
       | 'pass';
     apCost?: number;
     apRemaining?: number;
