@@ -21,8 +21,11 @@ export class BasicRules implements Rules {
   private nextDeactId = 1;
   private nextAlienId = 1;
   private nextGuardId = 1;
+  private nextOverwatchId = 1;
+  private nextJamId = 1;
   private turn = 1;
   private activePlayer = 1;
+  private overwatchHistory = new Map<string, string | null>();
   constructor(
     private board: BoardState,
     private onChange?: (state: BoardState) => void,
@@ -59,6 +62,30 @@ export class BasicRules implements Rules {
     let lastMove = false;
     let lastAction: 'move' | 'turn' | 'shoot' | null = null;
     let lastShotTargetId: string | null = null;
+    const clearMarineStatusTokens = () => {
+      let removed = false;
+      const removedOverwatch = new Set<string>();
+      this.board.tokens = this.board.tokens.filter((t) => {
+        if (t.type === 'overwatch') {
+          removed = true;
+          removedOverwatch.add(coordKey(t.cells[0]));
+          return false;
+        }
+        if (t.type === 'guard' || t.type === 'jam' || t.type === 'flame') {
+          removed = true;
+          return false;
+        }
+        return true;
+      });
+      if (removedOverwatch.size > 0) {
+        for (const marine of this.board.tokens.filter((t) => isMarine(t))) {
+          if (removedOverwatch.has(coordKey(marine.cells[0]))) {
+            this.overwatchHistory.delete(marine.instanceId);
+          }
+        }
+      }
+      return removed;
+    };
     const checkInvoluntaryReveals = async () => {
       while (true) {
         const marines = this.board.tokens.filter((t) => isMarine(t));
@@ -140,11 +167,106 @@ export class BasicRules implements Rules {
         }
       }
     };
-    if (this.activePlayer === 1) {
-      if (this.board.tokens.some((t) => t.type === 'guard')) {
-        this.board.tokens = this.board.tokens.filter((t) => t.type !== 'guard');
+    const startMarineTurn = async () => {
+      const removed = clearMarineStatusTokens();
+      if (removed) {
+        this.onChange?.(this.board);
+        await checkInvoluntaryReveals();
+      }
+    };
+    const resolveOverwatchShots = async (alien: TokenInstance) => {
+      const targetCoord = { ...alien.cells[0] };
+      const targetId = alien.instanceId;
+      const marines = this.board.tokens.filter(
+        (t) =>
+          isMarine(t) &&
+          getMarineWeapon(t.type) === 'bolter' &&
+          hasTokenAt(this.board, 'overwatch', t.cells[0]),
+      );
+      const eligible = marines.filter(
+        (marine) =>
+          chebyshevDistance(marine.cells[0], targetCoord) <= 12 &&
+          marineHasLineOfSight(this.board, marine, targetCoord, [alien]),
+      );
+      if (eligible.length === 0) {
+        return this.board.tokens.some((t) => t.instanceId === targetId);
+      }
+      let boardChanged = false;
+      let targetRemoved = false;
+      for (const marine of eligible) {
+        this.onLog?.(
+          `${marine.type} on overwatch fires at ${alien.type} in (${targetCoord.x}, ${targetCoord.y})`,
+        );
+        const lastTarget = this.overwatchHistory.get(marine.instanceId);
+        const sustained = lastTarget === targetId;
+        const threshold = sustained ? 5 : 6;
+        if (sustained) {
+          this.onLog?.('Sustained fire bonus applies (needs 5+)');
+        } else {
+          this.onLog?.('Needs 6+ on at least one die to hit');
+        }
+        const rolls = rollDice(2);
+        this.onLog?.(`Rolls: ${formatRolls(rolls)}`);
+        const hit = rolls.some((r) => r >= threshold);
+        if (hit) {
+          const currentTarget = this.board.tokens.find((t) => t.instanceId === targetId);
+          if (currentTarget) {
+            this.onLog?.('Shot hits! Target destroyed');
+            removeToken(this.board, currentTarget);
+            boardChanged = true;
+            targetRemoved = true;
+          } else {
+            this.onLog?.('Target already destroyed by previous overwatch shot');
+          }
+        } else {
+          this.onLog?.('Shot misses');
+        }
+        const jammed = rolls.length >= 2 && rolls[0] === rolls[1];
+        const marineCoord = { ...marine.cells[0] };
+        if (jammed) {
+          this.onLog?.('Bolter jams! Overwatch token is replaced with jam token');
+          this.board.tokens = this.board.tokens.filter(
+            (t) =>
+              !(
+                (t.type === 'overwatch' || t.type === 'jam') &&
+                t.cells.some((c) => sameCoord(c, marineCoord))
+              ),
+          );
+          this.board.tokens.push({
+            instanceId: `jam-${this.nextJamId++}`,
+            type: 'jam',
+            rot: 0,
+            cells: [marineCoord],
+          });
+          this.overwatchHistory.delete(marine.instanceId);
+          boardChanged = true;
+        } else {
+          this.overwatchHistory.set(marine.instanceId, targetId);
+        }
+      }
+      if (boardChanged) {
         this.onChange?.(this.board);
       }
+      if (targetRemoved) {
+        await checkInvoluntaryReveals();
+      }
+      return this.board.tokens.some((t) => t.instanceId === targetId);
+    };
+    const afterAlienAction = async () => {
+      if (currentSide === 'alien' && active && active.type === 'alien') {
+        const alive = await resolveOverwatchShots(active);
+        if (!alive) {
+          active = null;
+          apRemaining = 0;
+          lastMove = false;
+          lastAction = null;
+          lastShotTargetId = null;
+          this.emitStatus(apRemaining);
+        }
+      }
+    };
+    if (this.activePlayer === 1) {
+      await startMarineTurn();
     }
     this.emitStatus();
     this.onLog?.(`Player ${this.activePlayer} begins turn ${this.turn}`);
@@ -266,16 +388,24 @@ export class BasicRules implements Rules {
                 });
               }
             }
+            if (apRemaining >= 2) {
+              actionChoices.push({
+                type: 'action',
+                action: 'overwatch',
+                apCost: 2,
+                apRemaining,
+              });
+            }
           }
         }
         if (isMarine(active) && apRemaining >= 2) {
           actionChoices.push({
             type: 'action',
             action: 'guard',
-          apCost: 2,
-          apRemaining,
-        });
-      }
+            apCost: 2,
+            apRemaining,
+          });
+        }
       if (
         isBlip(active) &&
         apRemaining >= 6 &&
@@ -324,6 +454,7 @@ export class BasicRules implements Rules {
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
+            await afterAlienAction();
           }
           break;
         case 'turnLeft':
@@ -336,6 +467,7 @@ export class BasicRules implements Rules {
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
+            await afterAlienAction();
           }
           break;
         case 'turnRight':
@@ -348,6 +480,7 @@ export class BasicRules implements Rules {
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
+            await afterAlienAction();
           }
           break;
         case 'shoot':
@@ -403,9 +536,11 @@ export class BasicRules implements Rules {
               action.coord,
               active,
             );
-              if (target) {
+            let assaultExecuted = false;
+            if (target) {
               apRemaining -= action.apCost;
               lastMove = false;
+              assaultExecuted = true;
               if (target.type === 'door' || target.type === 'dooropen') {
                 this.onLog?.(
                   `${active.type} assaults ${target.type} at (${action.coord.x}, ${action.coord.y})`,
@@ -585,6 +720,9 @@ export class BasicRules implements Rules {
                 }
                 if (outcome === 'attacker') {
                   this.onLog?.('Attacker wins assault');
+                  if (isMarine(target)) {
+                    this.overwatchHistory.delete(target.instanceId);
+                  }
                   removeToken(this.board, target);
                   this.onChange?.(this.board);
                   await checkInvoluntaryReveals();
@@ -595,6 +733,9 @@ export class BasicRules implements Rules {
                     active.cells[0],
                   );
                   if (defFacing) {
+                    if (isMarine(active)) {
+                      this.overwatchHistory.delete(active.instanceId);
+                    }
                     removeToken(this.board, active);
                     active = null;
                     apRemaining = 0;
@@ -644,6 +785,44 @@ export class BasicRules implements Rules {
                 this.emitStatus(apRemaining);
               }
             }
+            if (assaultExecuted) {
+              await afterAlienAction();
+            }
+          }
+          break;
+        case 'overwatch':
+          if (active && isMarine(active) && typeof action.apCost === 'number') {
+            if (getMarineWeapon(active.type) === 'bolter') {
+              const coord = { ...active.cells[0] };
+              apRemaining -= action.apCost;
+              this.board.tokens = this.board.tokens.filter(
+                (t) =>
+                  !(
+                    (t.type === 'guard' || t.type === 'overwatch' || t.type === 'jam') &&
+                    t.cells.some((c) => sameCoord(c, coord))
+                  ),
+              );
+              this.board.tokens.push({
+                instanceId: `overwatch-${this.nextOverwatchId++}`,
+                type: 'overwatch',
+                rot: 0,
+                cells: [coord],
+              });
+              this.overwatchHistory.set(active.instanceId, null);
+              this.board.tokens.push({
+                instanceId: `deactivated-${this.nextDeactId++}`,
+                type: 'deactivated',
+                rot: 0,
+                cells: [coord],
+              });
+              active = null;
+              apRemaining = 0;
+              lastMove = false;
+              lastAction = null;
+              lastShotTargetId = null;
+              this.onChange?.(this.board);
+              this.emitStatus(apRemaining);
+            }
           }
           break;
         case 'guard':
@@ -653,6 +832,7 @@ export class BasicRules implements Rules {
             this.board.tokens = this.board.tokens.filter(
               (t) => !(t.type === 'overwatch' && t.cells.some((c) => sameCoord(c, coord))),
             );
+            this.overwatchHistory.delete(active.instanceId);
             this.board.tokens.push({
               instanceId: `guard-${this.nextGuardId++}`,
               type: 'guard',
@@ -786,7 +966,10 @@ export class BasicRules implements Rules {
                   this.onChange?.(this.board);
                 }
                 this.activePlayer = this.activePlayer === 1 ? 2 : 1;
-                if (this.activePlayer === 1) this.turn++;
+                if (this.activePlayer === 1) {
+                  this.turn++;
+                  await startMarineTurn();
+                }
                 currentPlayer = currentPlayer === p1 ? p2 : p1;
                 currentSide = currentSide === 'marine' ? 'alien' : 'marine';
                 active = null;
@@ -850,6 +1033,7 @@ export class BasicRules implements Rules {
               this.onChange?.(this.board);
               await checkInvoluntaryReveals();
               this.emitStatus(apRemaining);
+              await afterAlienAction();
             }
           }
           break;
@@ -864,10 +1048,7 @@ export class BasicRules implements Rules {
           this.activePlayer = this.activePlayer === 1 ? 2 : 1;
           if (this.activePlayer === 1) {
             this.turn++;
-            if (this.board.tokens.some((t) => t.type === 'guard')) {
-              this.board.tokens = this.board.tokens.filter((t) => t.type !== 'guard');
-              this.onChange?.(this.board);
-            }
+            await startMarineTurn();
           }
           currentPlayer = currentPlayer === p1 ? p2 : p1;
           currentSide = currentSide === 'marine' ? 'alien' : 'marine';
@@ -924,6 +1105,20 @@ function moveToken(token: TokenInstance, target: Coord): void {
   const dx = target.x - token.cells[0].x;
   const dy = target.y - token.cells[0].y;
   token.cells = token.cells.map((c) => ({ x: c.x + dx, y: c.y + dy }));
+}
+
+function hasTokenAt(board: BoardState, type: string, coord: Coord): boolean {
+  return board.tokens.some(
+    (t) => t.type === type && t.cells.some((c) => sameCoord(c, coord)),
+  );
+}
+
+function coordKey(coord: Coord): string {
+  return `${coord.x},${coord.y}`;
+}
+
+function chebyshevDistance(a: Coord, b: Coord): number {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 }
 
 async function orientAlien(

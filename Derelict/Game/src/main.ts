@@ -148,6 +148,10 @@ async function init() {
   btnActivate.textContent = "Activate Ally (N)";
   actionButtons.appendChild(btnActivate);
 
+  const btnOverwatch = document.createElement("button");
+  btnOverwatch.textContent = "(O)verwatch";
+  actionButtons.appendChild(btnOverwatch);
+
   const btnReveal = document.createElement("button");
   btnReveal.textContent = "(V)reveal";
   actionButtons.appendChild(btnReveal);
@@ -337,6 +341,7 @@ async function init() {
         turnLeft: btnTurnLeft,
         turnRight: btnTurnRight,
         manipulate: btnManipulate,
+        overwatch: btnOverwatch,
         reveal: btnReveal,
         deploy: btnDeploy,
         guard: btnGuard,

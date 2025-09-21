@@ -22,6 +22,7 @@ export interface ChooseUI {
     turnLeft: HTMLButtonElement;
     turnRight: HTMLButtonElement;
     manipulate: HTMLButtonElement;
+    overwatch: HTMLButtonElement;
     reveal: HTMLButtonElement;
     deploy: HTMLButtonElement;
     guard: HTMLButtonElement;
@@ -108,12 +109,14 @@ export class Game implements GameApi {
       buttons.manipulate.textContent = "(E)manipulate";
       buttons.turnLeft.textContent = "Turn (L)eft";
       buttons.turnRight.textContent = "Turn (R)ight";
+      buttons.overwatch.textContent = "(O)verwatch";
       buttons.turnLeft.style.color = "";
       buttons.turnRight.style.color = "";
       buttons.shoot.style.color = "";
       buttons.reveal.textContent = "(V)reveal";
       buttons.deploy.textContent = "(D)eploy";
       buttons.guard.textContent = "(G)uard";
+      buttons.overwatch.style.color = "";
 
       let shootLabel = "(S)hoot";
 
@@ -301,6 +304,17 @@ export class Game implements GameApi {
         buttons.shoot.textContent = shootLabel;
         buttons.shoot.style.color = "";
       }
+      const overwatchOpt = options.find(
+        (o) => o.type === "action" && o.action === "overwatch",
+      );
+      if (overwatchOpt) {
+        const cost = overwatchOpt.apCost ?? 0;
+        buttons.overwatch.textContent = `(O)verwatch: ${cost} AP`;
+        buttons.overwatch.style.color = cost === 0 ? "green" : "";
+      } else {
+        buttons.overwatch.textContent = "(O)verwatch";
+        buttons.overwatch.style.color = "";
+      }
       const leftOpt = options.find(
         (o) => o.type === "action" && o.action === "turnLeft",
       );
@@ -394,6 +408,16 @@ export class Game implements GameApi {
           resolve(opt);
         }
       }
+      function onOverwatch() {
+        if (buttons.overwatch.disabled) return;
+        const opt = options.find(
+          (o) => o.type === "action" && o.action === "overwatch",
+        );
+        if (opt) {
+          cleanup();
+          resolve(opt);
+        }
+      }
       function onTurnLeft() {
         if (buttons.turnLeft.disabled) return;
         const opt = options.find(
@@ -443,6 +467,7 @@ export class Game implements GameApi {
         buttons.reveal.removeEventListener("click", onReveal);
         buttons.deploy.removeEventListener("click", onDeploy);
         buttons.guard.removeEventListener("click", onGuard);
+        buttons.overwatch.removeEventListener("click", onOverwatch);
         buttons.turnLeft.removeEventListener("click", onTurnLeft);
         buttons.turnRight.removeEventListener("click", onTurnRight);
         buttons.pass.removeEventListener("click", onPass);
@@ -466,6 +491,8 @@ export class Game implements GameApi {
         buttons.shoot.style.color = "";
         buttons.turnLeft.style.color = "";
         buttons.turnRight.style.color = "";
+        buttons.overwatch.textContent = "(O)verwatch";
+        buttons.overwatch.style.color = "";
         this.cleanup = undefined;
       };
       this.cleanup = cleanup;
@@ -478,6 +505,7 @@ export class Game implements GameApi {
       buttons.reveal.addEventListener("click", onReveal);
       buttons.deploy.addEventListener("click", onDeploy);
       buttons.guard.addEventListener("click", onGuard);
+      buttons.overwatch.addEventListener("click", onOverwatch);
       buttons.turnLeft.addEventListener("click", onTurnLeft);
       buttons.turnRight.addEventListener("click", onTurnRight);
       buttons.pass.addEventListener("click", onPass);
@@ -491,6 +519,7 @@ export class Game implements GameApi {
         v: onReveal,
         d: onDeploy,
         g: onGuard,
+        o: onOverwatch,
         l: onTurnLeft,
         r: onTurnRight,
         p: onPass,
@@ -536,6 +565,9 @@ export class Game implements GameApi {
       );
       buttons.guard.disabled = !options.some(
         (o) => o.type === "action" && o.action === "guard",
+      );
+      buttons.overwatch.disabled = !options.some(
+        (o) => o.type === "action" && o.action === "overwatch",
       );
       buttons.pass.disabled = !options.some(
         (o) => o.type === "action" && o.action === "pass",
