@@ -10,6 +10,7 @@ export interface Choice {
     | 'turnRight'
     | 'activate'
     | 'door'
+    | 'shoot'
     | 'reveal'
     | 'deploy'
     | 'guard'

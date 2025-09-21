@@ -140,6 +140,10 @@ async function init() {
   btnAssault.textContent = "(A)ssault";
   actionButtons.appendChild(btnAssault);
 
+  const btnShoot = document.createElement("button");
+  btnShoot.textContent = "(S)hoot";
+  actionButtons.appendChild(btnShoot);
+
   const btnActivate = document.createElement("button");
   btnActivate.textContent = "Activate Ally (N)";
   actionButtons.appendChild(btnActivate);
@@ -329,6 +333,7 @@ async function init() {
         activate: btnActivate,
         move: btnMove,
         assault: btnAssault,
+        shoot: btnShoot,
         turnLeft: btnTurnLeft,
         turnRight: btnTurnRight,
         manipulate: btnManipulate,

@@ -57,6 +57,8 @@ export class BasicRules implements Rules {
     let active: TokenInstance | null = null;
     let apRemaining = 0;
     let lastMove = false;
+    let lastAction: 'move' | 'turn' | 'shoot' | null = null;
+    let lastShotTargetId: string | null = null;
     const checkInvoluntaryReveals = async () => {
       while (true) {
         const marines = this.board.tokens.filter((t) => isMarine(t));
@@ -155,6 +157,8 @@ export class BasicRules implements Rules {
         active = null;
         apRemaining = 0;
         lastMove = false;
+        lastAction = null;
+        lastShotTargetId = null;
       }
 
       const availableTokens = tokens.filter(
@@ -240,16 +244,34 @@ export class BasicRules implements Rules {
           });
           actionChoices.push({
             type: 'action',
-          action: 'turnRight',
-          coord: active.cells[0],
-          apCost: tCost,
-          apRemaining,
-        });
-      }
-      if (isMarine(active) && apRemaining >= 2) {
-        actionChoices.push({
-          type: 'action',
-          action: 'guard',
+            action: 'turnRight',
+            coord: active.cells[0],
+            apCost: tCost,
+            apRemaining,
+          });
+        }
+        if (isMarine(active)) {
+          const weapon = getMarineWeapon(active.type);
+          if (weapon === 'bolter') {
+            const shotCost = lastAction === 'move' || lastAction === 'turn' ? 0 : 1;
+            if (apRemaining >= shotCost) {
+              const targets = getShootTargets(this.board, active);
+              for (const target of targets) {
+                actionChoices.push({
+                  type: 'action',
+                  action: 'shoot',
+                  coord: target.cells[0],
+                  apCost: shotCost,
+                  apRemaining,
+                });
+              }
+            }
+          }
+        }
+        if (isMarine(active) && apRemaining >= 2) {
+          actionChoices.push({
+            type: 'action',
+            action: 'guard',
           apCost: 2,
           apRemaining,
         });
@@ -297,6 +319,8 @@ export class BasicRules implements Rules {
             moveToken(active, action.coord);
             apRemaining -= action.apCost;
             lastMove = true;
+            lastAction = 'move';
+            lastShotTargetId = null;
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
@@ -307,6 +331,8 @@ export class BasicRules implements Rules {
             active.rot = (((active.rot + 270) % 360) as Rotation);
             apRemaining -= action.apCost;
             lastMove = false;
+            lastAction = 'turn';
+            lastShotTargetId = null;
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
@@ -317,18 +343,66 @@ export class BasicRules implements Rules {
             active.rot = (((active.rot + 90) % 360) as Rotation);
             apRemaining -= action.apCost;
             lastMove = false;
+            lastAction = 'turn';
+            lastShotTargetId = null;
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
           }
           break;
-          case 'assault':
-            if (active && action.coord && typeof action.apCost === 'number') {
-              const target = getAssaultTarget(
-                this.board,
-                action.coord,
-                active,
-              );
+        case 'shoot':
+          if (active && isMarine(active) && action.coord) {
+            const weapon = getMarineWeapon(active.type);
+            if (weapon === 'bolter') {
+              const previousAction = lastAction;
+              const shotCost = previousAction === 'move' || previousAction === 'turn' ? 0 : 1;
+              if (apRemaining >= shotCost) {
+                const target = findShootTarget(this.board, action.coord);
+                if (target) {
+                  const targetId = target.instanceId;
+                  const sustained = previousAction === 'shoot' && lastShotTargetId === targetId;
+                  apRemaining -= shotCost;
+                  lastMove = false;
+                  this.onLog?.(
+                    `${active.type} fires bolter at ${target.type} in (${action.coord.x}, ${action.coord.y})`,
+                  );
+                  if (shotCost === 0) {
+                    this.onLog?.('Bolter shot is free immediately after moving or turning');
+                  }
+                  const diceCount = 2;
+                  const threshold = sustained ? 5 : 6;
+                  if (sustained) {
+                    this.onLog?.('Sustained fire bonus applies (needs 5+)');
+                  } else {
+                    this.onLog?.('Needs 6+ on at least one die to hit');
+                  }
+                  const rolls = rollDice(diceCount);
+                  this.onLog?.(`Rolls: ${formatRolls(rolls)}`);
+                  if (rolls.some((r) => r >= threshold)) {
+                    this.onLog?.('Shot hits! Target destroyed');
+                    removeToken(this.board, target);
+                    this.onChange?.(this.board);
+                    await checkInvoluntaryReveals();
+                  } else {
+                    this.onLog?.('Shot misses');
+                  }
+                  lastAction = 'shoot';
+                  lastShotTargetId = targetId;
+                  this.emitStatus(apRemaining);
+                }
+              }
+            }
+          }
+          break;
+        case 'assault':
+          if (active && action.coord && typeof action.apCost === 'number') {
+            lastAction = null;
+            lastShotTargetId = null;
+            const target = getAssaultTarget(
+              this.board,
+              action.coord,
+              active,
+            );
               if (target) {
               apRemaining -= action.apCost;
               lastMove = false;
@@ -524,6 +598,8 @@ export class BasicRules implements Rules {
                     removeToken(this.board, active);
                     active = null;
                     apRemaining = 0;
+                    lastAction = null;
+                    lastShotTargetId = null;
                     this.onChange?.(this.board);
                     await checkInvoluntaryReveals();
                   } else {
@@ -592,12 +668,16 @@ export class BasicRules implements Rules {
             active = null;
             apRemaining = 0;
             lastMove = false;
+            lastAction = null;
+            lastShotTargetId = null;
             this.onChange?.(this.board);
             this.emitStatus(apRemaining);
           }
           break;
         case 'reveal':
           if (active && isBlip(active) && typeof action.apCost === 'number') {
+            lastAction = null;
+            lastShotTargetId = null;
             apRemaining -= action.apCost;
             const blipType = active.type;
             const existingAliens = this.board.tokens.filter(
@@ -720,6 +800,8 @@ export class BasicRules implements Rules {
             }
             active = null;
             lastMove = false;
+            lastAction = null;
+            lastShotTargetId = null;
             this.emitStatus(apRemaining);
           }
           break;
@@ -743,6 +825,8 @@ export class BasicRules implements Rules {
             active = target;
             apRemaining = initialAp(target);
             lastMove = false;
+            lastAction = null;
+            lastShotTargetId = null;
             this.emitStatus(apRemaining);
             this.onLog?.(
               `Player ${this.activePlayer} activated ${target.type} at (${target.cells[0].x}, ${target.cells[0].y})`,
@@ -761,6 +845,8 @@ export class BasicRules implements Rules {
               doorToken.type = doorToken.type === 'door' ? 'dooropen' : 'door';
               apRemaining -= action.apCost;
               lastMove = false;
+              lastAction = null;
+              lastShotTargetId = null;
               this.onChange?.(this.board);
               await checkInvoluntaryReveals();
               this.emitStatus(apRemaining);
@@ -788,6 +874,8 @@ export class BasicRules implements Rules {
           active = null;
           apRemaining = 0;
           lastMove = false;
+          lastAction = null;
+          lastShotTargetId = null;
           this.emitStatus();
           this.onLog?.(`Player ${this.activePlayer} begins turn ${this.turn}`);
           break;
@@ -1014,6 +1102,38 @@ function isMarine(t: { type: string }): boolean {
 
 function isUnit(t: { type: string }): boolean {
   return isMarine(t) || t.type === 'alien' || isBlip(t);
+}
+
+function getMarineWeapon(type: string): 'bolter' | 'cannon' | 'flamer' | 'none' {
+  switch (type) {
+    case 'marine':
+    case 'marine_chain':
+    case 'marine_sarge':
+    case 'marine_axe':
+      return 'bolter';
+    case 'marine_flame':
+      return 'flamer';
+    case 'marine_cannon':
+      return 'cannon';
+    default:
+      return 'none';
+  }
+}
+
+function getShootTargets(board: BoardState, marine: TokenInstance): TokenInstance[] {
+  return board.tokens.filter(
+    (t) =>
+      (t.type === 'alien' || t.type === 'door') &&
+      marineHasLineOfSight(board, marine, t.cells[0], [t]),
+  );
+}
+
+function findShootTarget(board: BoardState, coord: Coord): TokenInstance | undefined {
+  return board.tokens.find(
+    (t) =>
+      (t.type === 'alien' || t.type === 'door') &&
+      t.cells.some((c) => sameCoord(c, coord)),
+  );
 }
 
 function getAssaultTarget(
