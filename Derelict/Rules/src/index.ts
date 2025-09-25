@@ -26,26 +26,48 @@ export class BasicRules implements Rules {
   private nextFlameId = 1;
   private turn = 1;
   private activePlayer = 1;
+  private commandPoints = 0;
+  private marineTurnStarted = false;
   private overwatchHistory = new Map<string, string | null>();
   constructor(
     private board: BoardState,
     private onChange?: (state: BoardState) => void,
-    private onStatus?: (info: { turn: number; activePlayer: number; ap?: number }) => void,
-    initialState?: { turn?: number; activePlayer?: number },
+    private onStatus?: (info: {
+      turn: number;
+      activePlayer: number;
+      ap?: number;
+      commandPoints?: number;
+    }) => void,
+    initialState?: { turn?: number; activePlayer?: number; commandPoints?: number },
     private onLog?: (message: string, color?: string) => void,
   ) {
     if (initialState) {
       if (typeof initialState.turn === 'number') this.turn = initialState.turn;
       if (typeof initialState.activePlayer === 'number') this.activePlayer = initialState.activePlayer;
+      if (typeof initialState.commandPoints === 'number') {
+        this.commandPoints = initialState.commandPoints;
+        if (this.activePlayer === 1) {
+          this.marineTurnStarted = true;
+        }
+      }
     }
   }
 
   getState() {
-    return { turn: this.turn, activePlayer: this.activePlayer };
+    return {
+      turn: this.turn,
+      activePlayer: this.activePlayer,
+      commandPoints: this.commandPoints,
+    };
   }
 
   private emitStatus(ap?: number, activePlayer = this.activePlayer) {
-    this.onStatus?.({ turn: this.turn, activePlayer, ap });
+    this.onStatus?.({
+      turn: this.turn,
+      activePlayer,
+      ap,
+      commandPoints: activePlayer === 1 ? this.commandPoints : 0,
+    });
   }
 
   validate(state: BoardState): void {
@@ -174,6 +196,55 @@ export class BasicRules implements Rules {
         this.onChange?.(this.board);
         await checkInvoluntaryReveals();
       }
+      if (!this.marineTurnStarted) {
+        this.commandPoints = 0;
+        const roll = rollDice(1);
+        let result = roll[0];
+        this.onLog?.(`Marine command point roll: ${formatRolls(roll)}`);
+        const hasLeader = this.board.tokens.some(
+          (t) =>
+            isMarine(t) &&
+            (t.type === 'marine_sarge' || t.type === 'marine_hammer'),
+        );
+        if (hasLeader) {
+          this.onLog?.(
+            'Sarge or Hammer present; marine player may reroll the command point die',
+          );
+          const choice = await p1.choose([
+            {
+              type: 'action',
+              action: 'reroll' as any,
+              apCost: 0,
+              apRemaining: 0,
+              commandPointsRemaining: result,
+            },
+            {
+              type: 'action',
+              action: 'accept' as any,
+              apCost: 0,
+              apRemaining: 0,
+              commandPointsRemaining: result,
+            },
+          ]);
+          const cAct = choice?.action as string | undefined;
+          if (cAct === 'reroll') {
+            this.onLog?.('Marine player rerolls command point die');
+            const reroll = rollDice(1);
+            result = reroll[0];
+            this.onLog?.(
+              `Command point reroll result: ${formatRolls(reroll)}`,
+            );
+          } else {
+            this.onLog?.('Marine player accepts command point roll');
+          }
+        }
+        this.commandPoints = result;
+        this.marineTurnStarted = true;
+        this.onLog?.(
+          `Marine player receives ${result} command point${result === 1 ? '' : 's'}`,
+        );
+      }
+      this.emitStatus(undefined, 1);
     };
     const resolveOverwatchShots = async (alien: TokenInstance) => {
       const targetCoord = { ...alien.cells[0] };
@@ -374,6 +445,15 @@ export class BasicRules implements Rules {
           });
         }
         if (isMarine(active)) {
+          if (this.commandPoints > 0) {
+            actionChoices.push({
+              type: 'action',
+              action: 'command',
+              apCost: 0,
+              apRemaining,
+              commandPointsRemaining: this.commandPoints,
+            });
+          }
           const weapon = getMarineWeapon(active.type);
           if (weapon === 'bolter') {
             const shotCost = lastAction === 'move' || lastAction === 'turn' ? 0 : 1;
@@ -455,6 +535,12 @@ export class BasicRules implements Rules {
         }
       }
 
+      if (currentSide === 'marine') {
+        for (const opt of actionChoices) {
+          opt.commandPointsRemaining = this.commandPoints;
+        }
+      }
+
       const action = await currentPlayer.choose(actionChoices);
       const actionType = action.action as string;
       switch (actionType) {
@@ -530,6 +616,21 @@ export class BasicRules implements Rules {
             await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
             await afterAlienAction();
+          }
+          break;
+        case 'command':
+          if (
+            currentSide === 'marine' &&
+            active &&
+            isMarine(active) &&
+            this.commandPoints > 0
+          ) {
+            this.commandPoints -= 1;
+            apRemaining += 1;
+            this.onLog?.(
+              `Marine spends a command point for +1 AP (remaining command points: ${this.commandPoints})`,
+            );
+            this.emitStatus(apRemaining);
           }
           break;
         case 'shoot':
@@ -1162,16 +1263,23 @@ export class BasicRules implements Rules {
           }
           break;
         }
-        case 'pass':
+        case 'pass': {
           if (this.board.tokens.some((t) => t.type === 'deactivated')) {
             this.board.tokens = this.board.tokens.filter(
               (t) => t.type !== 'deactivated',
             );
             this.onChange?.(this.board);
           }
+          const wasMarine = this.activePlayer === 1;
           this.activePlayer = this.activePlayer === 1 ? 2 : 1;
+          if (wasMarine) {
+            this.commandPoints = 0;
+            this.marineTurnStarted = false;
+          }
           if (this.activePlayer === 1) {
             this.turn++;
+            this.commandPoints = 0;
+            this.marineTurnStarted = false;
             await startMarineTurn();
           }
           currentPlayer = currentPlayer === p1 ? p2 : p1;
@@ -1184,6 +1292,7 @@ export class BasicRules implements Rules {
           this.emitStatus();
           this.onLog?.(`Player ${this.activePlayer} begins turn ${this.turn}`);
           break;
+        }
       }
     }
   }

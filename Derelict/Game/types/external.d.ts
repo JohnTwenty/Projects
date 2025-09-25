@@ -31,9 +31,11 @@ declare module 'derelict-players' {
       | 'deploy'
       | 'guard'
       | 'overwatch'
+      | 'command'
       | 'pass';
     apCost?: number;
     apRemaining?: number;
+    commandPointsRemaining?: number;
   }
   export interface GameApi {
     choose(options: Choice[]): Promise<Choice>;

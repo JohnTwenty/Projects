@@ -1018,11 +1018,13 @@ test('assault action offered and removes alien on win', async () => {
   let secondOpts;
   let tokensAfter;
   const originalRandom = Math.random;
-  const seq = [0.9, 0.1, 0.1, 0.1];
+  const seq = [0.5, 0.9, 0.1, 0.1, 0.1];
   Math.random = () => seq.shift() || 0;
   const player = {
     choose: async (options) => {
       calls++;
+      const accept = options.find((o) => o.action === 'accept');
+      if (accept) return accept;
       if (calls === 1) return options.find((o) => o.action === 'activate');
       if (calls === 2) {
         secondOpts = options;
@@ -1067,11 +1069,13 @@ test('assault ignores open door when enemy present', async () => {
   let secondOpts;
   let tokensAfter;
   const originalRandom = Math.random;
-  const seq = [0.9, 0.1, 0.1, 0.1];
+  const seq = [0.5, 0.9, 0.1, 0.1, 0.1];
   Math.random = () => seq.shift() || 0;
   const player = {
     choose: async (options) => {
       calls++;
+      const accept = options.find((o) => o.action === 'accept');
+      if (accept) return accept;
       if (calls === 1) return options.find((o) => o.action === 'activate');
       if (calls === 2) {
         secondOpts = options;
@@ -1112,6 +1116,8 @@ test('marine_chain assault destroys door', async () => {
   const player = {
     choose: async (options) => {
       calls++;
+      const accept = options.find((o) => o.action === 'accept');
+      if (accept) return accept;
       if (calls === 1) return options.find((o) => o.action === 'activate');
       if (calls === 2) return options.find((o) => o.action === 'assault');
       if (calls === 3) {
@@ -1145,17 +1151,20 @@ test('marine_hammer assault logs modifiers', async () => {
 
   let calls = 0;
   const originalRandom = Math.random;
-  const seq = [0.1, 0.9, 0.9];
+  const seq = [0.5, 0.1, 0.9, 0.9];
   Math.random = () => seq.shift() || 0;
   const player = {
     choose: async (options) => {
       calls++;
-      if (calls === 1) return options.find((o) => o.action === 'activate');
-      if (calls === 2) return options.find((o) => o.action === 'assault');
-      if (calls === 3) return options.find((o) => o.action === 'accept');
-      if (calls === 4) {
+      const accept = options.find((o) => o.action === 'accept');
+      if (accept) return accept;
+      const activate = options.find((o) => o.action === 'activate');
+      if (activate) return activate;
+      const assault = options.find((o) => o.action === 'assault');
+      if (assault) return assault;
+      if (options.some((o) => o.action === 'pass')) {
         board.tokens = [];
-        return options[0];
+        return options.find((o) => o.action === 'pass') || options[0];
       }
       return options[0];
     },
