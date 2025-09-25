@@ -1,5 +1,6 @@
 import { Game } from "./index.js";
 import { parseSegmentDefs } from "./segments.js";
+import { parseMissionListing } from "./util/missionListing.js";
 
 function createEl<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -62,8 +63,7 @@ function downloadText(name: string, text: string) {
 async function fetchMissionList(): Promise<string[]> {
   const res = await fetch("missions/");
   const text = await res.text();
-  const matches = [...text.matchAll(/href="([^"/]+\.txt)"/g)];
-  return matches.map((m) => m[1]);
+  return parseMissionListing(text);
 }
 
 async function init() {
