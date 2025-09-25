@@ -1,0 +1,62 @@
+name: Deploy Derelict to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Projects/Derelict/**'
+      - '.github/workflows/deploy-derelict.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Projects/Derelict
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build all workspaces
+        run: npm run build
+
+      - name: Prepare deployment folder
+        run: |
+          mkdir -p combined-dist
+          for d in BoardState Renderer Editor Game Players Rules; do
+            if [ -d "$d/dist" ]; then
+              cp -r "$d/dist" "combined-dist/$d"
+            fi
+          done
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: combined-dist
+
+  deploy:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
