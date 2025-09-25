@@ -8,20 +8,30 @@ Rules will read and write the BoardState object.  Rules will also reference two 
 
 Based on these choices made, the game will progress until one player wins.
 
+## Die Rolling
+
+Sometimes the rules call six sided dice to be rolled.  This Game module performs these rolls for all players.  A small number dice of dice may need to be rolled at a time. The results of dice rolls are communicated to the user via the Game UI's text log display capability.
+When a set of dice are rolled together, the results should be sorted and presented in descending order.  The random number seed should be established when a new game is started, and stored in the mission file when the game is saved to ensure a deterministic continuity in the
+sequence of rolls.
+
 ## General Game Rules
 
 The first player controls the marines while the second player controls the aliens and blips.  Players alternate taking turns.
 
-## Clearing tokens at the start of the marine turn
+## Marine Player Turn
 
 At the start of the marine players' turn, all tokens of type overwatch, jam, guard and flame are removed from the board.
 Note that removing flame tokens changes lines of sight, which may result in involuntary blip conversions.  See the section below on involuntary conversions for details.
 
-## Die Rolling
+Next, a die is rolled to determine the number of command points available to the marine player.
 
-Sometimes the rules call six sided dice to be rolled.  This Game module performs these rolls for all players.  A small number dice of dice may need to be rolled at a time. The desults of dice rolls are communicated to the user via the Game UI's text log display capability.
-When a set of dice are rolled together, the results should be sorted and presented in descending order.  The random number seed should be established when a new game is started, and stored in the mission file when the game is saved to ensure a deterministic continuity in the
-sequence of rolls.
+When a marine of specific token types marine_sarge or marine_hammer is present on the board, the marine player is given the option to roll again.  If the marine player re-rolls, the result of the second roll must be used as the number of command points, even if it is lower than the initial roll.
+
+For the rest of the marine turn, the marine player may activate marines and perform game actions with them, until the decision to pass the turn to the alien player.
+
+## Alien Player Turn
+
+We will add special rules for the alien player later.  For now the alien player just performs a sequence of alien and blip activations and actions.
 
 ## Activation
 
@@ -57,6 +67,7 @@ The following table lists all the different actions (choices) that are available
 | unjam         | 1           | -         | -        |       |
 | overwatch     | 2           | -         | -        |       |
 | guard	        | 2           | -         | -        |       |
+| command       | 0           | -         | -        | Transfers a command point to the activated marine's AP. |
 | reveal        | -           | -         | 6        | Voluntary conversion to alien(s). |
 | pass turn     | 0           | 0         | 0        | Concludes the active player's turn.      |
 
@@ -67,7 +78,11 @@ When choices are offered to players, the choices should be provided with informa
 
 If a player chooses to activate a different unit while one is already active, the formerly active unit receives a "deactivated" token in its cell.  Units that share a cell with a deactivated token are not offered as activation choices.  When a player selects "pass", all deactivated tokens are removed from the board, allowing those units to be activated again on subsequent turns.
 
-## Movement
+## Command Action
+
+The command action is available to activated marines as long as the marine player has at least one command point remaining.  When this action is chosen, the number of command points is decremented, and the number of AP remaining for the activated marine is incremented.
+
+## Movement Actions
 
 An activated unit may choose to move one cell forward (in the direction the token is facing), move one cell diagonally forward, move one cell backward, or move one cell diagonally backward (each subject to the appropriate AP cost) assuming the destination cell is a corridor and does not contain a closed door, marine, alien, or blip.  AP costs for movement are listed in the table above. Aliens or blips are also allowed to move sideways.  Units may also turn left or right.
 
@@ -102,7 +117,6 @@ marine and there is a line of sight between the cell and the marine.
 Some weapons have ranges for which distances must be measured.  Distances are measured by counting horizontal, vertical or diagonal steps on the board as an equal unit of distance.
 This means that the 12 unit range of certain weapons includes a 25x25 square of cells centered on the marine.  We use this convention since diagonal movement is allowed for the 
 same AP point cost as horizontal and vertical movement.
-
 
 ## Blip Movement Restriction
 
@@ -252,7 +266,7 @@ On a result of two or more, the marine, blip or alien is removed from the board,
 
 All flame tokens are removed from the board at the start of the marine players' turn.
 
-## Overwatch
+## Overwatch Action
 
 An activated marine can perform the overwatch action by spending 2 AP to get an overwatch token.
 If the marine had a guard token, this is removed. 
