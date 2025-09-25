@@ -105,6 +105,7 @@ A keyboard key accelerator listed in the Key column has the same effect as click
 | unjam         | clear jam	 | u	 | none		       | none            | on jam token; this could be rename of shoot button rather than distinct weapon |
 | overwatch     | overwatch  | o	 | none	           | none            | ends activation	|
 | guard	        | guard	     | g	 | none	           | none            | ends activation 	|
+| command       | command    | c     | none            |                 | converts command point |
 | reveal        | reveal     | v	 | none	           | none            | ends activation 	|
 | deploy        | deploy     | d	 | see rules       | none            | 	|
 | pass	        | pass	     | p	 | none	           | none            | ends activation; hands control to the other player |
