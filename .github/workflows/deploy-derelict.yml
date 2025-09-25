@@ -31,19 +31,19 @@ jobs:
 #        run: npm run build
 #        working-directory: ./Derelict
 
-      - name: Prepare deployment folder
-        run: |
-          mkdir -p combined-dist
-          for d in BoardState Renderer Editor Game Players Rules; do
-            if [ -d "Projects/Derelict/$d/dist" ]; then
-              cp -r "Projects/Derelict/$d/dist" "combined-dist/$d"
-            fi
-          done
+#      - name: Prepare deployment folder
+#        run: |
+#          mkdir -p combined-dist
+#          for d in BoardState Renderer Editor Game Players Rules; do
+#            if [ -d "Projects/Derelict/$d/dist" ]; then
+#              cp -r "Projects/Derelict/$d/dist" "combined-dist/$d"
+#            fi
+#          done
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: combined-dist
+          path: ./Derelict
 
   deploy:
     needs: build-and-deploy
