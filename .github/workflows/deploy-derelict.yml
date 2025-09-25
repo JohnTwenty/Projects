@@ -27,7 +27,7 @@ jobs:
 
       - name: Build all workspaces
         run: npm run build
-        working-directory: Projects/Derelict
+        working-directory: ./Derelict
 
       - name: Prepare deployment folder
         run: |
