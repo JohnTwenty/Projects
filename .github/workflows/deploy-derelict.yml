@@ -21,13 +21,15 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
+#      - name: Install dependencies
+#        run: npm install
+#        working-directory: ./Derelict
+      - run: npm test
         working-directory: ./Derelict
-
-      - name: Build all workspaces
-        run: npm run build
-        working-directory: ./Derelict
+      
+#      - name: Build all workspaces
+#        run: npm run build
+#        working-directory: ./Derelict
 
       - name: Prepare deployment folder
         run: |
