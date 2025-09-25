@@ -4,6 +4,7 @@ import { qs, createEl, showModal } from '../util/dom.js';
 import { pixelToCell, clampCell } from '../util/geometry.js';
 import { registerShortcuts } from './Shortcuts.js';
 import { downloadText, readFileAsText } from '../util/files.js';
+import { parseMissionListing } from '../util/missionListing.js';
 import type { Renderer, BoardState } from '../types.js';
 
 export class EditorUI {
@@ -278,8 +279,7 @@ export class EditorUI {
   private async fetchMissionList(): Promise<string[]> {
     const res = await fetch('missions/');
     const text = await res.text();
-    const matches = [...text.matchAll(/href="([^"/]+\.txt)"/g)];
-    return matches.map((m) => m[1]);
+    return parseMissionListing(text);
   }
 
   private getLocalMissionNames(): string[] {
