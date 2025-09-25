@@ -21,9 +21,9 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
-        working-directory: Projects/Derelict
+#      - name: Install dependencies
+#        run: npm install
+#        working-directory: Projects/Derelict
 
       - name: Build all workspaces
         run: npm run build
