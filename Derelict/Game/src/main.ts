@@ -163,6 +163,9 @@ async function init() {
   const btnGuard = document.createElement("button");
   btnGuard.textContent = "(G)uard";
   actionButtons.appendChild(btnGuard);
+  const btnCommand = document.createElement("button");
+  btnCommand.textContent = "(C)ommand";
+  actionButtons.appendChild(btnCommand);
   const btnPass = document.createElement("button");
   btnPass.textContent = "(P)ass";
   actionButtons.appendChild(btnPass);
@@ -172,9 +175,11 @@ async function init() {
   const statusTurn = document.createElement("div");
   const statusPlayer = document.createElement("div");
   const statusAP = document.createElement("div");
+  const statusCommand = document.createElement("div");
   status.appendChild(statusTurn);
   status.appendChild(statusPlayer);
   status.appendChild(statusAP);
+  status.appendChild(statusCommand);
   side.appendChild(status);
 
   const ctx = canvas.getContext("2d");
@@ -253,6 +258,7 @@ async function init() {
     turn: number;
     activePlayer: number;
     ap?: number;
+    commandPoints?: number;
   }) => {
     statusTurn.textContent = `Turn: ${info.turn}`;
     statusPlayer.textContent =
@@ -261,6 +267,10 @@ async function init() {
         : "Active Player: 2 (Aliens)";
     statusAP.textContent =
       typeof info.ap === "number" ? `AP remaining: ${info.ap}` : "";
+    statusCommand.textContent =
+      info.activePlayer === 1
+        ? `Command Points: ${info.commandPoints ?? 0}`
+        : "";
   };
   function render(state: any) {
     currentState = state;
@@ -308,11 +318,15 @@ async function init() {
       typeof mission.rules?.activeplayer === "number"
         ? mission.rules.activeplayer
         : 1;
+    const initCommandPoints =
+      typeof mission.rules?.commandpoints === "number"
+        ? mission.rules.commandpoints
+        : undefined;
     const rules = new Rules.BasicRules(
       board,
       () => renderer.render(board),
       updateStatus,
-      { turn: initTurn, activePlayer: initPlayer },
+      { turn: initTurn, activePlayer: initPlayer, commandPoints: initCommandPoints },
       logMessage,
     );
     currentRules = rules;
@@ -345,6 +359,7 @@ async function init() {
         reveal: btnReveal,
         deploy: btnDeploy,
         guard: btnGuard,
+        command: btnCommand,
         pass: btnPass,
       },
     }, logMessage);

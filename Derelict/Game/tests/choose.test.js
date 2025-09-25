@@ -66,6 +66,7 @@ test('choose highlights activation options for different token types', async () 
       reveal: new DummyButton(),
       deploy: new DummyButton(),
       guard: new DummyButton(),
+      command: new DummyButton(),
       pass: new DummyButton(),
     },
   };
@@ -142,6 +143,7 @@ test('move option takes precedence over door option on same cell', async () => {
       reveal: new DummyButton(),
       deploy: new DummyButton(),
       guard: new DummyButton(),
+      command: new DummyButton(),
       pass: new DummyButton(),
     },
   };
@@ -222,6 +224,7 @@ test('move option takes precedence over assault option on same cell', async () =
       reveal: new DummyButton(),
       deploy: new DummyButton(),
       guard: new DummyButton(),
+      command: new DummyButton(),
       pass: new DummyButton(),
     },
   };
@@ -312,6 +315,7 @@ test('door option takes precedence over assault option on same cell', async () =
       reveal: new DummyButton(),
       deploy: new DummyButton(),
       guard: new DummyButton(),
+      command: new DummyButton(),
       pass: new DummyButton(),
     },
   };
@@ -392,6 +396,7 @@ test('binary action choice uses modal dialog', async () => {
       reveal: new DummyButton(),
       deploy: new DummyButton(),
       guard: new DummyButton(),
+      command: new DummyButton(),
       pass: new DummyButton(),
     },
   };

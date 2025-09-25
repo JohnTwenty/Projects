@@ -26,6 +26,7 @@ export interface ChooseUI {
     reveal: HTMLButtonElement;
     deploy: HTMLButtonElement;
     guard: HTMLButtonElement;
+    command: HTMLButtonElement;
     pass: HTMLButtonElement;
   };
 }
@@ -116,6 +117,7 @@ export class Game implements GameApi {
       buttons.reveal.textContent = "(V)reveal";
       buttons.deploy.textContent = "(D)eploy";
       buttons.guard.textContent = "(G)uard";
+      buttons.command.textContent = "(C)ommand";
       buttons.overwatch.style.color = "";
 
       let shootLabel = "(S)hoot";
@@ -315,6 +317,15 @@ export class Game implements GameApi {
         buttons.overwatch.textContent = "(O)verwatch";
         buttons.overwatch.style.color = "";
       }
+      const commandOpt = options.find(
+        (o) => o.type === "action" && o.action === "command",
+      );
+      if (commandOpt) {
+        const cp = commandOpt.commandPointsRemaining ?? 0;
+        buttons.command.textContent = `(C)ommand: ${cp} CP`;
+      } else {
+        buttons.command.textContent = "(C)ommand";
+      }
       const leftOpt = options.find(
         (o) => o.type === "action" && o.action === "turnLeft",
       );
@@ -439,6 +450,17 @@ export class Game implements GameApi {
         }
       }
 
+      function onCommand() {
+        if (buttons.command.disabled) return;
+        const opt = options.find(
+          (o) => o.type === "action" && o.action === "command",
+        );
+        if (opt) {
+          cleanup();
+          resolve(opt);
+        }
+      }
+
       function onPass() {
         if (buttons.pass.disabled) return;
         const opt = options.find(
@@ -470,6 +492,7 @@ export class Game implements GameApi {
         buttons.overwatch.removeEventListener("click", onOverwatch);
         buttons.turnLeft.removeEventListener("click", onTurnLeft);
         buttons.turnRight.removeEventListener("click", onTurnRight);
+        buttons.command.removeEventListener("click", onCommand);
         buttons.pass.removeEventListener("click", onPass);
         if (document.removeEventListener) {
           document.removeEventListener("keydown", onKey);
@@ -493,6 +516,7 @@ export class Game implements GameApi {
         buttons.turnRight.style.color = "";
         buttons.overwatch.textContent = "(O)verwatch";
         buttons.overwatch.style.color = "";
+        buttons.command.textContent = "(C)ommand";
         this.cleanup = undefined;
       };
       this.cleanup = cleanup;
@@ -508,6 +532,7 @@ export class Game implements GameApi {
       buttons.overwatch.addEventListener("click", onOverwatch);
       buttons.turnLeft.addEventListener("click", onTurnLeft);
       buttons.turnRight.addEventListener("click", onTurnRight);
+      buttons.command.addEventListener("click", onCommand);
       buttons.pass.addEventListener("click", onPass);
 
       const keyMap: Record<string, () => void> = {
@@ -522,6 +547,7 @@ export class Game implements GameApi {
         o: onOverwatch,
         l: onTurnLeft,
         r: onTurnRight,
+        c: onCommand,
         p: onPass,
       };
       const onKey = (e: KeyboardEvent) => {
@@ -568,6 +594,9 @@ export class Game implements GameApi {
       );
       buttons.overwatch.disabled = !options.some(
         (o) => o.type === "action" && o.action === "overwatch",
+      );
+      buttons.command.disabled = !options.some(
+        (o) => o.type === "action" && o.action === "command",
       );
       buttons.pass.disabled = !options.some(
         (o) => o.type === "action" && o.action === "pass",

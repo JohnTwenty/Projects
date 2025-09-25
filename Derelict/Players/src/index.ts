@@ -15,9 +15,11 @@ export interface Choice {
     | 'deploy'
     | 'guard'
     | 'overwatch'
+    | 'command'
     | 'pass';
   apCost?: number;
   apRemaining?: number;
+  commandPointsRemaining?: number;
 }
 
 // Game API that players can call to interact with the UI
