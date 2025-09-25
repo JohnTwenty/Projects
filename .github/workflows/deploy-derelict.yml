@@ -11,9 +11,6 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: Projects/Derelict
 
     steps:
       - name: Checkout repository
@@ -26,16 +23,18 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+        working-directory: Projects/Derelict
 
       - name: Build all workspaces
         run: npm run build
+        working-directory: Projects/Derelict
 
       - name: Prepare deployment folder
         run: |
           mkdir -p combined-dist
           for d in BoardState Renderer Editor Game Players Rules; do
-            if [ -d "$d/dist" ]; then
-              cp -r "$d/dist" "combined-dist/$d"
+            if [ -d "Projects/Derelict/$d/dist" ]; then
+              cp -r "Projects/Derelict/$d/dist" "combined-dist/$d"
             fi
           done
 
@@ -59,4 +58,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
