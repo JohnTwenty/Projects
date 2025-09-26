@@ -276,10 +276,13 @@ export class EditorUI {
   }
 
   private async fetchMissionList(): Promise<string[]> {
-    const res = await fetch('missions/');
+    const res = await fetch('missions/missions.txt');
+    if (!res.ok) return [];
     const text = await res.text();
-    const matches = [...text.matchAll(/href="([^"/]+\.txt)"/g)];
-    return matches.map((m) => m[1]);
+    return text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#'));
   }
 
   private getLocalMissionNames(): string[] {
