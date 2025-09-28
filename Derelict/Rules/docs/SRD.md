@@ -8,6 +8,8 @@ Rules will read and write the BoardState object.  Rules will also reference two 
 
 Based on these choices made, the game will progress until one player wins.
 
+
+
 ## Die Rolling
 
 Sometimes the rules call six sided dice to be rolled.  This Game module performs these rolls for all players.  A small number dice of dice may need to be rolled at a time. The results of dice rolls are communicated to the user via the Game UI's text log display capability.
@@ -26,7 +28,15 @@ Sometimes the rules call for randomly choosing blips.  This means selecting betw
 
 ## General Game Rules
 
-The first player controls the marines while the second player controls the aliens and blips.  Players alternate taking turns.
+The first player controls the marines while the second player controls the aliens and blips.  Players alternate taking turns.  
+
+## Victory Conditions
+
+The alien player wins if no more marines remain on the board. The marine player wins when particular special token related conditions are achieved as listed in the below table:
+
+| Token         | Victory Condition |
+|---------------|-------------------|
+| objective     | Marines win when a cell with an objective token receives a fire token.  The aliens win when this becomes impossible (the unit marine_flame is destroyed or the flamer ammo counter reaches zero).| 
 
 ## Marine Deployment
 
@@ -321,6 +331,7 @@ When shooting a bolter in overwatch, if the two dice rolled show identical resul
 - TODO: flame ammunition
 - TODO: have a blip token stack so choosing random blips is without replacement. 
 - TODO: one turn lurk delay
+- TODO: rename tokens for consistency, incl. alien_entry to entry_alien, lurk to lurk_alien, and objective to objective_flame.
 
 
 
