@@ -1259,3 +1259,139 @@ test('marine_hammer assault logs modifiers', async () => {
   assert.ok(logs.some((m) => m.includes('Hammer reduces alien dice')));
   assert.ok(logs.some((m) => m.includes('Hammer adds +2 to marine rolls')));
 });
+
+test('blip on lurk can only use entry action on nearest entry cell', async () => {
+  const blipCoord = { x: 0, y: 0 };
+  const nearestEntry = { x: 4, y: 1 };
+  const fartherEntry = { x: 7, y: 7 };
+  const board = {
+    size: 10,
+    segments: [],
+    getCellType: () => 1,
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 9, y: 9 }] },
+      { instanceId: 'L1', type: 'lurk', rot: 0, cells: [blipCoord] },
+      { instanceId: 'E1', type: 'alien_entry', rot: 0, cells: [nearestEntry] },
+      { instanceId: 'E2', type: 'alien_entry', rot: 0, cells: [fartherEntry] },
+      { instanceId: 'B1', type: 'blip', rot: 0, cells: [blipCoord] },
+    ],
+  };
+  const logs = [];
+  const rules = new BasicRules(
+    board,
+    undefined,
+    undefined,
+    { turn: 1, activePlayer: 2 },
+    (message) => logs.push(message),
+  );
+  rules.validate(board);
+
+  let step = 0;
+  const p1 = {
+    choose: async (options) => options.find((o) => o.action === 'pass') ?? options[0],
+  };
+  const p2 = {
+    choose: async (options) => {
+      if (step === 0) {
+        const activate = options.find(
+          (o) => o.action === 'activate' && o.coord && sameCoord(o.coord, blipCoord),
+        );
+        assert.ok(activate, 'expected activate option for blip');
+        step++;
+        return activate;
+      }
+      if (step === 1) {
+        const moveOptions = options.filter((o) => o.action === 'move' && o.coord);
+        const entryOptions = moveOptions.filter((o) => sameCoord(o.coord, nearestEntry));
+        assert.equal(entryOptions.length, 1, 'expected entry move to nearest entry cell');
+        assert.ok(
+          !moveOptions.some((o) => sameCoord(o.coord, fartherEntry)),
+          'should not offer entry move to farther entry cell',
+        );
+        const entryMove = entryOptions[0];
+        assert.equal(entryMove.apCost, 1);
+        step++;
+        return entryMove;
+      }
+      const pass = options.find((o) => o.action === 'pass');
+      assert.ok(pass, 'expected pass after entry move');
+      board.tokens = [];
+      step++;
+      return pass;
+    },
+  };
+
+  await rules.runGame(p1, p2);
+
+  assert.ok(
+    logs.some((msg) => msg.includes('Blip uses entry action to move to (4, 1)')),
+    'entry move should be logged for blip',
+  );
+});
+
+test('alien on lurk receives entry action to nearest entry cell', async () => {
+  const alienCoord = { x: 1, y: 1 };
+  const nearestEntry = { x: 3, y: 2 };
+  const fartherEntry = { x: 8, y: 8 };
+  const board = {
+    size: 10,
+    segments: [],
+    getCellType: () => 1,
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 9, y: 9 }] },
+      { instanceId: 'L1', type: 'lurk', rot: 0, cells: [alienCoord] },
+      { instanceId: 'E1', type: 'alien_entry', rot: 0, cells: [nearestEntry] },
+      { instanceId: 'E2', type: 'alien_entry', rot: 0, cells: [fartherEntry] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [alienCoord] },
+    ],
+  };
+  const logs = [];
+  const rules = new BasicRules(
+    board,
+    undefined,
+    undefined,
+    { turn: 1, activePlayer: 2 },
+    (message) => logs.push(message),
+  );
+  rules.validate(board);
+
+  let step = 0;
+  const p1 = {
+    choose: async (options) => options.find((o) => o.action === 'pass') ?? options[0],
+  };
+  const p2 = {
+    choose: async (options) => {
+      if (step === 0) {
+        const activate = options.find(
+          (o) => o.action === 'activate' && o.coord && sameCoord(o.coord, alienCoord),
+        );
+        assert.ok(activate, 'expected activate option for alien');
+        step++;
+        return activate;
+      }
+      if (step === 1) {
+        const moveOptions = options.filter((o) => o.action === 'move' && o.coord);
+        const entryOptions = moveOptions.filter((o) => sameCoord(o.coord, nearestEntry));
+        assert.equal(entryOptions.length, 1, 'expected entry move to nearest entry cell');
+        assert.ok(
+          !moveOptions.some((o) => sameCoord(o.coord, fartherEntry)),
+          'should not offer entry move to farther entry cell',
+        );
+        step++;
+        return entryOptions[0];
+      }
+      const pass = options.find((o) => o.action === 'pass');
+      assert.ok(pass, 'expected pass after alien entry move');
+      board.tokens = [];
+      step++;
+      return pass;
+    },
+  };
+
+  await rules.runGame(p1, p2);
+
+  assert.ok(
+    logs.some((msg) => msg.includes('Alien uses entry action to move to (3, 2)')),
+    'entry move should be logged for alien',
+  );
+});

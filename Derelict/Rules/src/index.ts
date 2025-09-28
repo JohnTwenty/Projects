@@ -537,22 +537,23 @@ export class BasicRules implements Rules {
             });
           }
         }
-        if (isBlip(active) && apRemaining >= 1) {
-          const entryTargets = getBlipEntryTargets(this.board, active.cells[0]);
-          for (const target of entryTargets) {
-            const key = coordKey(target);
+        if ((isBlip(active) || active.type === 'alien') && apRemaining >= 1) {
+          const entryTarget = getEntryMoveTarget(this.board, active.cells[0]);
+          if (entryTarget) {
+            const key = coordKey(entryTarget);
             entryMoveTargets.add(key);
             const alreadyOffered = actionChoices.some(
-              (opt) => opt.action === 'move' && opt.coord && sameCoord(opt.coord, target),
+              (opt) => opt.action === 'move' && opt.coord && sameCoord(opt.coord, entryTarget),
             );
-            if (alreadyOffered) continue;
-            actionChoices.push({
-              type: 'action',
-              action: 'move',
-              coord: target,
-              apCost: 1,
-              apRemaining,
-            });
+            if (!alreadyOffered) {
+              actionChoices.push({
+                type: 'action',
+                action: 'move',
+                coord: entryTarget,
+                apCost: 1,
+                apRemaining,
+              });
+            }
           }
         }
         for (const cell of forwardAndDiagonalCells(
@@ -728,7 +729,8 @@ export class BasicRules implements Rules {
           if (active && action.coord && typeof action.apCost === 'number') {
             const fromCoord = { ...active.cells[0] };
             const isEntryMove =
-              isBlip(active) && entryMoveTargets.has(coordKey(action.coord));
+              (isBlip(active) || active.type === 'alien') &&
+              entryMoveTargets.has(coordKey(action.coord));
             const originHasFlame = hasFlameToken(this.board, fromCoord);
             const targetHasFlame = hasFlameToken(this.board, action.coord);
             if (!originHasFlame && targetHasFlame) {
@@ -756,8 +758,9 @@ export class BasicRules implements Rules {
             }
             if (!destroyedByFlames) {
               if (isEntryMove) {
+                const entryActor = isBlip(active) ? 'Blip' : 'Alien';
                 this.onLog?.(
-                  `Blip uses entry action to move to (${action.coord.x}, ${action.coord.y})`,
+                  `${entryActor} uses entry action to move to (${action.coord.x}, ${action.coord.y})`,
                 );
               }
               moveToken(active, action.coord);
@@ -1759,21 +1762,27 @@ export function getMoveOptions(board: BoardState, token: TokenInstance): { coord
   return res;
 }
 
-function getBlipEntryTargets(board: BoardState, origin: Coord): Coord[] {
+function getEntryMoveTarget(board: BoardState, origin: Coord): Coord | null {
   if (!hasTokenAt(board, 'lurk', origin)) {
-    return [];
+    return null;
   }
-  const targets: Coord[] = [];
+  let best: { coord: Coord; distance: number } | null = null;
   for (const token of board.tokens) {
     if (token.type !== 'alien_entry') continue;
     for (const cell of token.cells) {
       if (sameCoord(cell, origin)) continue;
       if (!isEntryCellAvailable(board, cell)) continue;
-      if (targets.some((c) => sameCoord(c, cell))) continue;
-      targets.push({ ...cell });
+      const distance = chebyshevDistance(origin, cell);
+      if (
+        !best ||
+        distance < best.distance ||
+        (distance === best.distance && compareCoords(cell, best.coord) < 0)
+      ) {
+        best = { coord: { ...cell }, distance };
+      }
     }
   }
-  return targets.sort(compareCoords);
+  return best ? best.coord : null;
 }
 
 function getReinforcementCells(board: BoardState): Coord[] {
