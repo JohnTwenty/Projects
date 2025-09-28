@@ -2,6 +2,89 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { BasicRules, hasLineOfSight, marineHasLineOfSight, getMoveOptions } from '../dist/src/index.js';
 
+const sameCoord = (a, b) => a.x === b.x && a.y === b.y;
+
+test('marine deployment places marines on start tokens', async () => {
+  const dropCoords = [
+    { x: 0, y: 0 },
+    { x: 0, y: 1 },
+  ];
+  const startSpots = [
+    { coord: { x: 2, y: 2 }, rot: 0 },
+    { coord: { x: 3, y: 2 }, rot: 180 },
+  ];
+  const board = {
+    size: 10,
+    segments: [],
+    getCellType: () => 1,
+    tokens: [
+      { instanceId: 'drop1', type: 'drop_marine', rot: 0, cells: [dropCoords[0]] },
+      { instanceId: 'drop2', type: 'drop_marine', rot: 0, cells: [dropCoords[1]] },
+      {
+        instanceId: 'start1',
+        type: 'start_marine',
+        rot: startSpots[0].rot,
+        cells: [startSpots[0].coord],
+      },
+      {
+        instanceId: 'start2',
+        type: 'start_marine',
+        rot: startSpots[1].rot,
+        cells: [startSpots[1].coord],
+      },
+      { instanceId: 'marine1', type: 'marine', rot: 90, cells: [dropCoords[0]] },
+      { instanceId: 'marine2', type: 'marine_flame', rot: 90, cells: [dropCoords[1]] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  let deployed = 0;
+  let awaitingStart = false;
+  const p1 = {
+    choose: async (options) => {
+      if (deployed < dropCoords.length) {
+        if (!awaitingStart) {
+          const expected = dropCoords[deployed];
+          const choice = options.find(
+            (o) => o.action === 'activate' && o.coord && sameCoord(o.coord, expected),
+          );
+          assert.ok(choice, 'expected activate option for deployment');
+          awaitingStart = true;
+          return choice;
+        }
+        const target = startSpots[deployed];
+        const choice = options.find(
+          (o) => o.action === 'move' && o.coord && sameCoord(o.coord, target.coord),
+        );
+        assert.ok(choice, 'expected move option for deployment');
+        awaitingStart = false;
+        deployed++;
+        return choice;
+      }
+      const accept = options.find((o) => (o.action || '') === 'accept');
+      if (accept) return accept;
+      const pass = options.find((o) => o.action === 'pass');
+      if (pass) return pass;
+      return options[0];
+    },
+  };
+  const p2 = {
+    choose: async (options) => options[0],
+  };
+
+  await rules.runGame(p1, p2);
+
+  const marines = board.tokens.filter((t) => t.type.startsWith('marine'));
+  assert.equal(marines.length, startSpots.length);
+  for (let i = 0; i < startSpots.length; i++) {
+    const spot = startSpots[i];
+    const marine = marines.find((m) => sameCoord(m.cells[0], spot.coord));
+    assert.ok(marine, `expected marine at (${spot.coord.x}, ${spot.coord.y})`);
+    assert.equal(marine.rot, spot.rot);
+  }
+});
+
 test('marine moves forward when choosing move', async () => {
   const board = {
     size: 5,

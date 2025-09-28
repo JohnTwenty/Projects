@@ -28,6 +28,7 @@ export class BasicRules implements Rules {
   private activePlayer = 1;
   private commandPoints = 0;
   private marineTurnStarted = false;
+  private marineDeploymentDone = false;
   private overwatchHistory = new Map<string, string | null>();
   constructor(
     private board: BoardState,
@@ -50,6 +51,9 @@ export class BasicRules implements Rules {
           this.marineTurnStarted = true;
         }
       }
+    }
+    if (this.turn > 1 || this.activePlayer !== 1 || this.marineTurnStarted) {
+      this.marineDeploymentDone = true;
     }
   }
 
@@ -337,7 +341,96 @@ export class BasicRules implements Rules {
         }
       }
     };
+    const performMarineDeployment = async () => {
+      if (this.marineDeploymentDone) return;
+      const hasStartSpots = this.board.tokens.some((t) => t.type === 'start_marine');
+      const hasDropMarines = this.board.tokens.some(
+        (t) => isMarine(t) && hasTokenAt(this.board, 'drop_marine', t.cells[0]),
+      );
+      if (!hasStartSpots || !hasDropMarines) {
+        this.marineDeploymentDone = true;
+        return;
+      }
+      this.onLog?.('Marine deployment phase begins');
+      while (true) {
+        const availableMarines = this.board.tokens
+          .filter((t) => isMarine(t) && hasTokenAt(this.board, 'drop_marine', t.cells[0]))
+          .sort((a, b) => compareCoords(a.cells[0], b.cells[0]));
+        const availableStarts = this.board.tokens
+          .filter((t) => t.type === 'start_marine')
+          .filter(
+            (start) =>
+              !this.board.tokens.some(
+                (m) => isMarine(m) && m.cells.some((c) => sameCoord(c, start.cells[0])),
+              ),
+          )
+          .sort((a, b) => compareCoords(a.cells[0], b.cells[0]));
+        if (availableMarines.length === 0 || availableStarts.length === 0) {
+          break;
+        }
+        this.emitStatus(undefined, 1);
+        const marineChoice = await p1.choose(
+          availableMarines.map((marine) => ({
+            type: 'action' as const,
+            action: 'activate' as const,
+            coord: { ...marine.cells[0] },
+            apCost: 0,
+            apRemaining: 0,
+            commandPointsRemaining: this.commandPoints,
+          })),
+        );
+        if (marineChoice.action !== 'activate' || !marineChoice.coord) {
+          continue;
+        }
+        const chosenMarine = availableMarines.find((m) =>
+          sameCoord(m.cells[0], marineChoice.coord as Coord),
+        );
+        if (!chosenMarine) {
+          continue;
+        }
+        const startChoice = await p1.choose(
+          availableStarts.map((spot) => ({
+            type: 'action' as const,
+            action: 'move' as const,
+            coord: { ...spot.cells[0] },
+            apCost: 0,
+            apRemaining: 0,
+            commandPointsRemaining: this.commandPoints,
+          })),
+        );
+        if (startChoice.action !== 'move' || !startChoice.coord) {
+          continue;
+        }
+        const targetSpot = availableStarts.find((spot) =>
+          sameCoord(spot.cells[0], startChoice.coord as Coord),
+        );
+        if (!targetSpot) {
+          continue;
+        }
+        const targetCoord = { ...targetSpot.cells[0] };
+        chosenMarine.cells = [targetCoord];
+        chosenMarine.rot = targetSpot.rot as Rotation;
+        this.overwatchHistory.delete(chosenMarine.instanceId);
+        this.board.tokens = this.board.tokens.filter(
+          (t) =>
+            !(
+              t.type === 'deactivated' &&
+              t.cells.length > 0 &&
+              sameCoord(t.cells[0], targetCoord)
+            ),
+        );
+        this.onChange?.(this.board);
+        this.emitStatus(undefined, 1);
+        this.onLog?.(
+          `${chosenMarine.type} deploys to (${targetCoord.x}, ${targetCoord.y}) facing ${targetSpot.rot}°`,
+        );
+        await checkInvoluntaryReveals();
+      }
+      this.marineDeploymentDone = true;
+      this.onLog?.('Marine deployment phase complete');
+    };
     if (this.activePlayer === 1) {
+      await performMarineDeployment();
       await startMarineTurn();
     }
     this.emitStatus();
@@ -1300,6 +1393,11 @@ export class BasicRules implements Rules {
 
 function sameCoord(a: Coord, b: Coord): boolean {
   return a.x === b.x && a.y === b.y;
+}
+
+function compareCoords(a: Coord, b: Coord): number {
+  if (a.y !== b.y) return a.y - b.y;
+  return a.x - b.x;
 }
 
 function isAdjacent(a: Coord, b: Coord): boolean {
