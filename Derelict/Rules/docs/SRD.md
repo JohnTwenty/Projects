@@ -43,9 +43,11 @@ For the rest of the marine turn, the marine player may activate marines and perf
 
 ## Alien Player Turn
 
-At the start of the alien players' turn, the alien player receives a number of randomly choosen blips as reinforcements.  Unless otherwise specified, this is by default two blips.  See the section above on randomly choosing blips.
+At the start of the alien players' turn, the alien player receives a number of randomly choosen blips as reinforcements.  Unless otherwise specified, this is by default two blips, except on the first turn, which is by default four blips.  See the section above on how to randomly choose each blip token.
 
+The alien player must choose for each reinforcement blip a cell with a 'lurk' token on it but not yet containing a blip.  The reinforcement blip is placed on this cell.  The chosen cell is not required to be a corridor cell.  If there are no valid cells that can be chosen, the reinforcement blip is forfeit.
 
+After all reinforcement blips have been placed, the alien player may activate aliens or blips and perform game actions with them, until the decision to pass the turn to the marine player.
 
 ## Activation
 
@@ -83,6 +85,7 @@ The following table lists all the different actions (choices) that are available
 | guard	        | 2           | -         | -        |       |
 | command       | 0           | -         | -        | Transfers a command point to the activated marine's AP. |
 | reveal        | -           | -         | 6        | Voluntary conversion to alien(s). |
+| enter         | -           | -         | 1        | Move from lurk cell to alien_entry cell  |
 | pass turn     | 0           | 0         | 0        | Concludes the active player's turn.      |
 
 This rules module should make the process of choosing actions for players as simple as possible.  That means that this rules module should examine the boardState and provide an explicit list of possible legal choices
@@ -142,7 +145,7 @@ options to enforce these restrictions.
 
 ## Voluntary Conversion of Blips
 
-The second player controlling aliens and blips may decide to reveal an activated blip, which costs the entire 6 AP budget of the blip.  
+The player controlling aliens and blips may decide to reveal an activated blip, which costs the entire 6 AP budget of the blip.  
 Blips are represented using "blip", "blip_2" or "blip_3" tokens.  The regular "blip" token transforms into a single alien, "blip_2" transforms into two aliens, and "blip_3" transforms into three aliens.
 The first alien is placed on the cell that the blip was occupying.  The one or two additional aliens when available may be placed by the alien player in any empty cell adjacent to first alien that is not visible to any marine.
 If there are insufficient cells meeting this condition for placement, the additional aliens that cannot be placed are forfeited. Aliens are also forfeited if placing them would increase the number of aliens on the board above 22.
@@ -154,6 +157,10 @@ If there is a third alien to be placed, the adjacent cells meeting the above pla
 Immediately after each alien is placed in this way, the alien player may turn that alien left or right any number of times at no AP cost before proceeding, allowing each deployed alien to be oriented as desired.
 As long as there are remaining aliens to place and at least one eligible cell, the alien player must deploy another alien.
 Only when no further aliens can be deployed are the choices to activate any not yet activated allies or to pass the turn offered.
+
+## Alien Entry Action
+
+TODO
 
 ## Involuntary Conversion of Blips
 
@@ -298,15 +305,15 @@ When shooting a bolter in overwatch, if the two dice rolled show identical resul
 
 ## TODO: Add more rules on the following topics in the future
 
-TODO: command point actions other than unjam must remove guard or overwarch tokens!
-TODO: jams may be cleared only with command points during the aliens' turn.
-TODO: cannon ammunition, cannon reload, malfunction
-
-TODO: marine-hammer is also sarge and may reroll assaults
-TODO: marine-sarge should probably be renamed marine-sword for consistency.
-TODO: flame ammunition
-TODO: have a blip token stack so choosing random blips is without replacement. 
-
+- TODO: command point actions other than unjam must remove guard or overwarch tokens!
+- TODO: jams may be cleared only with command points during the aliens' turn.
+- TODO: cannon ammunition, cannon reload, malfunction
+- TODO: use command point to re-activate deactivated marines
+- TODO: marine-hammer is also sarge and may reroll assaults
+- TODO: marine-sarge should probably be renamed marine-sword for consistency.
+- TODO: flame ammunition
+- TODO: have a blip token stack so choosing random blips is without replacement. 
+- TODO: one turn lurk delay
 
 
 
