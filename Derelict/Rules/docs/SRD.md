@@ -24,11 +24,15 @@ Sometimes the rules call for randomly choosing blips.  This means selecting betw
 | 10 .. 13      | blip_2            |
 | 14 .. 22      | blip_3            |
 
-
-
 ## General Game Rules
 
 The first player controls the marines while the second player controls the aliens and blips.  Players alternate taking turns.
+
+## Marine Deployment
+
+Before the first marine turn starts, the marine player must deploy their available marines.  This is done by the player choosing a cell with both a marine token (named 'marine_' with a type suffix) and a drop_marine token, and then choosing a cell with a start_marine token.
+The marine is then removed from the cell with the drop_marine token and placed on the cell with the start_marine token.  In addition, the marine token is oriented so it matches the orientation of the start_marine token.
+This deployment continues until there are no more available marines to choose or no more unoccupied cells with a start_marine token to place them on.  After deployment is concluded, the first marine player turn starts as described below.
 
 ## Marine Player Turn
 
