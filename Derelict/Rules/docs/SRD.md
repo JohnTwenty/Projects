@@ -14,6 +14,18 @@ Sometimes the rules call six sided dice to be rolled.  This Game module performs
 When a set of dice are rolled together, the results should be sorted and presented in descending order.  The random number seed should be established when a new game is started, and stored in the mission file when the game is saved to ensure a deterministic continuity in the
 sequence of rolls.
 
+## Randomly Choosing Blips
+
+Sometimes the rules call for randomly choosing blips.  This means selecting between the three different kinds of blip tokens: blip, blip_2, and blip_3.  We do this by picking a uniform random number between 1 and 22 and consulting the following table:
+
+| Random Number | Chosen Blip Token |
+|---------------|-------------------|
+| 1 .. 9        | blip              |
+| 10 .. 13      | blip_2            |
+| 14 .. 22      | blip_3            |
+
+
+
 ## General Game Rules
 
 The first player controls the marines while the second player controls the aliens and blips.  Players alternate taking turns.
@@ -31,7 +43,9 @@ For the rest of the marine turn, the marine player may activate marines and perf
 
 ## Alien Player Turn
 
-We will add special rules for the alien player later.  For now the alien player just performs a sequence of alien and blip activations and actions.
+At the start of the alien players' turn, the alien player receives a number of randomly choosen blips as reinforcements.  Unless otherwise specified, this is by default two blips.  See the section above on randomly choosing blips.
+
+
 
 ## Activation
 
@@ -291,7 +305,7 @@ TODO: cannon ammunition, cannon reload, malfunction
 TODO: marine-hammer is also sarge and may reroll assaults
 TODO: marine-sarge should probably be renamed marine-sword for consistency.
 TODO: flame ammunition
-
+TODO: have a blip token stack so choosing random blips is without replacement. 
 
 
 
