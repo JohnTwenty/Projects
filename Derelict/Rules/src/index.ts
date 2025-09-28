@@ -20,6 +20,7 @@ export interface Rules {
 export class BasicRules implements Rules {
   private nextDeactId = 1;
   private nextAlienId = 1;
+  private nextBlipId = 1;
   private nextGuardId = 1;
   private nextOverwatchId = 1;
   private nextJamId = 1;
@@ -28,6 +29,7 @@ export class BasicRules implements Rules {
   private activePlayer = 1;
   private commandPoints = 0;
   private marineTurnStarted = false;
+  private alienTurnStarted = false;
   private marineDeploymentDone = false;
   private overwatchHistory = new Map<string, string | null>();
   constructor(
@@ -52,6 +54,15 @@ export class BasicRules implements Rules {
         }
       }
     }
+    const existingBlipIds = this.board.tokens
+      .map((t) => t.instanceId)
+      .filter((id): id is string => typeof id === 'string' && id.startsWith('blip-'))
+      .map((id) => Number.parseInt(id.slice(5), 10))
+      .filter((n) => Number.isFinite(n));
+    if (existingBlipIds.length > 0) {
+      this.nextBlipId = Math.max(...existingBlipIds) + 1;
+    }
+    this.alienTurnStarted = this.activePlayer === 2;
     if (this.turn > 1 || this.activePlayer !== 1 || this.marineTurnStarted) {
       this.marineDeploymentDone = true;
     }
@@ -193,6 +204,61 @@ export class BasicRules implements Rules {
           remaining--;
         }
       }
+    };
+    const startAlienTurn = async () => {
+      if (this.alienTurnStarted) return;
+      this.alienTurnStarted = true;
+      const reinforcements = this.turn === 1 ? 4 : 2;
+      if (reinforcements <= 0) {
+        return;
+      }
+      const reinforcementCount: number = reinforcements;
+      this.onLog?.(
+        `Alien player receives ${reinforcementCount} reinforcement blip${
+          reinforcementCount === 1 ? '' : 's'
+        }`,
+      );
+      for (let i = 0; i < reinforcements; i++) {
+        const candidates = getReinforcementCells(this.board);
+        if (candidates.length === 0) {
+          this.onLog?.('No valid lurk tokens available; reinforcement blip is forfeited');
+          continue;
+        }
+        this.emitStatus(undefined, 2);
+        const options = candidates.map((coord) => ({
+          type: 'action' as const,
+          action: 'deploy' as const,
+          coord,
+          apCost: 0,
+          apRemaining: 0,
+        }));
+        const choice = await p2.choose(options);
+        const chosenCoord = choice.coord
+          ? candidates.find((c) => sameCoord(c, choice.coord as Coord))
+          : undefined;
+        if (!chosenCoord) {
+          this.onLog?.('Invalid reinforcement selection; blip is forfeited');
+          continue;
+        }
+        if (!isReinforcementCellAvailable(this.board, chosenCoord)) {
+          this.onLog?.('Chosen lurk token is occupied; reinforcement blip is forfeited');
+          continue;
+        }
+        const blipType = chooseRandomBlipType();
+        const newBlip: TokenInstance = {
+          instanceId: `blip-${this.nextBlipId++}`,
+          type: blipType,
+          rot: 0,
+          cells: [{ ...chosenCoord }],
+        };
+        this.board.tokens.push(newBlip);
+        this.onChange?.(this.board);
+        this.onLog?.(
+          `${blipType} reinforcement placed at (${chosenCoord.x}, ${chosenCoord.y})`,
+        );
+        await checkInvoluntaryReveals();
+      }
+      this.emitStatus(undefined, 2);
     };
     const startMarineTurn = async () => {
       const removed = clearMarineStatusTokens();
@@ -432,6 +498,8 @@ export class BasicRules implements Rules {
     if (this.activePlayer === 1) {
       await performMarineDeployment();
       await startMarineTurn();
+    } else {
+      await startAlienTurn();
     }
     this.emitStatus();
     this.onLog?.(`Player ${this.activePlayer} begins turn ${this.turn}`);
@@ -452,6 +520,7 @@ export class BasicRules implements Rules {
         (t) => !hasDeactivatedToken(this.board, t.cells[0]),
       );
 
+      const entryMoveTargets = new Set<string>();
       const actionChoices: Choice[] = [
         { type: 'action', action: 'pass', apCost: 0, apRemaining },
       ];
@@ -464,6 +533,24 @@ export class BasicRules implements Rules {
               action: 'move',
               coord: mv.coord,
               apCost: mv.cost,
+              apRemaining,
+            });
+          }
+        }
+        if (isBlip(active) && apRemaining >= 1) {
+          const entryTargets = getBlipEntryTargets(this.board, active.cells[0]);
+          for (const target of entryTargets) {
+            const key = coordKey(target);
+            entryMoveTargets.add(key);
+            const alreadyOffered = actionChoices.some(
+              (opt) => opt.action === 'move' && opt.coord && sameCoord(opt.coord, target),
+            );
+            if (alreadyOffered) continue;
+            actionChoices.push({
+              type: 'action',
+              action: 'move',
+              coord: target,
+              apCost: 1,
               apRemaining,
             });
           }
@@ -640,6 +727,8 @@ export class BasicRules implements Rules {
         case 'move':
           if (active && action.coord && typeof action.apCost === 'number') {
             const fromCoord = { ...active.cells[0] };
+            const isEntryMove =
+              isBlip(active) && entryMoveTargets.has(coordKey(action.coord));
             const originHasFlame = hasFlameToken(this.board, fromCoord);
             const targetHasFlame = hasFlameToken(this.board, action.coord);
             if (!originHasFlame && targetHasFlame) {
@@ -666,6 +755,11 @@ export class BasicRules implements Rules {
               }
             }
             if (!destroyedByFlames) {
+              if (isEntryMove) {
+                this.onLog?.(
+                  `Blip uses entry action to move to (${action.coord.x}, ${action.coord.y})`,
+                );
+              }
               moveToken(active, action.coord);
               lastMove = true;
               lastAction = 'move';
@@ -1368,12 +1462,16 @@ export class BasicRules implements Rules {
           if (wasMarine) {
             this.commandPoints = 0;
             this.marineTurnStarted = false;
+            this.alienTurnStarted = false;
           }
           if (this.activePlayer === 1) {
             this.turn++;
             this.commandPoints = 0;
             this.marineTurnStarted = false;
             await startMarineTurn();
+          } else {
+            this.alienTurnStarted = false;
+            await startAlienTurn();
           }
           currentPlayer = currentPlayer === p1 ? p2 : p1;
           currentSide = currentSide === 'marine' ? 'alien' : 'marine';
@@ -1661,6 +1759,50 @@ export function getMoveOptions(board: BoardState, token: TokenInstance): { coord
   return res;
 }
 
+function getBlipEntryTargets(board: BoardState, origin: Coord): Coord[] {
+  if (!hasTokenAt(board, 'lurk', origin)) {
+    return [];
+  }
+  const targets: Coord[] = [];
+  for (const token of board.tokens) {
+    if (token.type !== 'alien_entry') continue;
+    for (const cell of token.cells) {
+      if (sameCoord(cell, origin)) continue;
+      if (!isEntryCellAvailable(board, cell)) continue;
+      if (targets.some((c) => sameCoord(c, cell))) continue;
+      targets.push({ ...cell });
+    }
+  }
+  return targets.sort(compareCoords);
+}
+
+function getReinforcementCells(board: BoardState): Coord[] {
+  const coords: Coord[] = [];
+  for (const token of board.tokens) {
+    if (token.type !== 'lurk') continue;
+    for (const cell of token.cells) {
+      if (!isReinforcementCellAvailable(board, cell)) continue;
+      if (coords.some((c) => sameCoord(c, cell))) continue;
+      coords.push({ ...cell });
+    }
+  }
+  return coords.sort(compareCoords);
+}
+
+function isReinforcementCellAvailable(board: BoardState, coord: Coord): boolean {
+  if (!hasTokenAt(board, 'lurk', coord)) return false;
+  return !board.tokens.some(
+    (t) => blocksMovement(t) && t.cells.some((c) => sameCoord(c, coord)),
+  );
+}
+
+function isEntryCellAvailable(board: BoardState, coord: Coord): boolean {
+  if (!hasTokenAt(board, 'alien_entry', coord)) return false;
+  return !board.tokens.some(
+    (t) => blocksMovement(t) && t.cells.some((c) => sameCoord(c, coord)),
+  );
+}
+
 function getDeployCells(
   board: BoardState,
   origin: Coord,
@@ -1834,6 +1976,13 @@ function rollDice(n: number): number[] {
     res.push(Math.floor(Math.random() * 6) + 1);
   }
   return res.sort((a, b) => b - a);
+}
+
+function chooseRandomBlipType(): 'blip' | 'blip_2' | 'blip_3' {
+  const roll = Math.floor(Math.random() * 22) + 1;
+  if (roll <= 9) return 'blip';
+  if (roll <= 13) return 'blip_2';
+  return 'blip_3';
 }
 
 function rotationTowards(from: Coord, to: Coord): Rotation {
