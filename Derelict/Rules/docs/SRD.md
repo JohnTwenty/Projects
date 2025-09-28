@@ -186,10 +186,10 @@ If there are insufficient cells meeting this condition for placement, the additi
 
 When the involuntary reveal(s) are complete, the game continues from where it left off.
 
-## Blip Entry Action
+## Blip or Alien Entry Action
 
 Blips or aliens placed on cells with 'lurk' tokens may be activated, at which point their have an available move action is to move to the closest cell marked with an alien_entry token, as long as it is not already occupied by a marine, blip, or alien.  This move option does not require that there be an unobstructed path to thecell with the alien_entry token. 
-This is choice is offered to the alien player as a move type action costing 1 AP. They may then use their remaining AP to perform any other action available to blips. 
+This is choice is offered to the alien player as a move type action costing 1 AP. They may then use their remaining AP to perform any other action available to blips. The reason this applies to aliens too is that lurking blips may have been voluntarily converted to aliens.
 
 ## Guard Action
 
