@@ -32,6 +32,9 @@ The first player controls the marines while the second player controls the alien
 
 Before the first marine turn starts, the marine player must deploy their available marines.  This is done by the player choosing a cell with both a marine token (named 'marine_' with a type suffix) and a drop_marine token, and then choosing a cell with a start_marine token.
 The marine is then removed from the cell with the drop_marine token and placed on the cell with the start_marine token.  In addition, the marine token is oriented so it matches the orientation of the start_marine token.
+
+(When presenting these choices to the player, ideally use 'activate' and 'move' type choices, so that for human players the Game UI to select these actions will just work and no new buttons or highlight types are needed.  Nonetheless, the placed marines do not obey normal movement rules or receive deactivated tokens.) 
+
 This deployment continues until there are no more available marines to choose or no more unoccupied cells with a start_marine token to place them on.  After deployment is concluded, the first marine player turn starts as described below.
 
 ## Marine Player Turn
