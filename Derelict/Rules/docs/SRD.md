@@ -85,7 +85,6 @@ The following table lists all the different actions (choices) that are available
 | guard	        | 2           | -         | -        |       |
 | command       | 0           | -         | -        | Transfers a command point to the activated marine's AP. |
 | reveal        | -           | -         | 6        | Voluntary conversion to alien(s). |
-| enter         | -           | -         | 1        | Move from lurk cell to alien_entry cell  |
 | pass turn     | 0           | 0         | 0        | Concludes the active player's turn.      |
 
 This rules module should make the process of choosing actions for players as simple as possible.  That means that this rules module should examine the boardState and provide an explicit list of possible legal choices
@@ -158,10 +157,6 @@ Immediately after each alien is placed in this way, the alien player may turn th
 As long as there are remaining aliens to place and at least one eligible cell, the alien player must deploy another alien.
 Only when no further aliens can be deployed are the choices to activate any not yet activated allies or to pass the turn offered.
 
-## Alien Entry Action
-
-TODO
-
 ## Involuntary Conversion of Blips
 
 Blips cannot deliberately move into a cell that is visible to any marine.  However, they can involuntarily become visible if either the marine moves to a cell from which it can see the blip, or something else that was blocking line of sight moves out of the way -- which can include a door opening.  This can
@@ -183,6 +178,11 @@ allowing each deployed alien to be oriented as desired.  The alien player also r
 If there are insufficient cells meeting this condition for placement, the additional aliens that cannot be placed are forfeited. Aliens are also forfeited if placing them would increase the number of aliens on the board above 22.
 
 When the involuntary reveal(s) are complete, the game continues from where it left off.
+
+## Blip Entry Action
+
+Blips or aliens placed on cells with 'lurk' tokens may be activated, at which point their have an available move action is to move to the closest cell marked with an alien_entry token.  This move option does not require that there be an unobstructed path to thecell with the alien_entry token. 
+This is choice is offered to players as a move type action costing 1 AP. They may then use their remaining AP to perform any other action available to blips. 
 
 ## Guard Action
 
