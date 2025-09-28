@@ -1395,3 +1395,81 @@ test('alien on lurk receives entry action to nearest entry cell', async () => {
     'entry move should be logged for alien',
   );
 });
+
+test('marine victory triggers when objective is on fire at end of marine turn', async () => {
+  const objectiveCell = { x: 1, y: 1 };
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'OBJ', type: 'objective', rot: 0, cells: [objectiveCell] },
+    ],
+  };
+  const logs = [];
+  const rules = new BasicRules(board, undefined, undefined, undefined, (message) => {
+    logs.push(message);
+  });
+  rules.validate(board);
+
+  let flamed = false;
+  const passFirst = async (options) => {
+    if (!flamed) {
+      board.tokens.push({
+        instanceId: 'FL1',
+        type: 'flame',
+        rot: 0,
+        cells: [objectiveCell],
+      });
+      flamed = true;
+    }
+    const pass = options.find((o) => o.action === 'pass');
+    return pass || options[0];
+  };
+
+  await rules.runGame({ choose: passFirst }, { choose: passFirst });
+
+  assert.ok(
+    logs.some((line) => line.includes('Marine victory')),
+    'expected marine victory log entry',
+  );
+});
+
+test('alien victory triggers when marines are eliminated at end of alien turn', async () => {
+  const board = {
+    size: 6,
+    segments: [],
+    tokens: [
+      { instanceId: 'MF', type: 'marine_flame', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'AL', type: 'alien', rot: 0, cells: [{ x: 2, y: 2 }] },
+      { instanceId: 'OBJ', type: 'objective', rot: 0, cells: [{ x: 4, y: 4 }] },
+    ],
+  };
+  const logs = [];
+  const rules = new BasicRules(board, undefined, undefined, undefined, (message) => {
+    logs.push(message);
+  });
+  rules.validate(board);
+
+  const marinePass = async (options) => {
+    const pass = options.find((o) => o.action === 'pass');
+    return pass || options[0];
+  };
+
+  let removed = false;
+  const alienChoose = async (options) => {
+    if (!removed) {
+      board.tokens = board.tokens.filter((t) => !t.type.startsWith('marine'));
+      removed = true;
+    }
+    const pass = options.find((o) => o.action === 'pass');
+    return pass || options[0];
+  };
+
+  await rules.runGame({ choose: marinePass }, { choose: alienChoose });
+
+  assert.ok(
+    logs.some((line) => line.includes('Alien victory')),
+    'expected alien victory log entry',
+  );
+});
