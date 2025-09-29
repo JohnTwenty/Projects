@@ -32,6 +32,8 @@ The first player controls the marines while the second player controls the alien
 
 ## Victory Conditions
 
+Victory conditions are evaluated whenever the game state could satisfy a special objective. When the `objective` token is present on the map, all associated victory conditions must be checked—ideally at the end of both the marine and alien turns so a newly fulfilled condition is recognized immediately.
+
 The alien player wins if no more marines remain on the board. The marine player wins when particular special token related conditions are achieved as listed in the below table:
 
 | Token         | Victory Condition |

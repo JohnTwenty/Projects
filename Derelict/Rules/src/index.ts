@@ -76,6 +76,51 @@ export class BasicRules implements Rules {
     };
   }
 
+  private evaluateVictoryConditions(): { winner: 'marine' | 'alien'; reason: string } | null {
+    const tokens = this.board.tokens;
+    const marines = tokens.filter((t) => isMarine(t));
+    if (marines.length === 0) {
+      return { winner: 'alien', reason: 'All marines have been eliminated' };
+    }
+
+    const objectiveCells = tokens
+      .filter((t) => t.type === 'objective')
+      .flatMap((t) => t.cells);
+    if (objectiveCells.length === 0) {
+      return null;
+    }
+
+    const objectiveOnFire = objectiveCells.some((cell) =>
+      tokens.some(
+        (tok) => tok.type === 'flame' && tok.cells.some((c) => sameCoord(c, cell)),
+      ),
+    );
+    if (objectiveOnFire) {
+      return { winner: 'marine', reason: 'Objective ignited by flames' };
+    }
+
+    const flamerMarine = marines.find((t) => t.type === 'marine_flame');
+    if (!flamerMarine) {
+      return { winner: 'alien', reason: 'Flamer marine destroyed' };
+    }
+
+    const flamerAmmo = getFlamerAmmoRemaining(flamerMarine);
+    if (typeof flamerAmmo === 'number' && flamerAmmo <= 0) {
+      return { winner: 'alien', reason: 'Flamer marine is out of fuel' };
+    }
+
+    return null;
+  }
+
+  private checkVictory(): boolean {
+    const result = this.evaluateVictoryConditions();
+    if (!result) return false;
+    const winner = result.winner === 'marine' ? 'Marine' : 'Alien';
+    const color = result.winner === 'marine' ? GREEN : RED;
+    this.onLog?.(`${winner} victory! ${result.reason}`, color);
+    return true;
+  }
+
   private emitStatus(ap?: number, activePlayer = this.activePlayer) {
     this.onStatus?.({
       turn: this.turn,
@@ -507,7 +552,10 @@ export class BasicRules implements Rules {
       const tokens = this.board.tokens.filter((t) =>
         currentSide === 'marine' ? isMarine(t) : t.type === 'alien' || isBlip(t),
       );
-      if (tokens.length === 0) return;
+      if (tokens.length === 0) {
+        if (this.checkVictory()) return;
+        return;
+      }
       if (!active || !tokens.includes(active) || hasDeactivatedToken(this.board, active.cells[0])) {
         active = null;
         apRemaining = 0;
@@ -1460,6 +1508,9 @@ export class BasicRules implements Rules {
             );
             this.onChange?.(this.board);
           }
+          if (this.checkVictory()) {
+            return;
+          }
           const wasMarine = this.activePlayer === 1;
           this.activePlayer = this.activePlayer === 1 ? 2 : 1;
           if (wasMarine) {
@@ -1547,6 +1598,19 @@ function hasTokenAt(board: BoardState, type: string, coord: Coord): boolean {
 
 function hasFlameToken(board: BoardState, coord: Coord): boolean {
   return hasTokenAt(board, 'flame', coord);
+}
+
+function getFlamerAmmoRemaining(token: TokenInstance): number | undefined {
+  if (!token.attrs) return undefined;
+  const attrs = token.attrs as Record<string, unknown>;
+  const keys = ['flamerAmmo', 'flameAmmo', 'ammo', 'ammoRemaining'];
+  for (const key of keys) {
+    const value = attrs[key];
+    if (typeof value === 'number') {
+      return value;
+    }
+  }
+  return undefined;
 }
 
 function coordKey(coord: Coord): string {
