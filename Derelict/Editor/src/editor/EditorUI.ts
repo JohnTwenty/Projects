@@ -91,6 +91,23 @@ export class EditorUI {
       this.openSaveDialog();
     });
 
+    const playBtn = qs<HTMLButtonElement>(this.container, '#btn-play');
+    playBtn.addEventListener('click', () => {
+      const body = createEl('div');
+      body.textContent = 'Open game view? Unsaved changes will be lost.';
+      let ref: { close(): void };
+      ref = showModal('Play Mission', body, [
+        {
+          label: 'OK',
+          onClick: () => {
+            ref.close();
+            window.location.href = 'game.html';
+          },
+        },
+        { label: 'Cancel', onClick: () => ref.close() },
+      ]);
+    });
+
     const newBtn = qs<HTMLButtonElement>(this.container, '#btn-new');
     newBtn.addEventListener('click', () => {
       const body = createEl('div');
