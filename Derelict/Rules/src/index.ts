@@ -564,9 +564,16 @@ export class BasicRules implements Rules {
         lastShotTargetId = null;
       }
 
-      const availableTokens = tokens.filter(
-        (t) => !hasDeactivatedToken(this.board, t.cells[0]),
-      );
+      const availableTokens = tokens.filter((t) => {
+        const hasDeact = hasDeactivatedToken(this.board, t.cells[0]);
+        if (!hasDeact) {
+          return true;
+        }
+        if (currentSide === 'marine' && isMarine(t)) {
+          return this.commandPoints > 0;
+        }
+        return false;
+      });
 
       const entryMoveTargets = new Set<string>();
       const actionChoices: Choice[] = [
@@ -743,23 +750,35 @@ export class BasicRules implements Rules {
         }
         for (const t of availableTokens) {
           if (t !== active) {
+            const startAp =
+              currentSide === 'marine' &&
+              isMarine(t) &&
+              hasDeactivatedToken(this.board, t.cells[0])
+                ? 0
+                : initialAp(t);
             actionChoices.push({
               type: 'action',
               action: 'activate',
               coord: t.cells[0],
               apCost: 0,
-              apRemaining: initialAp(t),
+              apRemaining: startAp,
             });
           }
         }
       } else {
         for (const t of availableTokens) {
+          const startAp =
+            currentSide === 'marine' &&
+            isMarine(t) &&
+            hasDeactivatedToken(this.board, t.cells[0])
+              ? 0
+              : initialAp(t);
           actionChoices.push({
             type: 'action',
             action: 'activate',
             coord: t.cells[0],
             apCost: 0,
-            apRemaining: initialAp(t),
+            apRemaining: startAp,
           });
         }
       }
@@ -1469,7 +1488,21 @@ export class BasicRules implements Rules {
               }
             }
             active = target;
-            apRemaining = initialAp(target);
+            const hadDeact = hasDeactivatedToken(this.board, target.cells[0]);
+            if (hadDeact && currentSide === 'marine' && isMarine(target)) {
+              this.board.tokens = this.board.tokens.filter(
+                (t) =>
+                  !(
+                    t.type === 'deactivated' &&
+                    t.cells.some((c) => sameCoord(c, target.cells[0]))
+                  ),
+              );
+              this.onChange?.(this.board);
+            }
+            apRemaining =
+              hadDeact && currentSide === 'marine' && isMarine(target)
+                ? 0
+                : initialAp(target);
             lastMove = false;
             lastAction = null;
             lastShotTargetId = null;
