@@ -515,7 +515,7 @@ test('blip cannot move into marine', async () => {
   );
 });
 
-test('activating different unit marks previous as deactivated until pass', async () => {
+test('activating different unit marks previous as deactivated but marines may reactivate with command points', async () => {
   const board = {
     size: 5,
     segments: [],
@@ -563,11 +563,12 @@ test('activating different unit marks previous as deactivated until pass', async
   await rules.runGame(p1, p2);
 
   assert.ok(hadDeactDuringTurn);
-  assert.ok(
-    !optionsAfterSwitch.some(
-      (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 0,
-    ),
+  const reactivationOption = optionsAfterSwitch.find(
+    (o) => o.action === 'activate' && o.coord?.x === 0 && o.coord?.y === 0,
   );
+  assert.ok(reactivationOption);
+  assert.strictEqual(reactivationOption.apRemaining, 0);
+  assert.ok((reactivationOption.commandPointsRemaining ?? 0) > 0);
   assert.ok(!tokensAfterPass.some((t) => t.type === 'deactivated'));
 });
 
