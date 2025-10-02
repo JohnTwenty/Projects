@@ -71,17 +71,19 @@ After all reinforcement blips have been placed, the alien player may activate al
 ## Activation
 
 The player whose turn it is must select a cell on the board with a controlled token in it (marine for marine player or alien or blip for alien player) to activate the token, or pass, which yields control to the other player.  
+Alien or Blip tokens with a 'deactivated' token in the same cell may not be activated.  Marines with a deactivated token may be activated if the marine player has more than one command point remaining.
 If there are no tokens on the board that can be activated, the current player loses and the other player wins.
 
 ## Game Actions
 
 Each unit type starts its activation with a certain number of action points (AP) as listed in the following table:
 
-| Unit    | Action Points (AP) |
-|---------|--------------------|
-| Marine  | 4                  |
-| Alien   | 6                  |
-| Blip    | 6                  |
+| Unit                              | Action Points (AP) |
+|-----------------------------------|--------------------|
+| Marine with no deactivated token  | 4                  |
+| Marine with deactivated token     | 0                  |
+| Alien                             | 6                  |
+| Blip                              | 6                  |
 
 The following table lists all the different actions (choices) that are available, and a columns for each of the kind of units that can be activated.  The column of each unit type contains the action point (AP) cost to perform the action in the first column:
 
@@ -111,7 +113,7 @@ to players whenever possible.  So above, the Rules should search the board for c
 The rules should then avait the player to make a choice.  If the player chooses to move or turn a marine, this action should be carried out by mutating the board state, and if necessary, a change should be signaled to the Game module so that the board may be redrawn.
 When choices are offered to players, the choices should be provided with information such as cell coordinates, choice type identifiers ("move forward", "turn left") and so on.
 
-If a player chooses to activate a different unit while one is already active, the formerly active unit receives a "deactivated" token in its cell.  Units that share a cell with a deactivated token are not offered as activation choices.  When a player selects "pass", all deactivated tokens are removed from the board, allowing those units to be activated again on subsequent turns.
+If a player chooses to activate a different unit while one is already active, the formerly active unit receives a "deactivated" token in its cell.  When a player selects "pass", all deactivated tokens are removed from the board, allowing those units to be activated again on subsequent turns.
 
 ## Command Action
 
