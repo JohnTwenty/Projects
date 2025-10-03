@@ -119,6 +119,9 @@ If a player chooses to activate a different unit while one is already active, th
 
 The command action is available to activated marines as long as the marine player has at least one command point remaining.  When this action is chosen, the number of command points is decremented, and the number of AP remaining for the activated marine is incremented.
 
+When a marine with a "deactivated" token in their cell performs a move action (by prior conversion of a command point), the deactivated token is also moved to the new cell.
+When a marine with a "deactivated" token in their cell takes any action other than "unjam" (by prior conversion of a command point), any "guard" or "overwatch" tokens are removed from their cell.
+
 ## Movement Actions
 
 An activated unit may choose to move one cell forward (in the direction the token is facing), move one cell diagonally forward, move one cell backward, or move one cell diagonally backward (each subject to the appropriate AP cost) assuming the destination cell is a corridor and does not contain a closed door, marine, alien, or blip.  AP costs for movement are listed in the table above. Aliens or blips are also allowed to move sideways.  Units may also turn left or right.
@@ -322,21 +325,23 @@ If an alien performs an action and remains in a cell within a range of 12 square
 If multiple marines on overwatch are able to take a shot at the same alien, they must all resolve the shot, even if the alien has been killed by a prior shot.  This is to take possible jamming and ammo depletion rules into account.
 See the Resolving Bolter and Cannon Shots section on how to resolve shots.
 The sustained fire bonus in this section applies to a marine on overwatch that takes a second or subsequent shot at the same alien. 
-When shooting a bolter in overwatch, if the two dice rolled show identical results, the overwatch token of the marine is removed and replaced with a jam token.
+When shooting a bolter in overwatch, if the two dice rolled show identical results, the overwatch token of the marine is removed and replaced with a jam token.  
+When this occurs, and the marine player still has at least one command point remaining, the marine player immediately receives the option to unjam the weapon at the cost of one command point.  This happens via modal dialog prompt similar to a reroll prompt.
+When the marine player chooses to unjam, the jam token is replaced with an overwatch token.
+
+
+
 
 ## TODO: Add more rules on the following topics in the future
 
-- TODO: command point actions other than unjam must remove guard or overwarch tokens!
-- TODO: jams may be cleared only with command points during the aliens' turn.
 - TODO: cannon ammunition, cannon reload, malfunction
-- TODO: use command point to re-activate deactivated marines
 - TODO: marine-hammer is also sarge and may reroll assaults
 - TODO: marine-sarge should probably be renamed marine-sword for consistency.
 - TODO: flame ammunition
 - TODO: have a blip token stack so choosing random blips is without replacement. 
 - TODO: one turn lurk delay
 - TODO: rename tokens for consistency, incl. alien_entry to entry_alien, lurk to lurk_alien, and objective to objective_flame.
-
+- TODO: marines that saw an alien action via line of sight can also perform one action in the alien turn using command points after every alien action.
 
 
 
