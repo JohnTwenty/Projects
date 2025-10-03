@@ -42,6 +42,8 @@ The alien player wins if no more marines remain on the board. The marine player 
 
 ## Marine Deployment
 
+At the start of the game, the marine player is allocated six flamer fuel points.  
+
 Before the first marine turn starts, the marine player must deploy their available marines.  This is done by the player choosing a cell with both a marine token (named 'marine_' with a type suffix) and a drop_marine token, and then choosing a cell with a start_marine token.
 The marine is then removed from the cell with the drop_marine token and placed on the cell with the start_marine token.  In addition, the marine token is oriented so it matches the orientation of the start_marine token.
 
@@ -285,7 +287,7 @@ There are three ranged weapons in the game: bolter, cannon, and flamer.  The bel
 | marine_claws    | none          |
 
 The AP costs for shooting a bolter or cannon is 0 when performed immediately following a move or turn action, otherwise it is 1.
-The AP cost for shooting a flamer is 2 AP.  
+The AP cost for shooting a flamer is 2 AP.  A shoot action with the flamer can only be taken if the marine player has at least one flamer fuel point remaining, which is decremented with each shot.
 
 ## Resolving Bolter and Cannon Shots
 
@@ -337,7 +339,6 @@ When the marine player chooses to unjam, the jam token is replaced with an overw
 - TODO: cannon ammunition, cannon reload, malfunction
 - TODO: marine-hammer is also sarge and may reroll assaults
 - TODO: marine-sarge should probably be renamed marine-sword for consistency.
-- TODO: flame ammunition
 - TODO: have a blip token stack so choosing random blips is without replacement. 
 - TODO: one turn lurk delay
 - TODO: rename tokens for consistency, incl. alien_entry to entry_alien, lurk to lurk_alien, and objective to objective_flame.
