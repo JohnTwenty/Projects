@@ -37,6 +37,7 @@ declare module 'derelict-players' {
     apCost?: number;
     apRemaining?: number;
     commandPointsRemaining?: number;
+    flamerFuelRemaining?: number;
   }
   export interface Player {
     choose(options: Choice[]): Promise<Choice>;

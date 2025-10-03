@@ -179,10 +179,12 @@ async function init() {
   const statusPlayer = document.createElement("div");
   const statusAP = document.createElement("div");
   const statusCommand = document.createElement("div");
+  const statusFlamer = document.createElement("div");
   status.appendChild(statusTurn);
   status.appendChild(statusPlayer);
   status.appendChild(statusAP);
   status.appendChild(statusCommand);
+  status.appendChild(statusFlamer);
   side.appendChild(status);
 
   const ctx = canvas.getContext("2d");
@@ -262,6 +264,7 @@ async function init() {
     activePlayer: number;
     ap?: number;
     commandPoints?: number;
+    flamerFuel?: number;
   }) => {
     statusTurn.textContent = `Turn: ${info.turn}`;
     statusPlayer.textContent =
@@ -273,6 +276,10 @@ async function init() {
     statusCommand.textContent =
       info.activePlayer === 1
         ? `Command Points: ${info.commandPoints ?? 0}`
+        : "";
+    statusFlamer.textContent =
+      info.activePlayer === 1
+        ? `Flamer Fuel: ${info.flamerFuel ?? 0}`
         : "";
   };
   function render(state: any) {
@@ -325,11 +332,23 @@ async function init() {
       typeof mission.rules?.commandpoints === "number"
         ? mission.rules.commandpoints
         : undefined;
+    const rawFlamerFuel =
+      typeof mission.rules?.flamerfuel === "number"
+        ? mission.rules.flamerfuel
+        : typeof mission.rules?.flamerFuel === "number"
+        ? mission.rules.flamerFuel
+        : undefined;
+    const initFlamerFuel = rawFlamerFuel;
     const rules = new Rules.BasicRules(
       board,
       () => renderer.render(board),
       updateStatus,
-      { turn: initTurn, activePlayer: initPlayer, commandPoints: initCommandPoints },
+      {
+        turn: initTurn,
+        activePlayer: initPlayer,
+        commandPoints: initCommandPoints,
+        flamerFuel: initFlamerFuel,
+      },
       logMessage,
     );
     currentRules = rules;
@@ -521,7 +540,18 @@ async function init() {
     const rulesState = currentRules?.getState();
     const text = BoardState.exportBoardText(currentBoard, "savegame", {
       rules: rulesState
-        ? { turn: rulesState.turn, activeplayer: rulesState.activePlayer }
+        ? {
+            turn: rulesState.turn,
+            activeplayer: rulesState.activePlayer,
+            commandpoints:
+              typeof rulesState.commandPoints === "number"
+                ? rulesState.commandPoints
+                : undefined,
+            flamerfuel:
+              typeof rulesState.flamerFuel === "number"
+                ? rulesState.flamerFuel
+                : undefined,
+          }
         : undefined,
     });
     downloadText("savegame.mission.txt", text);
