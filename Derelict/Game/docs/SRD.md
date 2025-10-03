@@ -62,7 +62,7 @@ The UI of the game page is as follows:
     * "Activated Unit Name: xyz"
     * "Activated Unit Role: xyz"
     * "AP remaining: n"
-    * "Ammo remaining: n"
+    * "Flamer fuel remaining: n"
 	
 ## Control FLow
 
