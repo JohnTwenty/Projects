@@ -28,6 +28,7 @@ export class BasicRules implements Rules {
   private turn = 1;
   private activePlayer = 1;
   private commandPoints = 0;
+  private flamerFuel = 6;
   private marineTurnStarted = false;
   private alienTurnStarted = false;
   private marineDeploymentDone = false;
@@ -40,8 +41,14 @@ export class BasicRules implements Rules {
       activePlayer: number;
       ap?: number;
       commandPoints?: number;
+      flamerFuel?: number;
     }) => void,
-    initialState?: { turn?: number; activePlayer?: number; commandPoints?: number },
+    initialState?: {
+      turn?: number;
+      activePlayer?: number;
+      commandPoints?: number;
+      flamerFuel?: number;
+    },
     private onLog?: (message: string, color?: string) => void,
   ) {
     if (initialState) {
@@ -53,6 +60,9 @@ export class BasicRules implements Rules {
           this.marineTurnStarted = true;
         }
       }
+      if (typeof initialState.flamerFuel === 'number') {
+        this.flamerFuel = initialState.flamerFuel;
+      }
     }
     const existingBlipIds = this.board.tokens
       .map((t) => t.instanceId)
@@ -61,6 +71,17 @@ export class BasicRules implements Rules {
       .filter((n) => Number.isFinite(n));
     if (existingBlipIds.length > 0) {
       this.nextBlipId = Math.max(...existingBlipIds) + 1;
+    }
+    const flamerMarine = this.board.tokens.find((t) => t.type === 'marine_flame');
+    if (flamerMarine) {
+      const ammo = getFlamerAmmoRemaining(flamerMarine);
+      if (typeof ammo === 'number') {
+        this.flamerFuel = ammo;
+      }
+      if (!flamerMarine.attrs) {
+        flamerMarine.attrs = {};
+      }
+      (flamerMarine.attrs as Record<string, unknown>).flamerAmmo = this.flamerFuel;
     }
     this.alienTurnStarted = this.activePlayer === 2;
     if (this.turn > 1 || this.activePlayer !== 1 || this.marineTurnStarted) {
@@ -73,6 +94,7 @@ export class BasicRules implements Rules {
       turn: this.turn,
       activePlayer: this.activePlayer,
       commandPoints: this.commandPoints,
+      flamerFuel: this.flamerFuel,
     };
   }
 
@@ -104,7 +126,9 @@ export class BasicRules implements Rules {
       return { winner: 'alien', reason: 'Flamer marine destroyed' };
     }
 
-    const flamerAmmo = getFlamerAmmoRemaining(flamerMarine);
+    const flamerAmmoAttr = getFlamerAmmoRemaining(flamerMarine);
+    const flamerAmmo =
+      typeof flamerAmmoAttr === 'number' ? flamerAmmoAttr : this.flamerFuel;
     if (typeof flamerAmmo === 'number' && flamerAmmo <= 0) {
       return { winner: 'alien', reason: 'Flamer marine is out of fuel' };
     }
@@ -127,7 +151,42 @@ export class BasicRules implements Rules {
       activePlayer,
       ap,
       commandPoints: activePlayer === 1 ? this.commandPoints : 0,
+      flamerFuel: activePlayer === 1 ? this.flamerFuel : 0,
     });
+  }
+
+  private removeMarineStatusTokens(marine: TokenInstance): boolean {
+    const coord = marine.cells[0];
+    let removed = false;
+    let removedOverwatch = false;
+    this.board.tokens = this.board.tokens.filter((token) => {
+      if (
+        (token.type === 'guard' || token.type === 'overwatch') &&
+        token.cells.some((c) => sameCoord(c, coord))
+      ) {
+        removed = true;
+        if (token.type === 'overwatch') {
+          removedOverwatch = true;
+        }
+        return false;
+      }
+      return true;
+    });
+    if (removedOverwatch) {
+      this.overwatchHistory.delete(marine.instanceId);
+    }
+    return removed;
+  }
+
+  private moveJamTokens(origin: Coord, destination: Coord): void {
+    for (const token of this.board.tokens) {
+      if (
+        token.type === 'jam' &&
+        token.cells.some((c) => sameCoord(c, origin))
+      ) {
+        moveToken(token, destination);
+      }
+    }
   }
 
   validate(state: BoardState): void {
@@ -419,14 +478,54 @@ export class BasicRules implements Rules {
                 t.cells.some((c) => sameCoord(c, marineCoord))
               ),
           );
-          this.board.tokens.push({
+          const jamToken: TokenInstance = {
             instanceId: `jam-${this.nextJamId++}`,
             type: 'jam',
             rot: 0,
             cells: [marineCoord],
-          });
+          };
+          this.board.tokens.push(jamToken);
           this.overwatchHistory.delete(marine.instanceId);
           boardChanged = true;
+          if (this.commandPoints > 0 && currentSide === 'alien') {
+            this.onLog?.(
+              'Marine player may spend 1 command point to immediately unjam the bolter',
+            );
+            const choice = await p1.choose([
+              {
+                type: 'action' as const,
+                action: 'unjam' as any,
+                apCost: 0,
+                apRemaining: 0,
+                commandPointsRemaining: this.commandPoints,
+              },
+              {
+                type: 'action' as const,
+                action: 'decline' as any,
+                apCost: 0,
+                apRemaining: 0,
+                commandPointsRemaining: this.commandPoints,
+              },
+            ]);
+            const decision = (choice?.action as string) || '';
+            if (decision === 'unjam') {
+              this.commandPoints -= 1;
+              this.board.tokens = this.board.tokens.filter(
+                (t) => t.instanceId !== jamToken.instanceId,
+              );
+              this.board.tokens.push({
+                instanceId: `overwatch-${this.nextOverwatchId++}`,
+                type: 'overwatch',
+                rot: 0,
+                cells: [marineCoord],
+              });
+              this.overwatchHistory.set(marine.instanceId, null);
+              this.onLog?.(
+                `Marine spends a command point to unjam (remaining command points: ${this.commandPoints})`,
+              );
+              this.emitStatus(undefined, 1);
+            }
+          }
         } else {
           this.overwatchHistory.set(marine.instanceId, targetId);
         }
@@ -714,7 +813,7 @@ export class BasicRules implements Rules {
               });
             }
           } else if (weapon === 'flamer') {
-            if (apRemaining >= 2) {
+            if (apRemaining >= 2 && this.flamerFuel > 0) {
               const targets = getFlamerTargets(this.board, active);
               for (const target of targets) {
                 actionChoices.push({
@@ -723,6 +822,7 @@ export class BasicRules implements Rules {
                   coord: target.coord,
                   apCost: 2,
                   apRemaining,
+                  flamerFuelRemaining: this.flamerFuel,
                 });
               }
             }
@@ -791,6 +891,13 @@ export class BasicRules implements Rules {
 
       const action = await currentPlayer.choose(actionChoices);
       const actionType = action.action as string;
+      const statusTokensRemoved =
+        active && isMarine(active) && actionType !== 'unjam'
+          ? this.removeMarineStatusTokens(active)
+          : false;
+      if (statusTokensRemoved) {
+        this.onChange?.(this.board);
+      }
       switch (actionType) {
         case 'move':
           if (active && action.coord && typeof action.apCost === 'number') {
@@ -831,6 +938,7 @@ export class BasicRules implements Rules {
                 );
               }
               moveToken(active, action.coord);
+              this.moveJamTokens(fromCoord, action.coord);
               lastMove = true;
               lastAction = 'move';
               lastShotTargetId = null;
@@ -934,7 +1042,7 @@ export class BasicRules implements Rules {
               }
             } else if (weapon === 'flamer') {
               const flameCost = 2;
-              if (apRemaining >= flameCost) {
+              if (apRemaining >= flameCost && this.flamerFuel > 0) {
                 const targets = getFlamerTargets(this.board, active);
                 const targetInfo = targets.find((t) => sameCoord(t.coord, targetCoord));
                 if (targetInfo) {
@@ -944,6 +1052,14 @@ export class BasicRules implements Rules {
                   lastShotTargetId = null;
                   this.onLog?.(
                     `${active.type} fires flamer at (${targetCoord.x}, ${targetCoord.y})`,
+                  );
+                  this.flamerFuel = Math.max(0, this.flamerFuel - 1);
+                  if (!active.attrs) {
+                    active.attrs = {};
+                  }
+                  (active.attrs as Record<string, unknown>).flamerAmmo = this.flamerFuel;
+                  this.onLog?.(
+                    `Flamer fuel remaining: ${this.flamerFuel}`,
                   );
                   const newFlameCells: Coord[] = [];
                   let boardChanged = false;
@@ -1280,7 +1396,7 @@ export class BasicRules implements Rules {
               this.board.tokens = this.board.tokens.filter(
                 (t) =>
                   !(
-                    (t.type === 'guard' || t.type === 'overwatch' || t.type === 'jam') &&
+                    (t.type === 'guard' || t.type === 'overwatch') &&
                     t.cells.some((c) => sameCoord(c, coord))
                   ),
               );

@@ -151,6 +151,111 @@ test('marine_flame moves forward when choosing move', async () => {
   assert.deepEqual(moved, { x: 0, y: 1 });
 });
 
+test('marine flamer starts with six fuel points', () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine_flame', rot: 0, cells: [{ x: 0, y: 0 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  const state = rules.getState();
+  assert.equal(state.flamerFuel, 6);
+});
+
+test('flamer shoot consumes one fuel point', async () => {
+  const board = {
+    size: 6,
+    segments: [],
+    getCellType: () => 1,
+    tokens: [
+      { instanceId: 'M1', type: 'marine_flame', rot: 0, cells: [{ x: 2, y: 2 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 2, y: 4 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+
+  let step = 0;
+  const p1 = {
+    choose: async (options) => {
+      if (step === 0) {
+        const activate = options.find((o) => o.action === 'activate');
+        assert.ok(activate, 'expected activate option for flamer marine');
+        step++;
+        return activate;
+      }
+      if (step === 1) {
+        const shoot = options.find((o) => o.action === 'shoot');
+        assert.ok(shoot, 'expected flamer shoot option');
+        assert.equal(shoot.flamerFuelRemaining, 6);
+        step++;
+        return shoot;
+      }
+      if (step === 2) {
+        assert.equal(rules.getState().flamerFuel, 5);
+        board.tokens = [];
+        const pass = options.find((o) => o.action === 'pass');
+        step++;
+        return pass || options[0];
+      }
+      return options[0];
+    },
+  };
+  const p2 = { choose: async (options) => options[0] };
+
+  try {
+    await rules.runGame(p1, p2);
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  assert.equal(rules.getState().flamerFuel, 5);
+});
+
+test('flamer cannot shoot without remaining fuel', async () => {
+  const board = {
+    size: 6,
+    segments: [],
+    getCellType: () => 1,
+    tokens: [
+      { instanceId: 'M1', type: 'marine_flame', rot: 0, cells: [{ x: 1, y: 1 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 1, y: 3 }] },
+    ],
+  };
+  const rules = new BasicRules(board, undefined, undefined, { flamerFuel: 0 });
+  rules.validate(board);
+
+  let step = 0;
+  const p1 = {
+    choose: async (options) => {
+      if (step === 0) {
+        const activate = options.find((o) => o.action === 'activate');
+        assert.ok(activate, 'expected activate option for flamer marine');
+        step++;
+        return activate;
+      }
+      if (step === 1) {
+        const shoot = options.find((o) => o.action === 'shoot');
+        assert.ok(!shoot, 'shoot action should not be available without fuel');
+        board.tokens = [];
+        step++;
+        const pass = options.find((o) => o.action === 'pass');
+        return pass || options[0];
+      }
+      return options[0];
+    },
+  };
+  const p2 = { choose: async (options) => options[0] };
+
+  await rules.runGame(p1, p2);
+  assert.equal(rules.getState().flamerFuel, 0);
+});
+
 test('door action toggles door', async () => {
   const board = {
     size: 5,
@@ -835,6 +940,93 @@ test('blip cannot move adjacent to marine', async () => {
       (o) => o.action === 'move' && o.coord?.x === 1 && o.coord?.y === 1,
     ),
   );
+});
+
+test('marine can spend command point to immediately unjam after overwatch jam', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    getCellType: () => 1,
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'overwatch-setup', type: 'overwatch', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 180, cells: [{ x: 0, y: 2 }] },
+    ],
+  };
+  const rules = new BasicRules(board, undefined, undefined, {
+    activePlayer: 2,
+    commandPoints: 2,
+  });
+  rules.validate(board);
+
+  const originalRandom = Math.random;
+  const rolls = [0.8, 0.8];
+  Math.random = () => {
+    const value = rolls.shift();
+    return typeof value === 'number' ? value : 0.8;
+  };
+
+  let unjamPrompted = false;
+  let jamResolved = false;
+  let snapshot;
+  const p1 = {
+    choose: async (options) => {
+      const unjamOpt = options.find((o) => o.action === 'unjam');
+      if (unjamOpt) {
+        unjamPrompted = true;
+        jamResolved = true;
+        return unjamOpt;
+      }
+      const decline = options.find((o) => o.action === 'decline');
+      if (decline) return decline;
+      const pass = options.find((o) => o.action === 'pass');
+      if (pass) return pass;
+      return options[0];
+    },
+  };
+  const p2 = {
+    choose: async (options) => {
+      const activate = options.find((o) => o.action === 'activate');
+      if (activate) {
+        return activate;
+      }
+      const move = options.find((o) => o.action === 'move');
+      if (move) {
+        return move;
+      }
+      const pass = options.find((o) => o.action === 'pass');
+      if (pass) {
+        if (jamResolved && !snapshot) {
+          snapshot = board.tokens.map((t) => ({
+            ...t,
+            cells: t.cells.map((c) => ({ ...c })),
+          }));
+        }
+        board.tokens = [];
+        return pass;
+      }
+      return options[0];
+    },
+  };
+
+  try {
+    await rules.runGame(p1, p2);
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  assert.ok(unjamPrompted, 'marine player should be prompted to unjam after jam');
+  assert.ok(snapshot, 'board state snapshot should be captured after jam resolution');
+  assert.equal(
+    snapshot.filter((t) => t.type === 'jam').length,
+    0,
+    'jam token should be removed when unjam is chosen',
+  );
+  const overwatch = snapshot.find(
+    (t) => t.type === 'overwatch' && sameCoord(t.cells[0], { x: 0, y: 0 }),
+  );
+  assert.ok(overwatch, 'overwatch token should be restored at marine location');
+  assert.equal(rules.getState().commandPoints, 1, 'one command point should be spent');
 });
 
 test('getMoveOptions adds diagonal moves for marine', () => {
