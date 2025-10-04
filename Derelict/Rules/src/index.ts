@@ -487,7 +487,7 @@ export class BasicRules implements Rules {
           this.board.tokens.push(jamToken);
           this.overwatchHistory.delete(marine.instanceId);
           boardChanged = true;
-          if (this.commandPoints > 0 && currentSide === 'alien') {
+          if (this.commandPoints > 0) {
             this.onLog?.(
               'Marine player may spend 1 command point to immediately unjam the bolter',
             );
@@ -525,6 +525,8 @@ export class BasicRules implements Rules {
               );
               this.emitStatus(undefined, 1);
             }
+          } else {
+            this.onLog?.('Marine player has no command points to unjam');
           }
         } else {
           this.overwatchHistory.set(marine.instanceId, targetId);

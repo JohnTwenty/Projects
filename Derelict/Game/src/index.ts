@@ -299,9 +299,6 @@ export class Game implements GameApi {
       );
       if (shootOpt) {
         shootLabel = `(S)hoot: ${shootOpt.apCost ?? 0} AP`;
-        if (typeof shootOpt.flamerFuelRemaining === "number") {
-          shootLabel += ` (${shootOpt.flamerFuelRemaining} fuel)`;
-        }
         buttons.shoot.textContent = shootLabel;
         buttons.shoot.style.color = shootOpt.apCost === 0 ? "green" : "";
       } else {

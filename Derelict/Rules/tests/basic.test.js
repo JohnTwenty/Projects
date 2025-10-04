@@ -953,10 +953,17 @@ test('marine can spend command point to immediately unjam after overwatch jam', 
       { instanceId: 'A1', type: 'alien', rot: 180, cells: [{ x: 0, y: 2 }] },
     ],
   };
-  const rules = new BasicRules(board, undefined, undefined, {
-    activePlayer: 2,
-    commandPoints: 2,
-  });
+  const logs = [];
+  const rules = new BasicRules(
+    board,
+    undefined,
+    undefined,
+    {
+      activePlayer: 2,
+      commandPoints: 2,
+    },
+    (msg) => logs.push(msg),
+  );
   rules.validate(board);
 
   const originalRandom = Math.random;
@@ -1027,6 +1034,106 @@ test('marine can spend command point to immediately unjam after overwatch jam', 
   );
   assert.ok(overwatch, 'overwatch token should be restored at marine location');
   assert.equal(rules.getState().commandPoints, 1, 'one command point should be spent');
+  assert.ok(
+    logs.includes(
+      'Marine player may spend 1 command point to immediately unjam the bolter',
+    ),
+    'prompt to spend a command point should be logged',
+  );
+});
+
+test('overwatch jam logs lack of command points when none remain', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    getCellType: () => 1,
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'overwatch-setup', type: 'overwatch', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 180, cells: [{ x: 0, y: 2 }] },
+    ],
+  };
+  const logs = [];
+  const rules = new BasicRules(
+    board,
+    undefined,
+    undefined,
+    {
+      activePlayer: 2,
+      commandPoints: 0,
+    },
+    (msg) => logs.push(msg),
+  );
+  rules.validate(board);
+
+  const originalRandom = Math.random;
+  const rolls = [0.8, 0.8];
+  Math.random = () => {
+    const value = rolls.shift();
+    return typeof value === 'number' ? value : 0.8;
+  };
+
+  let snapshot;
+  const p1 = {
+    choose: async (options) => {
+      const unjam = options.find((o) => o.action === 'unjam');
+      assert.ok(!unjam, 'unjam option should not be offered without command points');
+      const decline = options.find((o) => o.action === 'decline');
+      assert.ok(!decline, 'decline option should not be offered without command points');
+      const pass = options.find((o) => o.action === 'pass');
+      if (pass) {
+        return pass;
+      }
+      return options[0];
+    },
+  };
+  const p2 = {
+    choose: async (options) => {
+      const activate = options.find((o) => o.action === 'activate');
+      if (activate) {
+        return activate;
+      }
+      const move = options.find((o) => o.action === 'move');
+      if (move) {
+        return move;
+      }
+      const pass = options.find((o) => o.action === 'pass');
+      if (pass) {
+        if (!snapshot) {
+          snapshot = board.tokens.map((t) => ({
+            ...t,
+            cells: t.cells.map((c) => ({ ...c })),
+          }));
+        }
+        board.tokens = [];
+        return pass;
+      }
+      return options[0];
+    },
+  };
+
+  try {
+    await rules.runGame(p1, p2);
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  assert.ok(
+    logs.includes('Marine player has no command points to unjam'),
+    'lack of command points should be logged when jam occurs',
+  );
+  assert.ok(
+    !logs.includes('Marine player may spend 1 command point to immediately unjam the bolter'),
+    'prompt log should not appear when no command points remain',
+  );
+  assert.ok(snapshot, 'board state snapshot should be captured when jam occurs without unjam');
+  const jamTokens = snapshot.filter((t) => t.type === 'jam');
+  assert.equal(jamTokens.length, 1, 'jam token should remain when unjam is unavailable');
+  assert.equal(
+    rules.getState().commandPoints,
+    0,
+    'command points should remain unchanged when unjam is unavailable',
+  );
 });
 
 test('getMoveOptions adds diagonal moves for marine', () => {
