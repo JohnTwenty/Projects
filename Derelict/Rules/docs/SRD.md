@@ -101,8 +101,8 @@ The following table lists all the different actions (choices) that are available
 | move sideways | -           | 1         | 1        |       |
 | door open     | 1           | 1         | 1        |       |
 | door close    | 1           | 1         | 1        |       |
-| turn left	    | 1           | 1 or 0    | 0        | Cost for aliens is 0 when performed immediately following a move action; else 1. |
-| turn right    | 1           | 1 or 0    | 0        | Cost for aliens is 0 when performed immediately following a move action; else 1. |
+| turn left	    | 1           | 1 or 0    | 0        | Cost for aliens is 0 when performed immediately following a move or turn action; else 1. |
+| turn right    | 1           | 1 or 0    | 0        | Cost for aliens is 0 when performed immediately following a move or turn action; else 1. |
 | unjam         | 1           | -         | -        |       |
 | overwatch     | 2           | -         | -        |       |
 | guard	        | 2           | -         | -        |       |
