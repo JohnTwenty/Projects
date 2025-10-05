@@ -942,6 +942,61 @@ test('blip cannot move adjacent to marine', async () => {
   );
 });
 
+test('marine command points persist into alien turn', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 2, y: 2 }] },
+    ],
+  };
+  const statuses = [];
+  const rules = new BasicRules(
+    board,
+    undefined,
+    (info) => statuses.push(info),
+    { commandPoints: 3 },
+  );
+  rules.validate(board);
+
+  const marine = {
+    choose: async (options) => {
+      const pass = options.find((o) => o.action === 'pass');
+      if (pass) {
+        return pass;
+      }
+      const activate = options.find((o) => o.action === 'activate');
+      if (activate) {
+        return activate;
+      }
+      return options[0];
+    },
+  };
+  const alien = {
+    choose: async (options) => {
+      board.tokens = [];
+      const pass = options.find((o) => o.action === 'pass');
+      return pass ?? options[0];
+    },
+  };
+
+  await rules.runGame(marine, alien);
+
+  const alienStatus = statuses.find((s) => s.activePlayer === 2);
+  assert.ok(alienStatus, 'status update should be emitted for alien turn');
+  assert.equal(
+    alienStatus?.commandPoints,
+    3,
+    'command points should carry over for alien reaction opportunities',
+  );
+  assert.equal(
+    rules.getState().commandPoints,
+    3,
+    'command points should remain available after marine passes',
+  );
+});
+
 test('marine can spend command point to immediately unjam after overwatch jam', async () => {
   const board = {
     size: 5,

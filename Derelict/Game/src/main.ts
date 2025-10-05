@@ -274,8 +274,8 @@ async function init() {
     statusAP.textContent =
       typeof info.ap === "number" ? `AP remaining: ${info.ap}` : "";
     statusCommand.textContent =
-      info.activePlayer === 1
-        ? `Command Points: ${info.commandPoints ?? 0}`
+      typeof info.commandPoints === "number"
+        ? `Command Points: ${info.commandPoints}`
         : "";
     statusFlamer.textContent =
       info.activePlayer === 1

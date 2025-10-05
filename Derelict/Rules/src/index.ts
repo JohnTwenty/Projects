@@ -150,7 +150,7 @@ export class BasicRules implements Rules {
       turn: this.turn,
       activePlayer,
       ap,
-      commandPoints: activePlayer === 1 ? this.commandPoints : 0,
+      commandPoints: this.commandPoints,
       flamerFuel: activePlayer === 1 ? this.flamerFuel : 0,
     });
   }
@@ -1665,7 +1665,6 @@ export class BasicRules implements Rules {
           const wasMarine = this.activePlayer === 1;
           this.activePlayer = this.activePlayer === 1 ? 2 : 1;
           if (wasMarine) {
-            this.commandPoints = 0;
             this.marineTurnStarted = false;
             this.alienTurnStarted = false;
           }
