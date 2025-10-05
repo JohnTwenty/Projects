@@ -151,6 +151,111 @@ test('marine_flame moves forward when choosing move', async () => {
   assert.deepEqual(moved, { x: 0, y: 1 });
 });
 
+test('marine flamer starts with six fuel points', () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine_flame', rot: 0, cells: [{ x: 0, y: 0 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  const state = rules.getState();
+  assert.equal(state.flamerFuel, 6);
+});
+
+test('flamer shoot consumes one fuel point', async () => {
+  const board = {
+    size: 6,
+    segments: [],
+    getCellType: () => 1,
+    tokens: [
+      { instanceId: 'M1', type: 'marine_flame', rot: 0, cells: [{ x: 2, y: 2 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 2, y: 4 }] },
+    ],
+  };
+  const rules = new BasicRules(board);
+  rules.validate(board);
+
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+
+  let step = 0;
+  const p1 = {
+    choose: async (options) => {
+      if (step === 0) {
+        const activate = options.find((o) => o.action === 'activate');
+        assert.ok(activate, 'expected activate option for flamer marine');
+        step++;
+        return activate;
+      }
+      if (step === 1) {
+        const shoot = options.find((o) => o.action === 'shoot');
+        assert.ok(shoot, 'expected flamer shoot option');
+        assert.equal(shoot.flamerFuelRemaining, 6);
+        step++;
+        return shoot;
+      }
+      if (step === 2) {
+        assert.equal(rules.getState().flamerFuel, 5);
+        board.tokens = [];
+        const pass = options.find((o) => o.action === 'pass');
+        step++;
+        return pass || options[0];
+      }
+      return options[0];
+    },
+  };
+  const p2 = { choose: async (options) => options[0] };
+
+  try {
+    await rules.runGame(p1, p2);
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  assert.equal(rules.getState().flamerFuel, 5);
+});
+
+test('flamer cannot shoot without remaining fuel', async () => {
+  const board = {
+    size: 6,
+    segments: [],
+    getCellType: () => 1,
+    tokens: [
+      { instanceId: 'M1', type: 'marine_flame', rot: 0, cells: [{ x: 1, y: 1 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 1, y: 3 }] },
+    ],
+  };
+  const rules = new BasicRules(board, undefined, undefined, { flamerFuel: 0 });
+  rules.validate(board);
+
+  let step = 0;
+  const p1 = {
+    choose: async (options) => {
+      if (step === 0) {
+        const activate = options.find((o) => o.action === 'activate');
+        assert.ok(activate, 'expected activate option for flamer marine');
+        step++;
+        return activate;
+      }
+      if (step === 1) {
+        const shoot = options.find((o) => o.action === 'shoot');
+        assert.ok(!shoot, 'shoot action should not be available without fuel');
+        board.tokens = [];
+        step++;
+        const pass = options.find((o) => o.action === 'pass');
+        return pass || options[0];
+      }
+      return options[0];
+    },
+  };
+  const p2 = { choose: async (options) => options[0] };
+
+  await rules.runGame(p1, p2);
+  assert.equal(rules.getState().flamerFuel, 0);
+});
+
 test('door action toggles door', async () => {
   const board = {
     size: 5,
@@ -834,6 +939,255 @@ test('blip cannot move adjacent to marine', async () => {
     !moveOptions.some(
       (o) => o.action === 'move' && o.coord?.x === 1 && o.coord?.y === 1,
     ),
+  );
+});
+
+test('marine command points persist into alien turn', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 0, cells: [{ x: 2, y: 2 }] },
+    ],
+  };
+  const statuses = [];
+  const rules = new BasicRules(
+    board,
+    undefined,
+    (info) => statuses.push(info),
+    { commandPoints: 3 },
+  );
+  rules.validate(board);
+
+  const marine = {
+    choose: async (options) => {
+      const pass = options.find((o) => o.action === 'pass');
+      if (pass) {
+        return pass;
+      }
+      const activate = options.find((o) => o.action === 'activate');
+      if (activate) {
+        return activate;
+      }
+      return options[0];
+    },
+  };
+  const alien = {
+    choose: async (options) => {
+      board.tokens = [];
+      const pass = options.find((o) => o.action === 'pass');
+      return pass ?? options[0];
+    },
+  };
+
+  await rules.runGame(marine, alien);
+
+  const alienStatus = statuses.find((s) => s.activePlayer === 2);
+  assert.ok(alienStatus, 'status update should be emitted for alien turn');
+  assert.equal(
+    alienStatus?.commandPoints,
+    3,
+    'command points should carry over for alien reaction opportunities',
+  );
+  assert.equal(
+    rules.getState().commandPoints,
+    3,
+    'command points should remain available after marine passes',
+  );
+});
+
+test('marine can spend command point to immediately unjam after overwatch jam', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    getCellType: () => 1,
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'overwatch-setup', type: 'overwatch', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 180, cells: [{ x: 0, y: 2 }] },
+    ],
+  };
+  const logs = [];
+  const rules = new BasicRules(
+    board,
+    undefined,
+    undefined,
+    {
+      activePlayer: 2,
+      commandPoints: 2,
+    },
+    (msg) => logs.push(msg),
+  );
+  rules.validate(board);
+
+  const originalRandom = Math.random;
+  const rolls = [0.8, 0.8];
+  Math.random = () => {
+    const value = rolls.shift();
+    return typeof value === 'number' ? value : 0.8;
+  };
+
+  let unjamPrompted = false;
+  let jamResolved = false;
+  let snapshot;
+  const p1 = {
+    choose: async (options) => {
+      const unjamOpt = options.find((o) => o.action === 'unjam');
+      if (unjamOpt) {
+        unjamPrompted = true;
+        jamResolved = true;
+        return unjamOpt;
+      }
+      const decline = options.find((o) => o.action === 'decline');
+      if (decline) return decline;
+      const pass = options.find((o) => o.action === 'pass');
+      if (pass) return pass;
+      return options[0];
+    },
+  };
+  const p2 = {
+    choose: async (options) => {
+      const activate = options.find((o) => o.action === 'activate');
+      if (activate) {
+        return activate;
+      }
+      const move = options.find((o) => o.action === 'move');
+      if (move) {
+        return move;
+      }
+      const pass = options.find((o) => o.action === 'pass');
+      if (pass) {
+        if (jamResolved && !snapshot) {
+          snapshot = board.tokens.map((t) => ({
+            ...t,
+            cells: t.cells.map((c) => ({ ...c })),
+          }));
+        }
+        board.tokens = [];
+        return pass;
+      }
+      return options[0];
+    },
+  };
+
+  try {
+    await rules.runGame(p1, p2);
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  assert.ok(unjamPrompted, 'marine player should be prompted to unjam after jam');
+  assert.ok(snapshot, 'board state snapshot should be captured after jam resolution');
+  assert.equal(
+    snapshot.filter((t) => t.type === 'jam').length,
+    0,
+    'jam token should be removed when unjam is chosen',
+  );
+  const overwatch = snapshot.find(
+    (t) => t.type === 'overwatch' && sameCoord(t.cells[0], { x: 0, y: 0 }),
+  );
+  assert.ok(overwatch, 'overwatch token should be restored at marine location');
+  assert.equal(rules.getState().commandPoints, 1, 'one command point should be spent');
+  assert.ok(
+    logs.includes(
+      'Marine player may spend 1 command point to immediately unjam the bolter',
+    ),
+    'prompt to spend a command point should be logged',
+  );
+});
+
+test('overwatch jam logs lack of command points when none remain', async () => {
+  const board = {
+    size: 5,
+    segments: [],
+    getCellType: () => 1,
+    tokens: [
+      { instanceId: 'M1', type: 'marine', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'overwatch-setup', type: 'overwatch', rot: 0, cells: [{ x: 0, y: 0 }] },
+      { instanceId: 'A1', type: 'alien', rot: 180, cells: [{ x: 0, y: 2 }] },
+    ],
+  };
+  const logs = [];
+  const rules = new BasicRules(
+    board,
+    undefined,
+    undefined,
+    {
+      activePlayer: 2,
+      commandPoints: 0,
+    },
+    (msg) => logs.push(msg),
+  );
+  rules.validate(board);
+
+  const originalRandom = Math.random;
+  const rolls = [0.8, 0.8];
+  Math.random = () => {
+    const value = rolls.shift();
+    return typeof value === 'number' ? value : 0.8;
+  };
+
+  let snapshot;
+  const p1 = {
+    choose: async (options) => {
+      const unjam = options.find((o) => o.action === 'unjam');
+      assert.ok(!unjam, 'unjam option should not be offered without command points');
+      const decline = options.find((o) => o.action === 'decline');
+      assert.ok(!decline, 'decline option should not be offered without command points');
+      const pass = options.find((o) => o.action === 'pass');
+      if (pass) {
+        return pass;
+      }
+      return options[0];
+    },
+  };
+  const p2 = {
+    choose: async (options) => {
+      const activate = options.find((o) => o.action === 'activate');
+      if (activate) {
+        return activate;
+      }
+      const move = options.find((o) => o.action === 'move');
+      if (move) {
+        return move;
+      }
+      const pass = options.find((o) => o.action === 'pass');
+      if (pass) {
+        if (!snapshot) {
+          snapshot = board.tokens.map((t) => ({
+            ...t,
+            cells: t.cells.map((c) => ({ ...c })),
+          }));
+        }
+        board.tokens = [];
+        return pass;
+      }
+      return options[0];
+    },
+  };
+
+  try {
+    await rules.runGame(p1, p2);
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  assert.ok(
+    logs.includes('Marine player has no command points to unjam'),
+    'lack of command points should be logged when jam occurs',
+  );
+  assert.ok(
+    !logs.includes('Marine player may spend 1 command point to immediately unjam the bolter'),
+    'prompt log should not appear when no command points remain',
+  );
+  assert.ok(snapshot, 'board state snapshot should be captured when jam occurs without unjam');
+  const jamTokens = snapshot.filter((t) => t.type === 'jam');
+  assert.equal(jamTokens.length, 1, 'jam token should remain when unjam is unavailable');
+  assert.equal(
+    rules.getState().commandPoints,
+    0,
+    'command points should remain unchanged when unjam is unavailable',
   );
 });
 
