@@ -1490,6 +1490,20 @@ export class BasicRules implements Rules {
             active.type = 'alien';
             this.onChange?.(this.board);
             const origin = { ...active.cells[0] };
+            const initialDeployCells = getDeployCells(this.board, origin);
+            const totalAliensText =
+              maxTotal <= 0
+                ? 'no aliens'
+                : maxTotal === 1
+                ? '1 alien'
+                : `${maxTotal} aliens`;
+            const availableCellsText = `${initialDeployCells.length} deployment cell${
+              initialDeployCells.length === 1 ? '' : 's'
+            } available`;
+            const revealSuffix = maxTotal <= 0 ? '' : ' (including the revealed alien)';
+            this.onLog?.(
+              `Reveal will place ${totalAliensText}${revealSuffix} with ${availableCellsText}`,
+            );
             let remaining = maxTotal - 1;
             let current = active;
             while (true) {
@@ -1560,8 +1574,12 @@ export class BasicRules implements Rules {
                 continue;
               }
               if (choice.action === 'activate' && choice.coord) {
-                const target = this.board.tokens.find((t) =>
-                  sameCoord(t.cells[0], choice.coord!),
+                const target = this.board.tokens.find(
+                  (t) =>
+                    (currentSide === 'marine'
+                      ? isMarine(t)
+                      : t.type === 'alien' || isBlip(t)) &&
+                    sameCoord(t.cells[0], choice.coord!),
                 );
                 if (target) {
                   active = target;
@@ -1911,7 +1929,6 @@ async function orientAlien(
   apRemaining = 0,
   onLog?: (message: string, color?: string) => void,
 ): Promise<Choice> {
-  onLog?.('Alien player: orient the alien or pass to continue');
   while (true) {
     const choice = await player.choose([
       ...extras,
