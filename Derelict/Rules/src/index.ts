@@ -204,6 +204,7 @@ export class BasicRules implements Rules {
     let lastMove = false;
     let lastAction: 'move' | 'turn' | 'shoot' | null = null;
     let lastShotTargetId: string | null = null;
+    let lastTurnWasFree = false;
     const clearMarineStatusTokens = () => {
       let removed = false;
       const removedOverwatch = new Set<string>();
@@ -549,6 +550,7 @@ export class BasicRules implements Rules {
           lastMove = false;
           lastAction = null;
           lastShotTargetId = null;
+          lastTurnWasFree = false;
           this.emitStatus(apRemaining);
         }
       }
@@ -663,6 +665,7 @@ export class BasicRules implements Rules {
         lastMove = false;
         lastAction = null;
         lastShotTargetId = null;
+        lastTurnWasFree = false;
       }
 
       const availableTokens = tokens.filter((t) => {
@@ -764,7 +767,7 @@ export class BasicRules implements Rules {
             apRemaining,
           });
         }
-        const tCost = getTurnCost(active, lastMove);
+        const tCost = getTurnCost(active, lastMove, lastAction, lastTurnWasFree);
         if (apRemaining >= tCost) {
           actionChoices.push({
             type: 'action',
@@ -944,12 +947,14 @@ export class BasicRules implements Rules {
               lastMove = true;
               lastAction = 'move';
               lastShotTargetId = null;
+              lastTurnWasFree = false;
             } else {
               active = null;
               apRemaining = 0;
               lastMove = false;
               lastAction = null;
               lastShotTargetId = null;
+              lastTurnWasFree = false;
             }
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
@@ -966,6 +971,7 @@ export class BasicRules implements Rules {
             lastMove = false;
             lastAction = 'turn';
             lastShotTargetId = null;
+            lastTurnWasFree = action.apCost === 0;
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
@@ -979,6 +985,7 @@ export class BasicRules implements Rules {
             lastMove = false;
             lastAction = 'turn';
             lastShotTargetId = null;
+            lastTurnWasFree = action.apCost === 0;
             this.onChange?.(this.board);
             await checkInvoluntaryReveals();
             this.emitStatus(apRemaining);
@@ -997,6 +1004,7 @@ export class BasicRules implements Rules {
             this.onLog?.(
               `Marine spends a command point for +1 AP (remaining command points: ${this.commandPoints})`,
             );
+            lastTurnWasFree = false;
             this.emitStatus(apRemaining);
           }
           break;
@@ -1039,6 +1047,7 @@ export class BasicRules implements Rules {
                   }
                   lastAction = 'shoot';
                   lastShotTargetId = targetId;
+                  lastTurnWasFree = false;
                   this.emitStatus(apRemaining);
                 }
               }
@@ -1115,22 +1124,25 @@ export class BasicRules implements Rules {
                   if (removedTokens) {
                     await checkInvoluntaryReveals();
                   }
-                  if (active && !this.board.tokens.includes(active)) {
-                    active = null;
-                    apRemaining = 0;
-                    lastAction = null;
-                    lastShotTargetId = null;
+                    if (active && !this.board.tokens.includes(active)) {
+                      active = null;
+                      apRemaining = 0;
+                      lastAction = null;
+                      lastShotTargetId = null;
+                      lastTurnWasFree = false;
+                    }
+                    lastTurnWasFree = false;
+                    this.emitStatus(apRemaining);
                   }
-                  this.emitStatus(apRemaining);
                 }
               }
             }
-          }
           break;
         case 'assault':
           if (active && action.coord && typeof action.apCost === 'number') {
             lastAction = null;
             lastShotTargetId = null;
+            lastTurnWasFree = false;
             const target = getAssaultTarget(
               this.board,
               action.coord,
@@ -1341,6 +1353,7 @@ export class BasicRules implements Rules {
                     apRemaining = 0;
                     lastAction = null;
                     lastShotTargetId = null;
+                    lastTurnWasFree = false;
                     this.onChange?.(this.board);
                     await checkInvoluntaryReveals();
                   } else {
@@ -1420,6 +1433,7 @@ export class BasicRules implements Rules {
               lastMove = false;
               lastAction = null;
               lastShotTargetId = null;
+              lastTurnWasFree = false;
               this.onChange?.(this.board);
               this.emitStatus(apRemaining);
             }
@@ -1450,6 +1464,7 @@ export class BasicRules implements Rules {
             lastMove = false;
             lastAction = null;
             lastShotTargetId = null;
+            lastTurnWasFree = false;
             this.onChange?.(this.board);
             this.emitStatus(apRemaining);
           }
@@ -1458,6 +1473,7 @@ export class BasicRules implements Rules {
           if (active && isBlip(active) && typeof action.apCost === 'number') {
             lastAction = null;
             lastShotTargetId = null;
+            lastTurnWasFree = false;
             apRemaining -= action.apCost;
             const blipType = active.type;
             const existingAliens = this.board.tokens.filter(
@@ -1585,6 +1601,7 @@ export class BasicRules implements Rules {
             lastMove = false;
             lastAction = null;
             lastShotTargetId = null;
+            lastTurnWasFree = false;
             this.emitStatus(apRemaining);
           }
           break;
@@ -1624,6 +1641,7 @@ export class BasicRules implements Rules {
             lastMove = false;
             lastAction = null;
             lastShotTargetId = null;
+            lastTurnWasFree = false;
             this.emitStatus(apRemaining);
             this.onLog?.(
               `Player ${this.activePlayer} activated ${target.type} at (${target.cells[0].x}, ${target.cells[0].y})`,
@@ -1644,6 +1662,7 @@ export class BasicRules implements Rules {
               lastMove = false;
               lastAction = null;
               lastShotTargetId = null;
+              lastTurnWasFree = false;
               this.onChange?.(this.board);
               await checkInvoluntaryReveals();
               this.emitStatus(apRemaining);
@@ -1684,6 +1703,7 @@ export class BasicRules implements Rules {
           lastMove = false;
           lastAction = null;
           lastShotTargetId = null;
+          lastTurnWasFree = false;
           this.emitStatus();
           this.onLog?.(`Player ${this.activePlayer} begins turn ${this.turn}`);
           break;
@@ -2060,9 +2080,18 @@ function initialAp(token: TokenInstance): number {
   return 0;
 }
 
-function getTurnCost(token: TokenInstance, lastMove: boolean): number {
+function getTurnCost(
+  token: TokenInstance,
+  lastMove: boolean,
+  lastAction: 'move' | 'turn' | 'shoot' | null,
+  lastTurnWasFree: boolean,
+): number {
   if (isMarine(token)) return 1;
-  if (token.type === 'alien') return lastMove ? 0 : 1;
+  if (token.type === 'alien') {
+    if (lastMove) return 0;
+    if (lastAction === 'turn' && !lastTurnWasFree) return 0;
+    return 1;
+  }
   if (isBlip(token)) return 0;
   return 1;
 }
