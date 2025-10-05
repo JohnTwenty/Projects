@@ -59,7 +59,7 @@ export class Game implements GameApi {
 
     return new Promise<Choice>((resolve) => {
       const { container, cellToRect, buttons } = this.ui!;
-      const modalActions = ["reroll", "accept", "turn"];
+      const modalActions = ["reroll", "accept", "turn", "unjam", "decline"];
       const useModal =
         options.length > 0 &&
         options.length <= 2 &&

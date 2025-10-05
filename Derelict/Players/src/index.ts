@@ -16,7 +16,9 @@ export interface Choice {
     | 'guard'
     | 'overwatch'
     | 'command'
-    | 'pass';
+    | 'pass'
+    | 'unjam'
+    | 'decline';
   apCost?: number;
   apRemaining?: number;
   commandPointsRemaining?: number;
