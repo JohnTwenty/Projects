@@ -254,59 +254,88 @@ export class BasicRules implements Rules {
         const hadDeact = hasDeactivatedToken(this.board, origin);
         this.onChange?.(this.board);
         this.emitStatus(undefined, 2);
-        this.onLog?.('Blip revealed as alien; choose its orientation');
-        await orientAlien(
-          p2,
-          target,
-          [{ type: 'action', action: 'pass', apCost: 0, apRemaining: 0 }],
-          this.board,
-          this.onChange?.bind(this),
-          0,
-          this.onLog,
+        const initialDeployCells = getDeployCells(this.board, origin, true);
+        const totalAliensText =
+          maxTotal <= 0
+            ? 'no aliens'
+            : maxTotal === 1
+            ? '1 alien'
+            : `${maxTotal} aliens`;
+        const availableCellsText = `${initialDeployCells.length} deployment cell${
+          initialDeployCells.length === 1 ? '' : 's'
+        } available`;
+        const revealSuffix = maxTotal <= 0 ? '' : ' (including the revealed alien)';
+        this.onLog?.(
+          `Forced reveal will place ${totalAliensText}${revealSuffix} with ${availableCellsText}`,
         );
         let remaining = maxTotal - 1;
-        while (remaining > 0) {
-          const deployCells = getDeployCells(this.board, origin, true);
-          if (deployCells.length === 0) break;
-          this.emitStatus(undefined, 1);
-          const choice = await p1.choose(
-            deployCells.map((c) => ({
+        let current: TokenInstance = target;
+        let firstOrientation = true;
+        while (true) {
+          const deployCells = remaining > 0 ? getDeployCells(this.board, origin, true) : [];
+          const extras: Choice[] = [];
+          if (deployCells.length > 0 && remaining > 0) {
+            extras.push(
+              ...deployCells.map((c) => ({
+                type: 'action' as const,
+                action: 'deploy' as const,
+                coord: c,
+                apCost: 0,
+                apRemaining: 0,
+              })),
+            );
+          }
+          if (remaining === 0 || deployCells.length === 0) {
+            extras.push({
               type: 'action' as const,
-              action: 'deploy' as const,
-              coord: c,
+              action: 'pass' as const,
               apCost: 0,
               apRemaining: 0,
-            })),
-          );
-          if (choice.action !== 'deploy' || !choice.coord) break;
-          const newAlien: TokenInstance = {
-            instanceId: `alien-${this.nextAlienId++}`,
-            type: 'alien',
-            rot: target.rot,
-            cells: [{ ...choice.coord }],
-          };
-          this.board.tokens.push(newAlien);
-          if (hadDeact) {
-            this.board.tokens.push({
-              instanceId: `deactivated-${this.nextDeactId++}`,
-              type: 'deactivated',
-              rot: 0,
-              cells: [{ ...choice.coord }],
             });
           }
-          this.onChange?.(this.board);
-          this.emitStatus(undefined, 2);
-          this.onLog?.('Blip reveals additional alien; choose its orientation');
-          await orientAlien(
+          if (firstOrientation) {
+            this.onLog?.('Blip revealed as alien; choose its orientation');
+          } else {
+            this.onLog?.('Blip reveals additional alien; choose its orientation');
+          }
+          this.onLog?.('Alien player: orient the current alien or choose another action');
+          const choice = await orientAlien(
             p2,
-            newAlien,
-            [{ type: 'action', action: 'pass', apCost: 0, apRemaining: 0 }],
+            current,
+            extras,
             this.board,
             this.onChange?.bind(this),
             0,
             this.onLog,
           );
-          remaining--;
+          if (choice.action === 'deploy' && choice.coord) {
+            const chosenCoord = deployCells.find((c) => sameCoord(c, choice.coord!));
+            if (!chosenCoord) {
+              continue;
+            }
+            const newAlien: TokenInstance = {
+              instanceId: `alien-${this.nextAlienId++}`,
+              type: 'alien',
+              rot: current.rot,
+              cells: [{ ...chosenCoord }],
+            };
+            this.board.tokens.push(newAlien);
+            if (hadDeact) {
+              this.board.tokens.push({
+                instanceId: `deactivated-${this.nextDeactId++}`,
+                type: 'deactivated',
+                rot: 0,
+                cells: [{ ...chosenCoord }],
+              });
+            }
+            this.onChange?.(this.board);
+            this.emitStatus(undefined, 2);
+            current = newAlien;
+            remaining--;
+            firstOrientation = false;
+            continue;
+          }
+          break;
         }
       }
     };
@@ -1490,6 +1519,20 @@ export class BasicRules implements Rules {
             active.type = 'alien';
             this.onChange?.(this.board);
             const origin = { ...active.cells[0] };
+            const initialDeployCells = getDeployCells(this.board, origin);
+            const totalAliensText =
+              maxTotal <= 0
+                ? 'no aliens'
+                : maxTotal === 1
+                ? '1 alien'
+                : `${maxTotal} aliens`;
+            const availableCellsText = `${initialDeployCells.length} deployment cell${
+              initialDeployCells.length === 1 ? '' : 's'
+            } available`;
+            const revealSuffix = maxTotal <= 0 ? '' : ' (including the revealed alien)';
+            this.onLog?.(
+              `Reveal will place ${totalAliensText}${revealSuffix} with ${availableCellsText}`,
+            );
             let remaining = maxTotal - 1;
             let current = active;
             while (true) {
@@ -1517,15 +1560,13 @@ export class BasicRules implements Rules {
                     !hasDeactivatedToken(this.board, t.cells[0]),
                 );
                 for (const t of avail) {
-                  if (t !== current) {
-                    extras.push({
-                      type: 'action' as const,
-                      action: 'activate' as const,
-                      coord: t.cells[0],
-                      apCost: 0,
-                      apRemaining: initialAp(t),
-                    });
-                  }
+                  extras.push({
+                    type: 'action' as const,
+                    action: 'activate' as const,
+                    coord: t.cells[0],
+                    apCost: 0,
+                    apRemaining: initialAp(t),
+                  });
                 }
                 extras.push({
                   type: 'action' as const,
@@ -1560,8 +1601,12 @@ export class BasicRules implements Rules {
                 continue;
               }
               if (choice.action === 'activate' && choice.coord) {
-                const target = this.board.tokens.find((t) =>
-                  sameCoord(t.cells[0], choice.coord!),
+                const target = this.board.tokens.find(
+                  (t) =>
+                    (currentSide === 'marine'
+                      ? isMarine(t)
+                      : t.type === 'alien' || isBlip(t)) &&
+                    sameCoord(t.cells[0], choice.coord!),
                 );
                 if (target) {
                   active = target;
@@ -1911,7 +1956,6 @@ async function orientAlien(
   apRemaining = 0,
   onLog?: (message: string, color?: string) => void,
 ): Promise<Choice> {
-  onLog?.('Alien player: orient the alien or pass to continue');
   while (true) {
     const choice = await player.choose([
       ...extras,
