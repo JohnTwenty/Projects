@@ -1531,15 +1531,13 @@ export class BasicRules implements Rules {
                     !hasDeactivatedToken(this.board, t.cells[0]),
                 );
                 for (const t of avail) {
-                  if (t !== current) {
-                    extras.push({
-                      type: 'action' as const,
-                      action: 'activate' as const,
-                      coord: t.cells[0],
-                      apCost: 0,
-                      apRemaining: initialAp(t),
-                    });
-                  }
+                  extras.push({
+                    type: 'action' as const,
+                    action: 'activate' as const,
+                    coord: t.cells[0],
+                    apCost: 0,
+                    apRemaining: initialAp(t),
+                  });
                 }
                 extras.push({
                   type: 'action' as const,
