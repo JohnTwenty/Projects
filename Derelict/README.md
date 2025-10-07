@@ -1,5 +1,5 @@
 # Derelict : Marines vs Aliens Browser Game
-Derelict is a turn based tactical browser game including a map editor
+Derelict is a turn based tactical browser game including a map editor.
 
 ## Play The Game
 
