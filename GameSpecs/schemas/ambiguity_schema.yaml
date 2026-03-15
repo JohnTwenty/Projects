@@ -163,6 +163,15 @@ $defs:
         type: array
         items:
           type: string
+      conflicts_with:
+        type: array
+        items:
+          type: string
+        description: >-
+          IDs of other ambiguity records whose chosen resolutions are mutually
+          incompatible with the resolution selected here. Choosing one
+          interpretation in this record implicitly rejects options in the
+          conflicting record.
       supersedes:
         type: array
         items:
@@ -376,23 +385,4 @@ $defs:
         items:
           type: string
 
-example_authoring_guidance:
-  recommended_workflow:
-    - identify the precise ambiguous passage or omission
-    - classify the ambiguity type and severity
-    - list distinct candidate interpretations before choosing one
-    - record rationale and supporting evidence for each interpretation
-    - select a resolution only when necessary and record provenance
-    - link the resolution to affected state, rules, scenarios, and tests
-  modeling_guidelines:
-    - >-
-      Do not encode a hidden interpretation directly into rules or state files without
-      also recording it here when source material is ambiguous.
-    - >-
-      Prefer multiple concise candidate interpretations over one vague paragraph.
-    - >-
-      Use resolution_status to distinguish canonical source-backed rulings from house
-      rules or implementation-driven choices.
-    - >-
-      Keep ambiguity records stable over time and supersede them rather than deleting
-      historical decisions.
+$comment: "Authoring guidance moved to ambiguity_schema_guide.md to keep this file valid for JSON Schema validators."

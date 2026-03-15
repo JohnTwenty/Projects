@@ -119,6 +119,16 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/rules_invariant'
+      win_conditions:
+        type: array
+        items:
+          $ref: '#/$defs/win_condition'
+      trigger_model:
+        $ref: '#/$defs/trigger_model'
+        description: >-
+          Optional specification of how simultaneous trigger evaluation is
+          handled. Omit only when the game has no triggers or the implementation
+          may define its own policy.
 
   actor_selector:
     oneOf:
@@ -273,7 +283,7 @@ $defs:
         $ref: '#/$defs/actor_selector'
       scope:
         type: string
-        enum: [game, player, entity, model, weapon, scenario]
+        enum: [game, player, entity, model, item, scenario]
       availability:
         type: string
         enum: [always, phase_limited, context_limited, triggered_only]
@@ -545,6 +555,11 @@ $defs:
         type: array
         items:
           type: string
+      dice_spec:
+        $ref: '#/$defs/dice_expression'
+        description: >-
+          Formal dice specification for roll_dice steps. Only meaningful when
+          operation_kind is roll_dice; ignored on other step kinds.
       source_refs:
         type: array
         items:
@@ -672,6 +687,8 @@ $defs:
           - emit_event
           - invoke_procedure
           - record_history
+          - draw_random
+          - draw_top
           - custom
       target:
         type: string
@@ -691,6 +708,10 @@ $defs:
           type: string
 
   effect_or_step:
+    description: >-
+      Discriminate variants by the presence of exactly one identifying field:
+      effect_kind for an effect, operation_kind for a resolution_step, or
+      step_kind for a procedure_step.
     oneOf:
       - $ref: '#/$defs/effect'
       - $ref: '#/$defs/resolution_step'
@@ -804,30 +825,109 @@ $defs:
         items:
           type: string
 
-example_authoring_guidance:
-  conceptual_split:
-    - procedural_structure describes when play progresses and who acts next
-    - action_library describes what actors may attempt to do
-    - trigger_rules describe reactive rules fired by events
-    - restriction_rules describe prohibitions and limits
-    - resolution_procedures describe multi-step outcome determination
-    - override_rules describe exceptions and special rules
-  modeling_guidelines:
-    - >-
-      Prefer procedure_definition for turn order, activation sequences, setup order,
-      and other stepwise control flow.
-    - >-
-      Prefer action_definition for legal player or unit choices that may be selected
-      during play.
-    - >-
-      Prefer trigger_rule for automatic reactions such as overwatch, interrupts,
-      start-of-phase effects, or aftermath effects.
-    - >-
-      Prefer override_rule whenever a special rule modifies, replaces, or cancels a
-      core rule. Do not bury exceptions inside notes.
-    - >-
-      Keep conditions and effects normalized and reusable where practical so that
-      legality checks, code generation, and tests can reference them consistently.
-    - >-
-      Use source_trace and source_refs aggressively, especially where wording has been
-      normalized or proceduralized beyond the original text.
+  win_condition:
+    type: object
+    required:
+      - id
+      - beneficiary
+      - condition
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      beneficiary:
+        $ref: '#/$defs/actor_selector'
+        description: The player or side that wins when this condition holds.
+      loss_for:
+        $ref: '#/$defs/actor_selector'
+        description: >-
+          The player or side that loses. Defaults to the opponent of beneficiary
+          if omitted.
+      condition:
+        $ref: '#/$defs/condition'
+      timing:
+        type: string
+        enum: [immediate, end_of_phase, end_of_turn, end_of_game]
+        description: When this condition is evaluated against current game state.
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  trigger_model:
+    type: object
+    description: >-
+      Declares how the rules engine should handle situations where multiple
+      trigger rules fire simultaneously. Without this section the behaviour of
+      same-priority simultaneous triggers is implementation-defined.
+    properties:
+      same_priority_resolution:
+        type: string
+        enum: [queue_fifo, queue_lifo, simultaneous_parallel, error, unspecified]
+        description: >-
+          Governs what happens when two or more triggers share the same priority
+          value and fire at the same moment.
+          queue_fifo: enqueue in declaration order; resolve one at a time FIFO.
+          queue_lifo: stack in declaration order; resolve one at a time LIFO.
+          simultaneous_parallel: collect all matching triggers; apply all their
+          effects as a single atomic batch at the end.
+          error: two triggers may never legally share the same priority; the
+          spec author must assign distinct values. A validator should flag
+          duplicates as an error.
+          unspecified: the implementation may choose any consistent policy.
+      interrupt_window:
+        type: string
+        enum: [before_trigger_body, after_trigger_body, none]
+        description: >-
+          Defines whether players may spend resources (e.g. command points) or
+          take reactions between a trigger condition being met and its effects
+          resolving.
+          before_trigger_body: a reaction window opens before each trigger's
+          effects execute.
+          after_trigger_body: a reaction window opens after each trigger's
+          effects execute.
+          none: no interrupt window; triggers resolve without player input.
+      notes:
+        type: array
+        items:
+          type: string
+
+  dice_expression:
+    type: object
+    description: >-
+      A formal dice roll specification for use inside resolution_step and
+      effect definitions. Provides structured fields for code generation while
+      retaining a human-readable notation field.
+    properties:
+      count:
+        type: integer
+        description: Number of dice to roll.
+      sides:
+        type: integer
+        description: Number of sides per die.
+      keep_highest:
+        type: integer
+        description: If set, retain only the N highest individual die results.
+      keep_lowest:
+        type: integer
+        description: If set, retain only the N lowest individual die results.
+      reroll_values:
+        type: array
+        items:
+          type: integer
+        description: Reroll any die showing one of these values (once).
+      add_modifier:
+        type: integer
+        description: Fixed integer added to the total after dice are resolved.
+      notation:
+        type: string
+        description: >-
+          Human-readable notation, e.g. "2d6", "3d6kh1". Informational;
+          the structured fields above take precedence for code generation.
+
+$comment: "Authoring guidance moved to rules_schema_guide.md to keep this file valid for JSON Schema validators."

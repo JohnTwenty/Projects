@@ -100,6 +100,14 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/invariant'
+      entity_instances:
+        type: array
+        items:
+          $ref: '#/$defs/entity_instance'
+        description: >-
+          Concrete entity instances with starting attribute values. Leave empty
+          in core rules files. Populate in scenario/mission files or for
+          serialised live game state.
 
   physical_state:
     type: object
@@ -123,6 +131,11 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/relation_definition'
+      topology:
+        $ref: '#/$defs/topology_definition'
+        description: >-
+          Optional formal spatial model for the board. Define when LOS, movement
+          legality, or adjacency cannot be derived from a simple uniform grid.
 
   supplemental_state:
     type: object
@@ -230,7 +243,15 @@ $defs:
         $ref: '#/$defs/value_type'
       cardinality:
         type: string
-        enum: [single, list, set, map, stack, queue]
+        enum: [single, list, set, map, stack, queue, pool, deck]
+        description: >-
+          single: one value. list: ordered sequence, duplicates allowed.
+          set: unordered, no duplicates. map: key-value pairs.
+          stack: ordered, LIFO access. queue: ordered, FIFO access.
+          pool: unordered bag; draw_random removes a random element without
+          replacement (e.g. command counter tiles, blip counters).
+          deck: ordered; draw_top removes from the front, draw_bottom from the
+          back (e.g. card decks with known ordering).
       initial_value:
         description: Optional default value or initialization expression.
       persistence:
@@ -321,6 +342,14 @@ $defs:
             type: array
             items:
               type: string
+          direction_source:
+            type: string
+            enum: [topology_direction_values]
+            description: >-
+              Binds this direction attribute or variable to the valid values
+              enumerated in the enclosing spec's topology_definition.direction_values.
+              Use instead of (or alongside) an inline values list so validators
+              can resolve legal facing values from the topology definition.
           record_name:
             type: string
           fields:
@@ -503,29 +532,211 @@ $defs:
         items:
           type: string
 
-example_authoring_guidance:
-  physical_state_examples:
-    - miniature position and facing
-    - token presence on board
-    - door open or closed state
-    - command point counter if physically tracked
-  supplemental_state_examples:
-    - current_player
-    - current_phase
-    - active_unit_id
-    - pending_attack_context
-    - dice_results_for_current_resolution
-    - units_activated_this_turn
-  modeling_guidelines:
-    - >-
-      Prefer physical_state when the information corresponds to something players can
-      point to on the table or among the components.
-    - >-
-      Prefer supplemental_state when the information is needed to execute or validate
-      rules but is only mentally tracked, inferred, temporary, or historical.
-    - >-
-      A value may be represented physically in some games and supplemental in others;
-      use represented_physically to record that distinction explicitly.
-    - >-
-      Use source_trace entries to justify every implicit or inferred state variable
-      introduced for digital implementation.
+  entity_instance:
+    type: object
+    required:
+      - id
+      - type_id
+    properties:
+      id:
+        type: string
+        description: Unique identifier for this instance within the document.
+      type_id:
+        type: string
+        description: References an entity_type.id defined in this or an imported state spec.
+      zone_id:
+        type: string
+        description: Zone this instance starts in, if applicable.
+      attribute_values:
+        type: array
+        items:
+          $ref: '#/$defs/attribute_value'
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  attribute_value:
+    type: object
+    required:
+      - attribute_id
+      - value
+    properties:
+      attribute_id:
+        type: string
+        description: References an attribute_definition.id on the parent entity_type.
+      value:
+        description: Concrete value. Must be compatible with the attribute's value_type.
+      source_refs:
+        type: array
+        items:
+          type: string
+
+  topology_definition:
+    type: object
+    description: >-
+      Formal description of the board's spatial structure. Required for games
+      where LOS, movement legality, or range cannot be derived from a simple
+      uniform grid assumption.
+    properties:
+      topology_kind:
+        type: string
+        enum: [grid_2d, hex_grid, graph, free_form]
+      coordinate_system:
+        type: string
+        description: >-
+          Identifies the coordinate scheme used by the position value_type.
+          E.g. "xy_integer" (position resolves to {x: integer, y: integer})
+          or "named_square_id" (position resolves to a string square identifier).
+      position_type:
+        type: object
+        description: >-
+          Defines the concrete field structure of a position value for this game.
+          For xy_integer grids specify {x: integer, y: integer}. For
+          named_square_id grids specify {square_id: string}. This resolves the
+          otherwise opaque position value_type primitive into something a code
+          generator or validator can work with.
+        additionalProperties:
+          type: string
+          enum: [integer, string, number]
+      direction_values:
+        type: array
+        items:
+          type: string
+        description: >-
+          Enumerates all legal facing/direction values. Required when the
+          direction value_type is used. E.g. [north, south, east, west].
+      adjacency_rules:
+        type: array
+        items:
+          $ref: '#/$defs/adjacency_rule'
+      los_definition:
+        $ref: '#/$defs/los_definition'
+        description: >-
+          Optional formal line-of-sight model. Required for games where LOS is
+          computed algorithmically rather than described purely in prose rules.
+          Specifies the algorithm family and its key behavioural parameters so
+          that a code generator can produce a correct implementation without
+          embedding source code in the spec.
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  adjacency_rule:
+    type: object
+    required:
+      - id
+      - rule_kind
+    properties:
+      id:
+        type: string
+      rule_kind:
+        type: string
+        enum: [orthogonal_only, orthogonal_and_diagonal, custom]
+      applies_to:
+        type: string
+        description: Entity category or zone this rule applies to.
+      notes:
+        type: array
+        items:
+          type: string
+
+  los_definition:
+    type: object
+    description: >-
+      Declarative specification of the line-of-sight algorithm for a grid_2d
+      topology. Captures the algorithm family and its key behavioural parameters
+      so that a code generator can produce a correct, reproducible implementation
+      without embedding source code in the spec.
+    properties:
+      algorithm:
+        type: string
+        enum: [bresenham_center_to_center, ray_cast, custom]
+        description: >-
+          The LOS algorithm family.
+          bresenham_center_to_center: cast a ray from the center of the source
+          cell to the center of the target cell using Bresenham's line algorithm;
+          test each intermediate cell for obstruction.
+          ray_cast: continuous ray from cell center; test boundary crossings.
+          custom: algorithm described in notes only.
+      symmetry:
+        type: string
+        enum: [required, not_required]
+        description: >-
+          required: LOS(A,B) == LOS(B,A) is an invariant. Implementations must
+          enforce this, e.g. by running the check in both directions and ANDing
+          the results. not_required: directional LOS is permitted.
+      source_cell_excluded:
+        type: boolean
+        description: >-
+          If true, the cell occupied by the observing model is never tested for
+          obstruction (a model can always see out of its own square).
+      target_cell_excluded:
+        type: boolean
+        description: >-
+          If true, the target cell itself is never tested for obstruction (a
+          model can always see into the cell it is targeting).
+      corner_rule:
+        type: string
+        enum: [both_adjacent_corners_blocked, any_adjacent_corner_blocked, none]
+        description: >-
+          Governs diagonal ray steps — when the Bresenham algorithm advances in
+          both x and y in a single iteration, the ray passes through a corner
+          shared by four cells. The two cells orthogonally adjacent to that
+          diagonal step are the "corner cells".
+          both_adjacent_corners_blocked: LOS is blocked only if BOTH corner
+          cells are obstructed; one clear corner lets the ray pass.
+          any_adjacent_corner_blocked: LOS is blocked if either corner cell is
+          obstructed. none: diagonal steps receive no special corner treatment.
+      obstruction_sources:
+        type: array
+        items:
+          $ref: '#/$defs/los_obstruction_source'
+        description: >-
+          Ordered list of obstruction categories tested against each intermediate
+          cell along the ray. A cell is opaque if any source matches.
+      notes:
+        type: array
+        items:
+          type: string
+
+  los_obstruction_source:
+    type: object
+    description: >-
+      Identifies one category of cell obstruction for LOS calculations.
+    properties:
+      kind:
+        type: string
+        enum: [topology_wall, entity_type_unconditional, entity_type_conditional]
+        description: >-
+          topology_wall: walls encoded in the board tile/edge data always block.
+          entity_type_unconditional: every instance of the named entity_type
+          blocks LOS regardless of its state.
+          entity_type_conditional: instances of the named entity_type block only
+          when the given condition expression evaluates to true.
+      entity_type:
+        type: string
+        description: >-
+          References an entity_type.id. Required when kind is
+          entity_type_unconditional or entity_type_conditional.
+      condition:
+        type: string
+        description: >-
+          Prose (or future structured) condition evaluated per instance.
+          Required when kind is entity_type_conditional.
+          E.g. "door.state == closed".
+      notes:
+        type: array
+        items:
+          type: string
+
+$comment: "Authoring guidance moved to state_schema_guide.md to keep this file valid for JSON Schema validators."

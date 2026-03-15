@@ -85,7 +85,8 @@ state_spec:
               mutable: true
               represented_physically: true
             - id: facing
-              value_type: direction
+              value_type:
+                direction_source: topology_direction_values
               required: true
               mutable: true
               represented_physically: true
@@ -121,7 +122,8 @@ state_spec:
               mutable: true
               represented_physically: true
             - id: facing
-              value_type: direction
+              value_type:
+                direction_source: topology_direction_values
               required: true
               mutable: true
               represented_physically: true
@@ -226,6 +228,43 @@ state_spec:
           kind: hidden_supply
         - id: casualties
           kind: out_of_play
+      topology:
+        topology_kind: grid_2d
+        coordinate_system: xy_integer
+        position_type:
+          x: integer
+          y: integer
+        direction_values: [north, south, east, west]
+        adjacency_rules:
+          - id: adj_orthogonal_only
+            rule_kind: orthogonal_only
+            applies_to: all_models_and_blips
+            notes:
+              - Diagonal movement is not legal. Adjacency for all game purposes is orthogonal only.
+              - A door segment occupies the edge between two squares and blocks passage when closed.
+        los_definition:
+          algorithm: bresenham_center_to_center
+          symmetry: required
+          source_cell_excluded: true
+          target_cell_excluded: true
+          corner_rule: both_adjacent_corners_blocked
+          obstruction_sources:
+            - kind: topology_wall
+              notes:
+                - Walls are encoded as impassable edges in the board tile data. Any cell whose edge facing the ray is a wall is opaque.
+            - kind: entity_type_conditional
+              entity_type: door
+              condition: door.state == closed
+              notes:
+                - A closed door blocks LOS. An open door does not.
+            - kind: entity_type_unconditional
+              entity_type: force_barrier_counter
+              notes:
+                - A force barrier counter blocks LOS unconditionally for as long as it is in play.
+          notes:
+            - "Symmetry enforcement: run the one-way check in both directions (A→B and B→A) and return true only if both pass. This is the correct approach given that the board is not always topologically symmetric (door edges are directional in the tile data)."
+            - "Corner rule: when the Bresenham step advances both x and y simultaneously, check the two orthogonal corner cells. Block only if BOTH are obstructed. One clear corner is sufficient for the ray to pass. Source: Space Hulk web implementation."
+        source_refs: [rulebook_p8_movement, rulebook_los_rules]
       resources:
         - id: command_points_available
           owner_scope: player
@@ -242,7 +281,10 @@ state_spec:
         - id: librarian_psi_points_remaining
           owner_scope: entity
           value_type: integer
+          initial_value: 20
           represented_physically: true
+          notes:
+            - Starts at 20 at the beginning of each mission. Source: rulebook Psi Points section.
       relations:
         - id: occupies_square
           from: entity
@@ -272,6 +314,15 @@ state_spec:
           cardinality: single
           persistence: persistent
           represented_physically: false
+        - id: current_turn_number
+          state_class: turn_state
+          scope: game
+          value_type: integer
+          cardinality: single
+          persistence: persistent
+          represented_physically: false
+          notes:
+            - Incremented at the end of each mission_status_phase. Starts at 0; becomes 1 after the first complete turn. Required for mission turn limits and timed trigger conditions.
       phase_state:
         - id: timer_running
           state_class: phase_state
@@ -294,6 +345,24 @@ state_spec:
           cardinality: single
           persistence: phase_scoped
           represented_physically: false
+        - id: lurking_blip_ids
+          state_class: phase_state
+          scope: game
+          value_type: reference
+          cardinality: set
+          persistence: turn_scoped
+          represented_physically: false
+          notes:
+            - Blips that chose to remain off-board (lurk) rather than enter during the Genestealer reinforcements phase.
+        - id: command_point_reactions_used_this_activation
+          state_class: phase_state
+          scope: game
+          value_type: integer
+          cardinality: single
+          persistence: resolution_scoped
+          represented_physically: false
+          notes:
+            - Tracks the number of command-point-funded Space Marine reactions (overwatch fire, guard) taken in response to the current Genestealer piece's activation. Reset to zero when a new Genestealer piece begins activation.
       derived_state:
         - id: line_of_sight_matrix
           state_class: derived_state
@@ -360,6 +429,16 @@ state_spec:
           cardinality: single
           persistence: turn_scoped
           represented_physically: false
+        - id: last_safe_position
+          state_class: historical_state
+          scope: entity
+          value_type: position
+          cardinality: single
+          persistence: action_scoped
+          represented_physically: false
+          notes:
+            - The most recent square occupied by this blip that was outside all Space Marine line of sight. Updated after each move step that ends in a non-LOS square.
+            - "Recovery state only: in a correctly enforced implementation a blip should never need this, because movement into LOS is blocked before it occurs. This variable exists solely to support trig_blip_los_recovery, which handles the physical-board edge case where a violation slips through (e.g., ambiguous path evaluation, mid-move state change)."
         - id: psychic_power_used_this_space_marine_turn
           state_class: historical_state
           scope: game
@@ -368,6 +447,16 @@ state_spec:
           persistence: turn_scoped
           represented_physically: false
       hidden_information_state:
+        - id: command_counter_pool
+          state_class: hidden_information_state
+          scope: player
+          value_type: integer
+          cardinality: pool
+          persistence: persistent
+          represented_physically: true
+          visibility: owner_only
+          notes:
+            - The set of command point counter tiles. Each tile shows a value (0–6); the exact composition and count is per the mission. One tile is drawn at random without replacement each SM command phase to set hidden_command_points_value. When the pool is exhausted, tiles are reshuffled and a new pool formed.
         - id: hidden_command_points_value
           state_class: hidden_information_state
           scope: player
@@ -400,6 +489,43 @@ state_spec:
       - id: inv_overwatch_and_guard_mutually_exclusive
         statement: A Space Marine cannot be on guard and on overwatch at the same time.
         severity: error
+      - id: inv_lurk_capacity_per_entry_area
+        statement: >-
+          No more than three blips may lurk at any single off_board_entry_area simultaneously.
+          A reinforcement blip that cannot lurk due to capacity must enter play instead.
+        severity: error
+        source_refs: [rulebook_lurk_rules]
+    shared_types:
+      - id: ap_cost_table
+        kind: record
+        description: >-
+          Action-point costs per piece type per action, verbatim from the printed
+          table in the rulebook. A null value means the action is not available
+          to that piece type.
+        fields:
+          - id: action_id
+            value_type: identifier
+          - id: space_marine_ap
+            value_type: integer
+          - id: genestealer_ap
+            value_type: integer
+          - id: blip_ap
+            value_type: integer
+        notes:
+          - "move_forward:              SM=1, GS=1,    Blip=1"
+          - "move_backward:             SM=2, GS=2,    Blip=1"
+          - "move_sideways:             SM=null,GS=1,  Blip=1"
+          - "turn_90:                   SM=1, GS=1,    Blip=null"
+          - "turn_180:                  SM=null,GS=1,  Blip=null"
+          - "fire_storm_bolter_or_ac:   SM=1 (combinable free with move), GS=null, Blip=null"
+          - "set_overwatch_or_guard:    SM=2, GS=null, Blip=null"
+          - "clear_jam:                 SM=1, GS=null, Blip=null"
+          - "fire_heavy_flamer:         SM=2, GS=null, Blip=null"
+          - "close_assault:             SM=1, GS=1,    Blip=null"
+          - "open_close_door:           SM=1, GS=1,    Blip=1"
+          - "GS footnote: Genestealer may turn 90 degrees as part of any move action at no extra AP cost."
+          - "SM footnote: Space Marine may fire storm bolter or assault cannon as part of any move action at no extra AP cost."
+          - "source: ocr_gaps.md ap_cost_table"
 
 rules_spec:
   spec_version: 0.1.0
@@ -444,9 +570,11 @@ rules_spec:
             step_kind: update_state
             effects:
               - id: eff_set_hidden_command_points
-                effect_kind: set_state
-                target: hidden_command_points_value
-                operation: draw_random_from_command_counter_pool
+                effect_kind: draw_random
+                target: command_counter_pool
+                output_binding: hidden_command_points_value
+                notes:
+                  - Draw one counter tile at random from the command_counter_pool (without replacement). The drawn value is stored in hidden_command_points_value, visible only to the Space Marine player.
           - id: cp_optional_sergeant_redraw
             step_kind: custom
           - id: cp_set_spent_marker_zero
@@ -469,11 +597,52 @@ rules_spec:
         procedure_kind: phase
         scope: player_turn
         controlling_actor: current_player
+        termination_conditions:
+          - id: cond_sm_phase_timer_expired
+            expression: timer_running == false
+            evaluation_scope: game
         steps:
-          - id: sma_activate_pieces_one_at_a_time
+          - id: sma_choose_piece_to_activate
+            step_kind: choose_entity
+            actor: current_player
+            conditions:
+              - id: cond_sm_eligible_for_activation
+                expression: >-
+                  chosen piece is a space marine AND
+                  (piece not in pieces_activated_this_turn OR
+                   command_points_available > 0)
+                evaluation_scope: action_resolution
+            notes:
+              - If the player activates a piece already in pieces_activated_this_turn they must spend 1 command point to do so.
+          - id: sma_set_ap_budget
+            step_kind: update_state
+            effects:
+              - id: eff_set_ap_budget_4
+                effect_kind: set_state
+                target: remaining_ap_for_active_piece
+                operation: assign
+                value: 4
+                notes:
+                  - All Space Marine piece types share the same AP budget of 4 per activation.
+          - id: sma_piece_spends_ap_on_actions
             step_kind: custom
-          - id: sma_end_immediately_when_timer_expires
+            notes:
+              - "The active player repeatedly selects actions for the active piece, spending AP per the ap_cost_table, until: (a) remaining_ap_for_active_piece reaches 0, (b) the player voluntarily ends the activation, or (c) the timer expires."
+              - "Schema limitation: a loop/repeat step_kind is not yet defined; this step encodes the loop intent via notes and termination_conditions."
+          - id: sma_mark_piece_activated
+            step_kind: update_state
+            effects:
+              - id: eff_add_piece_to_activated_set
+                effect_kind: modify_state
+                target: pieces_activated_this_turn
+                operation: add
+                value: active_piece_id
+          - id: sma_check_timer_after_activation
             step_kind: check_end_condition
+            conditions:
+              - id: cond_timer_expired_after_action
+                expression: timer_running == false
+                evaluation_scope: game
       - id: proc_genestealer_reinforcements_phase
         procedure_kind: phase
         scope: player_turn
@@ -483,17 +652,82 @@ rules_spec:
             expression: current_player == genestealer
             evaluation_scope: game
         steps:
-          - id: gen_take_reinforcement_blips
+          - id: gen_draw_reinforcement_blips_from_stack
             step_kind: update_state
-          - id: gen_place_reinforcement_blips_by_entry_areas
+            effects:
+              - id: eff_take_blips_from_stack
+                effect_kind: draw_random
+                target: blip_stack
+                notes:
+                  - Draw the mission-specified quantity of blip counters at random from the blip_stack pool without replacement. Drawn blips enter the Genestealer player's hand face-down; their hidden values are not revealed until voluntarily or involuntarily converted.
+                  - The number of blips drawn per turn is specified by the mission. Core rules define the mechanism; missions define the quantity.
+          - id: gen_choose_place_or_lurk_per_blip
+            step_kind: custom
+            notes:
+              - For each drawn blip the Genestealer player may either place it at a designated off-board entry area OR declare it lurking (add to lurking_blip_ids). Lurking blips remain off-board and are not placed this turn.
+              - Blips that are placed must go to an entry area square specified by the scenario.
+          - id: gen_update_lurking_set
             step_kind: update_state
+            effects:
+              - id: eff_add_lurkers_to_lurking_set
+                effect_kind: modify_state
+                target: lurking_blip_ids
+                operation: add_all_declared_lurkers
+          - id: gen_reshuffle_blip_stack_if_empty
+            step_kind: update_state
+            effects:
+              - id: eff_reshuffle_used_blips
+                effect_kind: modify_state
+                target: blip_stack
+                operation: reshuffle_if_empty
+                notes:
+                  - "When the blip_stack pool is empty after drawing, collect all previously revealed and removed blip counters, shuffle them, and form a new pool. This step fires at the end of the reinforcements phase regardless; it has no effect when the stack is non-empty. Source: rulebook Genestealer Reinforcements phase."
       - id: proc_genestealer_action_phase
         procedure_kind: phase
         scope: player_turn
         controlling_actor: current_player
         steps:
-          - id: ga_activate_blips_and_genestealers
+          - id: ga_choose_piece_to_activate
+            step_kind: choose_entity
+            actor: current_player
+            conditions:
+              - id: cond_gs_eligible_for_activation
+                expression: >-
+                  chosen piece is a genestealer model OR blip counter AND
+                  piece not in pieces_activated_this_turn
+                evaluation_scope: action_resolution
+          - id: ga_reset_sm_reaction_counter
+            step_kind: update_state
+            effects:
+              - id: eff_reset_reaction_counter
+                effect_kind: set_state
+                target: command_point_reactions_used_this_activation
+                operation: assign
+                value: 0
+          - id: ga_set_gs_ap_budget
+            step_kind: update_state
+            effects:
+              - id: eff_set_gs_ap_budget_6
+                effect_kind: set_state
+                target: remaining_ap_for_active_piece
+                operation: assign
+                value: 6
+                notes:
+                  - Genestealers and blips receive 6 AP per activation.
+          - id: ga_piece_spends_ap_on_actions
             step_kind: custom
+            notes:
+              - "The Genestealer player repeatedly selects actions for the active piece, spending AP per the ap_cost_table, until remaining_ap_for_active_piece reaches 0 or the player voluntarily ends the activation."
+              - "After each action the Space Marine player may spend command points to trigger eligible reactions (overwatch fire, guard rerolls) via proc_command_point_reaction."
+              - "Schema limitation: loop semantics encoded in notes."
+          - id: ga_mark_piece_activated
+            step_kind: update_state
+            effects:
+              - id: eff_add_gs_piece_to_activated_set
+                effect_kind: modify_state
+                target: pieces_activated_this_turn
+                operation: add
+                value: active_piece_id
       - id: proc_mission_status_phase
         procedure_kind: phase
         scope: game
@@ -507,6 +741,50 @@ rules_spec:
             step_kind: check_end_condition
           - id: ms_remove_end_of_turn_markers
             step_kind: update_state
+
+      - id: proc_command_point_reaction
+        procedure_kind: subphase
+        scope: action_resolution
+        controlling_actor: reacting_player
+        notes:
+          - Invoked by the Space Marine player immediately after any individual Genestealer action completes during the Genestealer action phase.
+          - Trigger condition: at least one Space Marine has line of sight to the Genestealer that just completed the action.
+          - The SM player may spend command points to perform ANY eligible action (fire a weapon, close a door, move, etc.), not just overwatch reactions.
+          - Each action witnessed allows one SM reaction (even a 2-AP action counts as one reaction and costs 1 CP).
+          - The SM reaction happens immediately before the Genestealer carries out its next action.
+          - Source: rulebook Command Points section.
+        preconditions:
+          - id: cond_in_genestealer_action_phase
+            expression: current_turn_sequence_step == genestealer_action_phase
+            evaluation_scope: game
+          - id: cond_sm_has_los_to_acting_genestealer
+            expression: at least one space marine model has line of sight to the Genestealer that just completed an action
+            evaluation_scope: event_context
+          - id: cond_sm_has_command_points_remaining
+            expression: command_points_available > command_points_spent_this_turn
+            evaluation_scope: game
+        steps:
+          - id: cpr_offer_reaction_window
+            step_kind: open_interrupt_window
+            notes:
+              - Space Marine player may choose to spend 1 command point and declare any eligible action for any SM model with LOS to the acting Genestealer, or pass.
+          - id: cpr_spend_command_point
+            step_kind: update_state
+            conditions:
+              - id: cond_reaction_declared
+                expression: space_marine_player declared a reaction in cpr_offer_reaction_window
+                evaluation_scope: action_resolution
+            effects:
+              - id: eff_increment_cp_spent
+                effect_kind: modify_state
+                target: command_points_spent_this_turn
+                operation: increment
+                value: 1
+          - id: cpr_execute_reaction
+            step_kind: choose_action
+            actor: reacting_player
+            notes:
+              - Any action in the action_library available to the reacting Space Marine is eligible, subject to normal action preconditions (LOS for shooting, adjacency for doors, etc.).
     action_library:
       - id: act_move
         actor: entity
@@ -558,13 +836,21 @@ rules_spec:
             expression: active_piece has facing
             evaluation_scope: entity
           - id: cond_turn_allowed_by_piece_type
-            expression: requested turn angle is legal for active piece type according to action-point table
+            expression: >-
+              (active_piece is space_marine AND inp_turn_angle in [left_90, right_90]) OR
+              (active_piece is genestealer AND inp_turn_angle in [left_90, right_90, turn_180]) OR
+              (active_piece is blip AND inp_turn_angle in [left_90, right_90])
             evaluation_scope: action_resolution
+            notes:
+              - Space Marines and blips cannot perform a standalone 180-degree turn. Two 90-degree turns (2 AP) are required. Source: ocr_gaps.md ap_cost_table (dash for SM and blip turn_180).
         costs:
           - id: cost_spend_ap_turn
             effect_kind: modify_state
             target: remaining_ap_for_active_piece
-            operation: decrement_by_turn_cost_from_piece_type_and_angle
+            operation: decrement
+            value: 1
+            notes:
+              - All legal turn actions cost 1 AP for all piece types. Source: ocr_gaps.md ap_cost_table.
         effect_sequence:
           - id: eff_rotate_piece
             effect_kind: modify_state
@@ -741,6 +1027,10 @@ rules_spec:
         scope: entity
         availability: context_limited
         timing_contexts: [proc_space_marine_action_phase]
+        notes:
+          - "Using a psychic power is NOT an action. It costs no AP. It may be used at any point during the Space Marine turn, including while another Space Marine is taking an action."
+          - "Only one psychic power may be used per Space Marine turn."
+          - "Source: rulebook Psychic Powers section."
         preconditions:
           - id: cond_active_librarian_exists
             expression: librarian on board with psi points > 0 and psychic_power_used_this_space_marine_turn == false
@@ -755,6 +1045,11 @@ rules_spec:
         effect_sequence:
           - id: step_resolve_psychic_power
             operation_kind: custom
+          - id: eff_mark_psychic_power_used
+            effect_kind: set_state
+            target: psychic_power_used_this_space_marine_turn
+            operation: assign
+            value: true
       - id: act_pick_up_object
         actor: entity
         scope: entity
@@ -764,11 +1059,107 @@ rules_spec:
           - id: cond_piece_enters_square_with_object
             expression: active_piece position contains object
             evaluation_scope: action_resolution
+        notes:
+          - Picking up an object is automatic when a piece enters or occupies a square containing an object; it does not appear in the AP cost table and costs no AP.
         effect_sequence:
           - id: eff_auto_pick_up_object
             effect_kind: modify_state
             target: object.carrier_model_id
             operation: assign_to_active_piece
+
+      - id: act_pass_object
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase]
+        preconditions:
+          - id: cond_carrier_has_object_and_recipient_in_front
+            expression: active_piece carries an object AND another model occupies the square directly in front
+            evaluation_scope: action_resolution
+        costs:
+          - id: cost_pass_object_1ap
+            effect_kind: modify_state
+            target: remaining_ap_for_active_piece
+            operation: decrement
+            value: 1
+            notes:
+              - "1 AP for the giver. The receiver does not spend any AP or action. Source: rulebook Objects section."
+        effect_sequence:
+          - id: eff_transfer_object_to_front_piece
+            effect_kind: modify_state
+            target: object.carrier_model_id
+            operation: assign_to_piece_in_front_square
+
+      - id: act_drop_object
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase, proc_genestealer_action_phase]
+        preconditions:
+          - id: cond_piece_carries_object
+            expression: active_piece carries_object == true
+            evaluation_scope: entity
+        notes:
+          - "Dropping is not a separate action. A model may choose to drop an object in a square as it moves, leaving it behind. Costs no additional AP beyond the move. Source: rulebook Objects section."
+        effect_sequence:
+          - id: eff_drop_object_in_current_square
+            effect_kind: modify_state
+            target: object.carrier_model_id
+            operation: set_to_null
+          - id: eff_place_object_at_drop_position
+            effect_kind: modify_state
+            target: object.position
+            operation: assign_to_chosen_square_along_movement_path
+
+      - id: act_exit_map
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase]
+        preconditions:
+          - id: cond_piece_at_designated_exit
+            expression: active_piece occupies a square designated as a map exit in the mission
+            evaluation_scope: action_resolution
+        costs:
+          - id: cost_spend_ap_exit
+            effect_kind: modify_state
+            target: remaining_ap_for_active_piece
+            operation: decrement
+            value: 1
+        notes:
+          - Exit squares and exit conditions are scenario-defined. This action captures the core mechanism; missions supply the specific exit locations and any associated victory tracking.
+        effect_sequence:
+          - id: eff_remove_piece_from_board
+            effect_kind: remove_entity
+            target: active_piece_id
+          - id: eff_emit_exit_event
+            effect_kind: emit_event
+            target: game
+            operation: piece_exited_map
+        generates_events: [event_piece_exited_map]
+
+      - id: act_voluntary_reveal_blip
+        actor: side
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_genestealer_action_phase]
+        preconditions:
+          - id: cond_active_piece_is_blip
+            expression: active_piece is blip
+            evaluation_scope: entity
+          - id: cond_blip_not_acted_this_turn
+            expression: blip_activated_before_reveal == false
+            evaluation_scope: entity
+            notes:
+              - "A blip that has already performed any action this turn (moved, opened a door) may not be voluntarily revealed. Source: rulebook Voluntary Conversion."
+        notes:
+          - The Genestealer player may voluntarily reveal a blip at any point during its activation, converting it to the appropriate number of Genestealer models. No AP is spent for the reveal itself.
+        effect_sequence:
+          - id: eff_trigger_reveal
+            effect_kind: invoke_procedure
+            target: res_place_revealed_genestealers
+            operation: invoke_with_active_blip
+
     trigger_rules:
       - id: trig_overwatch_fire
         trigger:
@@ -814,6 +1205,32 @@ rules_spec:
             operation: convert_blip_to_genestealers
         timing: immediate
         priority: 110
+      - id: trig_blip_los_recovery
+        trigger:
+          event: event_blip_entered_los_during_own_move
+          subject: blip_counter
+          timing_relation: immediate
+        conditions:
+          - id: cond_blip_entered_los_by_own_move
+            expression: active_piece is blip AND blip entered SM LOS as a direct result of its own move action this activation
+            evaluation_scope: event_context
+        effects:
+          - id: eff_return_blip_to_last_safe_position
+            effect_kind: set_state
+            target: active_piece.position
+            operation: assign
+            value: last_safe_position
+          - id: eff_blip_loses_remaining_ap
+            effect_kind: set_state
+            target: remaining_ap_for_active_piece
+            operation: assign
+            value: 0
+        timing: immediate
+        priority: 109
+        notes:
+          - "Rulebook: 'If a blip moves accidentally into LOS it is returned to the last square in which it was out of line of sight and it may not do anything for the remainder of the current turn.'"
+          - "Recovery rule only: in a correctly enforced implementation this trigger should never fire. Blip movement into SM LOS is already prohibited by inv_blip_not_in_line_of_sight and action preconditions. This rule exists for the physical-board scenario where a violation slips through (e.g., path ambiguity, a door opens mid-move). A digital implementation with proper pre-move validation may safely treat this as a dead code path."
+          - "Distinct from trig_involuntary_blip_reveal: that trigger fires when LOS changes around a stationary blip (forcing a reveal). This trigger fires when the blip's own move causes the LOS violation, and responds by reverting position rather than revealing."
       - id: trig_overwatch_lost_by_action
         trigger:
           event: event_action_completed
@@ -848,6 +1265,25 @@ rules_spec:
             value: false
         timing: immediate
         priority: 90
+      - id: trig_heavy_flamer_persistent_hazard
+        trigger:
+          event: event_model_entered_square
+          subject: any_model
+          timing_relation: immediate
+        conditions:
+          - id: cond_entered_square_in_burning_section
+            expression: destination_square is in a board_section that has a flamer_section_blocked marker
+            evaluation_scope: event_context
+        effects:
+          - id: eff_persistent_flamer_roll
+            effect_kind: invoke_procedure
+            target: res_heavy_flamer_persistent_roll
+            operation: invoke_for_entering_model
+        timing: immediate
+        priority: 80
+        notes:
+          - "Rulebook: models already in a burning section can move but must roll to survive each new square entered (1d6, killed on 2+). Source: rulebook Heavy Flamer persistent fire section."
+          - "This trigger does NOT fire for the initial placement of the flamer attack — only for subsequent movement into burning squares."
     restriction_rules:
       - id: rest_one_piece_activated_at_a_time
         restriction_kind: exclusivity
@@ -881,6 +1317,92 @@ rules_spec:
             expression: active_piece has heavy flamer and action == act_set_overwatch
             evaluation_scope: action_resolution
         restricted_behavior: Heavy flamer marines may not enter overwatch.
+
+      - id: rest_space_marine_no_turn_180
+        restriction_kind: prohibition
+        applies_to: [space_marine_models]
+        applies_when:
+          - id: cond_space_marine_attempting_turn_180
+            expression: active_piece is space_marine AND inp_turn_angle == turn_180
+            evaluation_scope: action_resolution
+        restricted_behavior: >-
+          Space Marines cannot perform a 180-degree turn as a single action.
+          A 180-degree turn requires two separate 90-degree turn actions (2 AP total).
+        source_refs: [ocr_gaps_ap_cost_table]
+
+      - id: rest_space_marine_no_sideways_move
+        restriction_kind: prohibition
+        applies_to: [space_marine_models]
+        applies_when:
+          - id: cond_space_marine_attempting_sideways_move
+            expression: active_piece is space_marine AND move direction is perpendicular to facing
+            evaluation_scope: action_resolution
+        restricted_behavior: Space Marines cannot move sideways. Only forward or backward movement is permitted.
+        source_refs: [ocr_gaps_ap_cost_table]
+
+      - id: rest_blip_no_turn
+        restriction_kind: prohibition
+        applies_to: [blip_counter]
+        applies_when:
+          - id: cond_blip_attempting_turn
+            expression: active_piece is blip AND action == act_turn
+            evaluation_scope: action_resolution
+        restricted_behavior: Blips do not have facing and cannot perform turn actions.
+        source_refs: [ocr_gaps_ap_cost_table]
+
+      - id: rest_force_barrier_blocks_entry
+        restriction_kind: prohibition
+        applies_to: [space_marine_model, genestealer_model, blip_counter]
+        applies_when:
+          - id: cond_destination_square_has_force_barrier
+            expression: destination_square contains force_barrier_counter
+            evaluation_scope: action_resolution
+        restricted_behavior: No model or blip may enter a square containing a force barrier counter.
+        source_refs: [rulebook_force_barrier]
+
+      - id: rest_force_barrier_blocks_los
+        restriction_kind: prohibition
+        applies_to: [space_marine_model, genestealer_model]
+        applies_when:
+          - id: cond_los_path_crosses_force_barrier
+            expression: line_of_sight path between shooter and target passes through a square containing force_barrier_counter
+            evaluation_scope: action_resolution
+        restricted_behavior: A model cannot draw line of sight through a square containing a force barrier counter. Shooting is blocked as if a wall occupied that square.
+        source_refs: [rulebook_force_barrier]
+
+      - id: rest_forced_lurk_sm_within_6_of_entry
+        restriction_kind: prohibition
+        applies_to: [blip_counter]
+        applies_when:
+          - id: cond_sm_within_6_of_entry_area
+            expression: >-
+              current_turn_sequence_step == genestealer_reinforcements_phase AND
+              at least one space_marine_model is within 6 squares of the target
+              off_board_entry_area entry point square
+            evaluation_scope: action_resolution
+        restricted_behavior: >-
+          A reinforcement blip may not be placed at an entry area if any Space Marine is within
+          6 squares of that entry area's entry point square at the start of the Genestealer
+          reinforcements phase. The blip must lurk for the rest of the turn instead.
+        source_refs: [rulebook_genestealer_reinforcements]
+
+      - id: rest_no_corner_clipping
+        restriction_kind: prohibition
+        applies_to: [space_marine_model, genestealer_model, blip_counter]
+        applies_when:
+          - id: cond_move_clips_two_obstructed_corners
+            expression: >-
+              the movement path between current_square and destination_square passes through
+              a shared corner where both orthogonal corner cells contain a wall or an occupying model
+            evaluation_scope: action_resolution
+        restricted_behavior: >-
+          A model may not move along any path that passes between two squares both containing
+          a wall or an occupying model (corner-clipping). The two orthogonal corner cells of
+          any diagonal step or tight-junction path must not both be obstructed.
+        source_refs: [rulebook_movement_corner_rule]
+        notes:
+          - "This is the physical-movement mirror of the LOS corner rule in topology.los_definition: both use both_adjacent_corners_blocked. A gap that is open to LOS is also open to movement, and vice versa."
+          - "Rulebook: 'A model also cannot move diagonally if this means it would pass between two squares containing a wall or a model.'"
     resolution_procedures:
       - id: res_storm_bolter_attack
         resolution_context: ranged_attack
@@ -893,6 +1415,12 @@ rules_spec:
           - id: sb_roll_2d6
             operation_kind: roll_dice
             outputs: [current_dice_results]
+            dice_spec:
+              count: 2
+              sides: 6
+              notation: "2d6"
+            notes:
+              - "Kill threshold: 6 (or 5+ with sustained fire). Each die that meets the threshold counts as a hit; one hit kills the target. Source: rulebook Storm Bolter."
           - id: sb_apply_sustained_fire_if_eligible
             operation_kind: assign_modifiers
           - id: sb_check_hit_threshold
@@ -906,6 +1434,12 @@ rules_spec:
         steps:
           - id: ac_roll_3d6
             operation_kind: roll_dice
+            dice_spec:
+              count: 3
+              sides: 6
+              notation: "3d6"
+            notes:
+              - "Kill threshold: 5+ (or 4+ with sustained fire). Any die meeting the threshold kills the target. Source: rulebook Assault Cannon."
           - id: ac_apply_sustained_fire_if_eligible
             operation_kind: assign_modifiers
           - id: ac_check_hit_threshold_5_plus_or_4_plus_sustained
@@ -916,6 +1450,15 @@ rules_spec:
             operation_kind: update_state
           - id: ac_check_reloaded_triple_for_malfunction
             operation_kind: branch_on_result
+            notes:
+              - "Malfunction condition: all three dice show the same value AND the assault cannon had been reloaded this activation (shots_remaining was 0 at the start of this action). A triple on a non-reloaded cannon is not a malfunction."
+              - "Malfunction outcome 1: the assault cannon explodes. The firing Space Marine is immediately killed and removed from play."
+              - "Malfunction outcome 2: roll 1d6 for every other model (Space Marine, Genestealer, or blip) and every door in the same board section as the destroyed marine. Each is destroyed on a result of 4+."
+              - "Source: rulebook Assault Cannon Malfunction section."
+            dice_spec:
+              count: 1
+              sides: 6
+              notation: "1d6"
       - id: res_heavy_flamer_attack
         resolution_context: ranged_attack
         steps:
@@ -923,30 +1466,141 @@ rules_spec:
             operation_kind: update_state
           - id: hf_roll_for_each_model_or_blip_in_section
             operation_kind: roll_dice
+            dice_spec:
+              count: 1
+              sides: 6
+              notation: "1d6"
+            notes:
+              - "Roll 1d6 independently for each model or blip in the target section. Kill threshold: 2+. Source: rulebook Heavy Flamer."
           - id: hf_destroy_each_piece_on_2_plus
             operation_kind: apply_damage
           - id: hf_mark_section_blocked_until_mission_status
             operation_kind: update_state
+      - id: res_heavy_flamer_persistent_roll
+        resolution_context: custom
+        notes:
+          - Invoked when any model enters a square that is in a board section marked as burning (flamer_section_blocked marker present). Each entering model rolls independently.
+        inputs:
+          - id: inp_entering_model
+            value_type: reference
+            required: true
+            source: trigger_context
+        steps:
+          - id: hfp_roll_survival_die
+            operation_kind: roll_dice
+            dice_spec:
+              count: 1
+              sides: 6
+              notation: "1d6"
+            notes:
+              - "Roll 1d6 for the model entering the burning section. Kill threshold: 2+. Source: rulebook Heavy Flamer persistent fire section."
+          - id: hfp_destroy_model_on_2_plus
+            operation_kind: apply_damage
+            notes:
+              - "On a result of 2 or higher, the entering model is destroyed and removed from play."
+
       - id: res_close_assault
         resolution_context: melee
+        notes:
+          - "Genestealers roll 3 dice. Space Marines roll 1 die (weapon overrides may change this: Lightning Claws 2 dice; all modifiers listed in the reference sheet)."
+          - "Each side's score is their single highest die result (plus any modifiers). Higher score wins. TIES: neither side has won and no damage is done to either participant."
+          - "Source: rulebook close assault section and reference sheet close assault table."
         steps:
-          - id: ca_roll_attacker_and_defender_dice
+          - id: ca_roll_attacker_dice
             operation_kind: roll_dice
-          - id: ca_apply_front_arc_modifiers
-            operation_kind: assign_modifiers
-          - id: ca_offer_guard_reroll_or_weapon_parry_block_effects
+            notes:
+              - "Space Marine rolls 1d6 (base), or 2d6 with Lightning Claws. See override rules for modifiers."
+              - "Genestealer rolls 3d6. Broodlord rolls 3d6 and uses a different scoring rule (see ov_broodlord_mighty_blow)."
+              - "dice_spec SM base: {count: 1, sides: 6, keep_highest: 1, notation: '1d6'}"
+              - "dice_spec GS base: {count: 3, sides: 6, keep_highest: 1, notation: '3d6kh1'}"
+              - "Score = highest single die result + modifiers. Source: rulebook Close Assault."
+          - id: ca_roll_defender_dice
+            operation_kind: roll_dice
+            notes:
+              - Defender rolls their appropriate dice pool (same piece-type rules as attacker roll above).
+              - "Score = highest single die result + modifiers. See ca_roll_attacker_dice for per-piece dice_spec values."
+          - id: ca_offer_guard_reroll_and_special_effects
             operation_kind: offer_rerolls
-          - id: ca_compare_best_results
+            notes:
+              - "Guard reroll: Space Marine on guard may re-roll one of their own dice AFTER seeing the Genestealer's roll. Must keep second result."
+              - "Power sword parry: forces opponent to re-roll their highest-scoring die."
+              - "Storm shield block: opponent rolls one fewer die than normal."
+          - id: ca_apply_modifiers
+            operation_kind: assign_modifiers
+            notes:
+              - "+1 for Space Marine Sergeant against enemy to front."
+              - "+1 for Lightning Claws to highest die against enemy to front."
+              - "+1 for Thunder Hammer against enemy to front."
+              - "+1 for Librarian combat veteran against enemy to front."
+              - "+N for Force Axe psi point spend (after dice and rerolls, each psi point adds +1)."
+          - id: ca_compare_results
             operation_kind: compare_values
+            notes:
+              - Compare attacker score vs defender score. Higher score wins.
+              - Ties — neither side has won. No damage to either participant.
           - id: ca_apply_outcome
             operation_kind: branch_on_result
+            notes:
+              - "Attacker wins: defender killed and removed from play."
+              - "Defender wins AND defender is facing the attacker: attacker killed and removed from play."
+              - "Defender wins or TIES AND defender is NOT facing the attacker: defender is turned in place to face the attacker. No model killed."
+              - "Ambiguity: rulebook does not explicitly state what happens on a tie when the defender IS already facing the attacker. See amb_close_assault_tie_facing."
+      - id: res_place_revealed_genestealers
+        resolution_context: custom
+        notes:
+          - Invoked when any blip is revealed (voluntarily or involuntarily). Converts the blip to Genestealer models.
+        inputs:
+          - id: inp_revealed_blip
+            value_type: reference
+            required: true
+            source: previous_step
+        steps:
+          - id: rpg_read_blip_value
+            operation_kind: gather_inputs
+            outputs: [revealed_model_count]
+            notes:
+              - The blip's hidden_value determines how many Genestealer models (1, 2, or 3) are placed.
+          - id: rpg_determine_controlling_player_for_placement
+            operation_kind: determine_targets
+            notes:
+              - If revealed by Space Marine LOS (involuntary), the Space Marine player places the models. If revealed voluntarily, the Genestealer player places the models.
+          - id: rpg_place_models_in_or_adjacent_to_blip_square
+            operation_kind: update_state
+            notes:
+              - Models are placed in the square previously occupied by the blip, or in adjacent squares if the blip square cannot hold all models. Models that cannot be placed legally are removed from play (not killed for scoring purposes unless specified by the mission).
+              - "Voluntary reveal placement constraint: Genestealers may NOT be placed in any square that is in line of sight of a Space Marine. The Genestealer player must choose placement squares entirely outside all Space Marine LOS. Source: rulebook Voluntary Conversion."
+              - "Involuntary reveal: the Space Marine player controls placement; no LOS restriction applies (the reveal was triggered by the blip entering LOS). The act of placing models counts as performing an action, allowing Space Marines on overwatch or with command points to react. Source: rulebook Involuntary Conversion."
+          - id: rpg_set_facing_for_placed_models
+            operation_kind: update_state
+            notes:
+              - Placed models face in a direction chosen by the controlling player.
+          - id: rpg_remove_blip_counter
+            operation_kind: update_state
+            effects:
+              - id: eff_remove_blip_from_board
+                effect_kind: remove_entity
+                target: revealed_blip
+
       - id: res_psychic_storm
         resolution_context: custom
         steps:
           - id: ps_choose_single_target_or_board_section
             operation_kind: determine_targets
+            conditions:
+              - id: cond_psychic_storm_target_in_range
+                expression: target_square or at least one square of target_section is within 6 squares of the Librarian
+                evaluation_scope: action_resolution
+            notes:
+              - "Psychic Storm has a range of 6 squares. The target model or at least one square of the target board section must be within 6 squares of the Librarian. Source: rulebook Psychic Storm."
           - id: ps_roll_resolution_die
             operation_kind: roll_dice
+            dice_spec:
+              count: 1
+              sides: 6
+              notation: "1d6"
+            notes:
+              - "Single-target mode: roll 1d6; kill on 2+. Source: rulebook Psychic Storm."
+              - "Board section mode: roll 1d6 per model in the section; kill on 4+ per model. Source: rulebook Psychic Storm."
           - id: ps_destroy_single_target_on_2_plus_or_section_targets_on_4_plus
             operation_kind: apply_damage
     override_rules:    
@@ -962,6 +1616,13 @@ rules_spec:
             effect_kind: custom
             target: action_combination
             operation: allow_combined_move_and_fire_without_extra_ap
+          - id: eff_clear_sustained_fire_on_move_and_fire
+            effect_kind: set_state
+            target: sustained_fire_context
+            operation: assign
+            value: null
+            notes:
+              - "Sustained fire is lost whenever the Space Marine both moves and fires in the same action. Source: rulebook Sustained Fire section."
 
       - id: ov_genestealer_free_90_turn_during_move
         override_kind: extension
@@ -1001,9 +1662,24 @@ rules_spec:
             target: close_assault_score
             operation: add
             value: 1
+      - id: ov_close_assault_door_base_rule
+        override_kind: modifying
+        target_ids: [res_close_assault]
+        applies_when:
+          - id: cond_target_is_door
+            expression: target is door
+            evaluation_scope: action_resolution
+        replacement_steps:
+          - id: eff_door_assault_roll
+            effect_kind: custom
+            target: target_door
+            operation: destroy_door_if_any_die_shows_6
+            notes:
+              - "The door does not roll dice. The attacker must score a 6 on at least one die to destroy the door. Source: rulebook Close Assaulting a Door."
+
       - id: ov_chainfist_vs_door
         override_kind: replacement
-        target_ids: [res_close_assault]
+        target_ids: [ov_close_assault_door_base_rule]
         applies_when:
           - id: cond_chainfist_attacking_door
             expression: attacker has chainfist and target is door
@@ -1014,6 +1690,8 @@ rules_spec:
             target: target_door.state
             operation: assign
             value: destroyed
+            notes:
+              - Chainfist overrides the normal door assault rule. No dice roll needed; destruction is automatic.
       - id: ov_lightning_claws_close_assault
         override_kind: modifying
         target_ids: [res_close_assault]
@@ -1076,17 +1754,24 @@ rules_spec:
             target: close_assault_score
             operation: add_by_spent_psi
       - id: ov_broodlord_reveal
-        override_kind: extension
-        target_ids: [trig_involuntary_blip_reveal]
+        override_kind: replacement
+        target_ids: [res_place_revealed_genestealers]
         applies_when:
-          - id: cond_mission_includes_broodlord_and_not_yet_revealed
-            expression: mission allows broodlord and broodlord not yet revealed and chosen blip designated broodlord reveal
+          - id: cond_mission_includes_broodlord_and_not_yet_revealed_and_blip_is_3
+            expression: >-
+              mission allows broodlord AND broodlord not yet revealed AND
+              genestealer player has declared this blip to be the Broodlord AND
+              blip hidden_value == three_genestealers
             evaluation_scope: game
-        added_effects:
-          - id: eff_replace_one_revealed_genestealer_with_broodlord
+        replacement_steps:
+          - id: eff_replace_all_three_genestealers_with_broodlord
             effect_kind: custom
             target: reveal_result
-            operation: substitute_broodlord_for_one_genestealer
+            operation: place_broodlord_model_instead_of_three_genestealer_models
+            notes:
+              - "The Broodlord replaces a 3-counter blip entirely. The Broodlord model is placed in the square occupied by the blip counter. No Genestealer models are set up."
+              - "The Genestealer player may only use this substitution once per mission, and only with a blip whose hidden_value is three_genestealers."
+              - "Source: ocr_gaps.md broodlord reveal text."
       - id: ov_broodlord_hard_to_kill
         override_kind: modifying
         target_ids: [res_storm_bolter_attack, res_assault_cannon_attack, res_heavy_flamer_attack, res_psychic_storm]
@@ -1119,6 +1804,78 @@ rules_spec:
             expression: any psychic storm target subtype == broodlord
             evaluation_scope: action_resolution
         removed_effect_ids: [ps_destroy_single_target_on_2_plus_or_section_targets_on_4_plus]
+
+      - id: ov_librarian_combat_veteran
+        override_kind: modifying
+        target_ids: [res_close_assault]
+        applies_when:
+          - id: cond_librarian_participating_in_close_assault
+            expression: participating marine has marine_role == librarian_force_axe
+            evaluation_scope: action_resolution
+        added_effects:
+          - id: eff_librarian_plus_one_close_assault_score
+            effect_kind: custom
+            target: close_assault_score
+            operation: add
+            value: 1
+            notes:
+              - The Librarian is a combat veteran and receives +1 to his close assault score (in addition to force axe and psi-spend bonuses).
+              - "Source: coverage matrix entry 'Librarian combat veteran bonus: Missing'. PDF source text could not be read directly; this rule is recorded as requiring PDF verification. See amb_librarian_combat_veteran_source."
+
+      - id: ov_prescience
+        override_kind: modifying
+        target_ids: [proc_space_marine_command_phase]
+        applies_when:
+          - id: cond_prescience_declared
+            expression: >-
+              psychic_power_used_this_space_marine_turn == false AND
+              librarian_psi_points_remaining > 0 AND
+              space_marine_player declares prescience
+            evaluation_scope: game
+        added_effects:
+          - id: eff_prescience_move_cp_marker_back
+            effect_kind: modify_state
+            target: command_points_spent_this_turn
+            operation: decrement
+            value: 1
+            notes:
+              - "Prescience moves the command point marker one space back along the track. It cannot be moved back past the 0 space."
+              - "This is NOT a shooting reroll. It effectively grants 1 additional command point for the turn."
+              - "Costs 1 psi point. Not an action; does not cost AP. Can be used at any point during the Space Marine turn."
+              - "Source: rulebook Prescience entry + reference sheet Psychic Powers Table."
+          - id: eff_prescience_spend_psi
+            effect_kind: modify_state
+            target: librarian_psi_points_remaining
+            operation: decrement
+            value: 1
+
+      - id: ov_force_barrier
+        override_kind: additive
+        target_ids: [proc_space_marine_action_phase]
+        applies_when:
+          - id: cond_force_barrier_declared
+            expression: >-
+              psychic_power_used_this_space_marine_turn == false AND
+              librarian_psi_points_remaining > 0 AND
+              space_marine_player declares force barrier
+            evaluation_scope: game
+        added_effects:
+          - id: eff_place_force_barrier_counter
+            effect_kind: create_entity
+            target: force_barrier_counter
+            operation: place_in_chosen_empty_square
+            notes:
+              - "The Librarian's player places the force barrier counter in any empty square within 12 squares of the Librarian. No line of sight required."
+              - "While the counter is in place: no model may enter the square and no model may shoot through it."
+              - "The counter remains until removed in the Mission Status phase."
+              - "This is NOT a close assault protection. It creates a physical barrier blocking a square."
+              - "Costs 2 psi points. Not an action; does not cost AP. Range 12 squares from Librarian."
+              - "Source: rulebook Force Barrier entry + reference sheet Psychic Powers Table."
+          - id: eff_force_barrier_spend_psi
+            effect_kind: modify_state
+            target: librarian_psi_points_remaining
+            operation: decrement
+            value: 2
     derived_terms:
       - id: term_front_arc
         definition: A model's forward arc consists of the three squares directly ahead of its facing.
@@ -1139,6 +1896,12 @@ rules_spec:
       - id: rinv_timer_ends_space_marine_action_phase_immediately_after_current_action
         statement: When the timer expires, complete the action in progress and then end the Space Marine Action phase immediately.
         severity: error
+    trigger_model:
+      same_priority_resolution: queue_fifo
+      interrupt_window: before_trigger_body
+      notes:
+        - "Triggers at the same priority resolve in the order they are declared in this spec (FIFO). The Space Marine command point reaction window (proc_command_point_reaction) opens before each trigger body executes during the Genestealer action phase."
+        - "Priority scale: higher integer = higher priority. trig_involuntary_blip_reveal (110) fires before trig_blip_los_recovery (109), which fires before trig_overwatch_fire (100) and trig_overwatch_lost (90). This ensures reveals pre-empt recovery, and recovery pre-empts overwatch."
 
 ambiguities:
   ambiguities:
@@ -1193,3 +1956,129 @@ ambiguities:
         resolution_status: provisional
         resolution_summary: Implement guard as persistent through enemy attacks, removed by own other actions or end of turn.
         confidence: medium
+
+    - id: amb_librarian_combat_veteran_source
+      title: Librarian combat veteran +1 close assault bonus
+      status: resolved
+      ambiguity_type: omission
+      severity: medium
+      rule_area: librarian
+      description: The Librarian receives a +1 combat veteran bonus to close assault in the same manner as a Space Marine Sergeant.
+      source_refs: [rulebook_librarians_combat_veteran_section]
+      candidate_interpretations:
+        - id: amb_lcv_i1
+          label: +1 to close assault dice score in same manner as Sergeant
+          interpretation: The Librarian adds +1 to their dice score in close assault, applying under the same conditions as the Sergeant bonus (against enemy to front). It stacks with force axe psi-point bonuses.
+      chosen_resolution:
+        selected_interpretation_id: amb_lcv_i1
+        resolution_status: canonical
+        resolution_summary: "Rulebook text: Librarians are highly experienced combat veterans. To represent this they add +1 to the dice in a close assault in the same manner as a Space Marine Sergeant."
+        confidence: high
+      related_rule_ids: [ov_librarian_combat_veteran, ov_librarian_force_axe_bonus_from_psi]
+
+    - id: amb_prescience_mechanics
+      title: Prescience psychic power mechanic
+      status: resolved
+      ambiguity_type: omission
+      severity: medium
+      rule_area: librarian
+      description: Prescience was initially modelled as a shooting reroll. The rulebook clarifies it moves the command point marker back 1 space.
+      source_refs: [rulebook_psychic_powers_prescience_section]
+      candidate_interpretations:
+        - id: amb_pres_i1
+          label: Move CP marker back 1 space; costs 1 psi point
+          interpretation: Prescience allows the Space Marine player to move the command point marker one space back along the track (minimum 0). Costs 1 psi point. Not an action.
+      chosen_resolution:
+        selected_interpretation_id: amb_pres_i1
+        resolution_status: canonical
+        resolution_summary: "Rulebook text: Using prescience allows the Space Marine player to move the command point marker one space back along the track. Costs 1 psi point."
+        confidence: high
+      related_rule_ids: [ov_prescience, act_use_psychic_power]
+
+    - id: amb_force_barrier_mechanics
+      title: Force Barrier psychic power mechanic
+      status: resolved
+      ambiguity_type: omission
+      severity: medium
+      rule_area: librarian
+      description: Force Barrier was initially modelled as close assault protection. The rulebook clarifies it places a blocking counter in a square.
+      source_refs: [rulebook_psychic_powers_force_barrier_section]
+      candidate_interpretations:
+        - id: amb_fb_i1
+          label: Place a barrier counter blocking entry and LOS through a square; costs 2 psi points
+          interpretation: Place the force barrier counter in any empty square within 12 squares of the Librarian (no LOS required). No model may enter or shoot through that square until the counter is removed in Mission Status phase.
+      chosen_resolution:
+        selected_interpretation_id: amb_fb_i1
+        resolution_status: canonical
+        resolution_summary: "Rulebook text: Place the force barrier counter in an empty square within 12 spaces. No model may enter or shoot through the square. Costs 2 psi points."
+        confidence: high
+      related_rule_ids: [ov_force_barrier, act_use_psychic_power]
+
+    - id: amb_object_pass_ap_cost
+      title: AP cost for passing or dropping an object
+      status: resolved
+      ambiguity_type: omission
+      severity: low
+      rule_area: objects
+      description: Pass costs 1 AP for the giver (receiver free). Drop is free as part of a move (not a separate action).
+      source_refs: [rulebook_objects_section]
+      candidate_interpretations:
+        - id: amb_obj_i1
+          label: Pass = 1 AP for giver, drop = free as part of move
+          interpretation: "Rulebook: a model may pass an object to a model in the square to its front; costs 1 AP for the giver, receiver uses no AP. A model may choose to drop the object in a square as it moves; dropping is part of the move action, not a separate action."
+      chosen_resolution:
+        selected_interpretation_id: amb_obj_i1
+        resolution_status: canonical
+        resolution_summary: Pass = 1 AP (giver only). Drop = no extra AP (part of move).
+        confidence: high
+      related_rule_ids: [act_pass_object, act_drop_object, act_pick_up_object]
+
+    - id: amb_gs_ap_budget
+      title: Genestealer and blip AP budget per activation
+      status: resolved
+      ambiguity_type: omission
+      severity: medium
+      rule_area: movement
+      description: Confirmed from rulebook Action Point Allowance table and Blip Movement section.
+      source_refs: [rulebook_action_points_section, rulebook_blip_movement_section]
+      candidate_interpretations:
+        - id: amb_gs_ap_i1
+          label: Genestealers 6 AP, Blips 6 AP
+          interpretation: "Rulebook Action Point Allowance table: Space Marine 4, Genestealer 6, Blip 6."
+      chosen_resolution:
+        selected_interpretation_id: amb_gs_ap_i1
+        resolution_status: canonical
+        resolution_summary: Both Genestealers and Blips receive 6 AP per activation.
+        confidence: high
+      related_rule_ids: [proc_genestealer_action_phase]
+
+    - id: amb_close_assault_tie_facing
+      title: Close assault tie result when defender is already facing the attacker
+      status: unresolved
+      ambiguity_type: textual
+      severity: low
+      rule_area: close_assault
+      description: The rulebook states that if the defender wins or ties and is NOT facing the attacker, the defender is turned to face. It does not explicitly state what happens on a tie when the defender IS already facing the attacker.
+      source_refs: [rulebook_close_assault_effects_section]
+      candidate_interpretations:
+        - id: amb_cat_i1
+          label: Tie + defender facing = no effect, no casualties
+          interpretation: The "neither side has won" tie rule applies generally. Since the defender is already facing, the facing-change outcome has no effect. No model is killed.
+        - id: amb_cat_i2
+          label: Tie + defender facing = defender killed (attacker wins ties when defender faces)
+          interpretation: The facing condition only modifies the "defender wins" outcome. On a tie the attacker is considered to have won.
+      chosen_resolution:
+        resolution_status: provisional
+        resolution_summary: >-
+          Interpretation i1 adopted as provisional ruling: a tie always results in no casualties,
+          regardless of whether the defender is already facing the attacker. The "neither side has
+          won; no damage is done" rule is absolute. The "defender turns to face" outcome is the
+          consequence of the defender winning, not of tying. Since the rulebook text explicitly
+          resolves ties as neutral, interpretation i2 would require positive textual support that
+          is absent.
+        provenance: house_rule
+        confidence: medium
+        notes:
+          - "Interpretation i2 was considered but rejected: it requires reading 'attacker wins on ties when defender faces' into text that says no such thing. i1 is the more conservative reading."
+          - "If an official FAQ or errata emerges, supersede this record with the canonical ruling."
+      related_rule_ids: [res_close_assault]
