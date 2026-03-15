@@ -1,0 +1,398 @@
+$schema_version: 0.1.0
+$id: gamespecs/ambiguity.schema.yaml
+kind: ambiguity_schema
+metadata:
+  name: Generic Ambiguity Tracking Schema
+  purpose: >-
+    Canonical schema for recording ambiguities discovered while formalizing tabletop
+    and board game rules. Supports unresolved ambiguities, alternative
+    interpretations, chosen resolutions, and provenance for those resolutions.
+  design_principles:
+    - Treat ambiguity as a first-class artifact rather than a hidden implementation detail.
+    - Preserve the original uncertainty before applying a resolution.
+    - Allow multiple candidate interpretations to coexist.
+    - Record provenance for every chosen resolution.
+    - Support future revision when errata, FAQs, or expert guidance appear.
+
+spec_document_schema:
+  type: object
+  required:
+    - spec_version
+    - game
+    - ambiguities
+  properties:
+    spec_version:
+      type: string
+      description: Version of the authored ambiguity document.
+    game:
+      $ref: '#/$defs/game_identity'
+    imports:
+      type: array
+      items:
+        type: string
+      description: Optional references to shared fragments or prior ambiguity files.
+    metadata:
+      $ref: '#/$defs/metadata'
+    ambiguities:
+      type: array
+      items:
+        $ref: '#/$defs/ambiguity_record'
+    source_trace:
+      type: array
+      items:
+        $ref: '#/$defs/source_trace_entry'
+    notes:
+      type: array
+      items:
+        type: string
+
+$defs:
+  game_identity:
+    type: object
+    required:
+      - id
+      - title
+    properties:
+      id:
+        type: string
+      title:
+        type: string
+      edition:
+        type: string
+      publisher:
+        type: string
+      source_version:
+        type: string
+
+  metadata:
+    type: object
+    properties:
+      authors:
+        type: array
+        items:
+          type: string
+      status:
+        type: string
+        enum: [draft, review, stable, deprecated]
+      created_at:
+        type: string
+      updated_at:
+        type: string
+      description:
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
+
+  ambiguity_record:
+    type: object
+    required:
+      - id
+      - title
+      - status
+      - ambiguity_type
+      - source_refs
+      - description
+      - candidate_interpretations
+    properties:
+      id:
+        type: string
+      title:
+        type: string
+      status:
+        type: string
+        enum:
+          - unresolved
+          - under_review
+          - provisionally_resolved
+          - resolved
+          - superseded
+      ambiguity_type:
+        type: string
+        enum:
+          - textual
+          - scope
+          - timing
+          - precedence
+          - target_selection
+          - state_representation
+          - physical_measurement
+          - hidden_information
+          - scenario_interaction
+          - omission
+          - contradiction
+          - terminology
+          - custom
+      severity:
+        type: string
+        enum: [low, medium, high, critical]
+      rule_area:
+        type: string
+      description:
+        type: string
+        description: Concise statement of what is ambiguous.
+      why_ambiguous:
+        type: array
+        items:
+          type: string
+      source_refs:
+        type: array
+        items:
+          type: string
+        description: References to source rule passages, figures, tables, FAQs, or notes.
+      impacts:
+        type: array
+        items:
+          $ref: '#/$defs/impact_record'
+      candidate_interpretations:
+        type: array
+        items:
+          $ref: '#/$defs/candidate_interpretation'
+      chosen_resolution:
+        $ref: '#/$defs/chosen_resolution'
+      related_rule_ids:
+        type: array
+        items:
+          type: string
+      related_state_ids:
+        type: array
+        items:
+          type: string
+      related_scenario_ids:
+        type: array
+        items:
+          type: string
+      supersedes:
+        type: array
+        items:
+          type: string
+      superseded_by:
+        type: string
+      review_history:
+        type: array
+        items:
+          $ref: '#/$defs/review_event'
+      notes:
+        type: array
+        items:
+          type: string
+
+  impact_record:
+    type: object
+    required:
+      - area
+      - description
+    properties:
+      area:
+        type: string
+        enum:
+          - state_model
+          - action_legality
+          - resolution_logic
+          - scenario_setup
+          - ai_behavior
+          - ui_representation
+          - test_generation
+          - player_experience
+          - rules_reference
+          - custom
+      description:
+        type: string
+      severity:
+        type: string
+        enum: [low, medium, high, critical]
+
+  candidate_interpretation:
+    type: object
+    required:
+      - id
+      - label
+      - interpretation
+    properties:
+      id:
+        type: string
+      label:
+        type: string
+      interpretation:
+        type: string
+      rationale:
+        type: array
+        items:
+          type: string
+      supporting_sources:
+        type: array
+        items:
+          type: string
+      implied_spec_changes:
+        type: array
+        items:
+          $ref: '#/$defs/spec_change_hint'
+      pros:
+        type: array
+        items:
+          type: string
+      cons:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  chosen_resolution:
+    type: object
+    properties:
+      selected_interpretation_id:
+        type: string
+      resolution_status:
+        type: string
+        enum:
+          - none
+          - provisional
+          - canonical
+          - house_rule
+          - faq_based
+          - errata_based
+          - expert_consensus
+          - implementation_required
+      resolution_summary:
+        type: string
+      provenance:
+        type: array
+        items:
+          $ref: '#/$defs/provenance_entry'
+      effective_from:
+        type: string
+      effective_until:
+        type: string
+      applied_spec_changes:
+        type: array
+        items:
+          $ref: '#/$defs/spec_change_hint'
+      confidence:
+        type: string
+        enum: [low, medium, high]
+      notes:
+        type: array
+        items:
+          type: string
+
+  provenance_entry:
+    type: object
+    required:
+      - kind
+      - description
+    properties:
+      kind:
+        type: string
+        enum:
+          - rulebook_text
+          - faq
+          - errata
+          - designer_commentary
+          - community_consensus
+          - expert_player_guidance
+          - house_rule
+          - implementation_constraint
+          - playtest_result
+          - model_inference
+          - custom
+      description:
+        type: string
+      source_refs:
+        type: array
+        items:
+          type: string
+      recorded_by:
+        type: string
+      recorded_at:
+        type: string
+
+  spec_change_hint:
+    type: object
+    required:
+      - target_kind
+      - target_id
+      - change_summary
+    properties:
+      target_kind:
+        type: string
+        enum: [state, rule, scenario, trace, test, ui, ai, custom]
+      target_id:
+        type: string
+      change_summary:
+        type: string
+      priority:
+        type: string
+        enum: [low, medium, high]
+
+  review_event:
+    type: object
+    required:
+      - status
+      - summary
+    properties:
+      status:
+        type: string
+      summary:
+        type: string
+      reviewer:
+        type: string
+      reviewed_at:
+        type: string
+      references:
+        type: array
+        items:
+          type: string
+
+  source_trace_entry:
+    type: object
+    required:
+      - id
+      - source_id
+      - target_ids
+    properties:
+      id:
+        type: string
+      source_id:
+        type: string
+      target_ids:
+        type: array
+        items:
+          type: string
+      trace_kind:
+        type: string
+        enum:
+          - ambiguity_identified
+          - interpretation_considered
+          - resolution_applied
+          - superseded_resolution
+      justification:
+        type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+example_authoring_guidance:
+  recommended_workflow:
+    - identify the precise ambiguous passage or omission
+    - classify the ambiguity type and severity
+    - list distinct candidate interpretations before choosing one
+    - record rationale and supporting evidence for each interpretation
+    - select a resolution only when necessary and record provenance
+    - link the resolution to affected state, rules, scenarios, and tests
+  modeling_guidelines:
+    - >-
+      Do not encode a hidden interpretation directly into rules or state files without
+      also recording it here when source material is ambiguous.
+    - >-
+      Prefer multiple concise candidate interpretations over one vague paragraph.
+    - >-
+      Use resolution_status to distinguish canonical source-backed rulings from house
+      rules or implementation-driven choices.
+    - >-
+      Keep ambiguity records stable over time and supersede them rather than deleting
+      historical decisions.

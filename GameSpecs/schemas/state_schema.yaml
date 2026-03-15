@@ -1,0 +1,531 @@
+$schema_version: 0.1.0
+$id: gamespecs/state.schema.yaml
+kind: state_schema
+metadata:
+  name: Generic Game State Schema
+  purpose: >-
+    Canonical schema for representing tabletop and board game state in a way that
+    cleanly separates explicit physical state from supplemental implicit state
+    required for digital execution, validation, and agentic reasoning.
+  design_principles:
+    - Preserve a distinction between physical game reality and implementation support state.
+    - Support persistent, ephemeral, derived, and historical state.
+    - Allow traceability back to source rules.
+    - Stay generic enough for multiple games while supporting game-specific extensions.
+
+spec_document_schema:
+  type: object
+  required:
+    - spec_version
+    - game
+    - state_model
+  properties:
+    spec_version:
+      type: string
+      description: Version of the authored state spec document.
+    game:
+      $ref: '#/$defs/game_identity'
+    imports:
+      type: array
+      items:
+        type: string
+      description: Optional references to shared fragments or base specs.
+    metadata:
+      $ref: '#/$defs/metadata'
+    state_model:
+      $ref: '#/$defs/state_model'
+    source_trace:
+      type: array
+      items:
+        $ref: '#/$defs/source_trace_entry'
+    notes:
+      type: array
+      items:
+        type: string
+
+$defs:
+  game_identity:
+    type: object
+    required:
+      - id
+      - title
+    properties:
+      id:
+        type: string
+      title:
+        type: string
+      edition:
+        type: string
+      publisher:
+        type: string
+      source_version:
+        type: string
+
+  metadata:
+    type: object
+    properties:
+      authors:
+        type: array
+        items:
+          type: string
+      status:
+        type: string
+        enum: [draft, review, stable, deprecated]
+      created_at:
+        type: string
+      updated_at:
+        type: string
+      description:
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
+
+  state_model:
+    type: object
+    required:
+      - physical_state
+      - supplemental_state
+    properties:
+      physical_state:
+        $ref: '#/$defs/physical_state'
+      supplemental_state:
+        $ref: '#/$defs/supplemental_state'
+      shared_types:
+        type: array
+        items:
+          $ref: '#/$defs/type_definition'
+      invariants:
+        type: array
+        items:
+          $ref: '#/$defs/invariant'
+
+  physical_state:
+    type: object
+    description: >-
+      State corresponding to things that exist in the box, on the board, on cards,
+      on miniatures, or as player-visible markers/counters during physical play.
+    properties:
+      entity_types:
+        type: array
+        items:
+          $ref: '#/$defs/entity_type'
+      zones:
+        type: array
+        items:
+          $ref: '#/$defs/zone_definition'
+      resources:
+        type: array
+        items:
+          $ref: '#/$defs/resource_definition'
+      relations:
+        type: array
+        items:
+          $ref: '#/$defs/relation_definition'
+
+  supplemental_state:
+    type: object
+    description: >-
+      State required for implementation, formal reasoning, or validation that may
+      be only implicit in the physical game and rulebook.
+    properties:
+      turn_state:
+        type: array
+        items:
+          $ref: '#/$defs/state_variable'
+      phase_state:
+        type: array
+        items:
+          $ref: '#/$defs/state_variable'
+      derived_state:
+        type: array
+        items:
+          $ref: '#/$defs/state_variable'
+      ephemeral_resolution_state:
+        type: array
+        items:
+          $ref: '#/$defs/state_variable'
+      historical_state:
+        type: array
+        items:
+          $ref: '#/$defs/state_variable'
+      hidden_information_state:
+        type: array
+        items:
+          $ref: '#/$defs/state_variable'
+      implementation_notes:
+        type: array
+        items:
+          type: string
+
+  entity_type:
+    type: object
+    required:
+      - id
+      - category
+      - attributes
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      category:
+        type: string
+        description: >-
+          Broad physical category such as miniature, token, tile, door, card,
+          marker, dice, template, or board_feature.
+      plurality:
+        type: string
+        enum: [singleton_type, repeatable_type]
+      attributes:
+        type: array
+        items:
+          $ref: '#/$defs/attribute_definition'
+      visible_to:
+        $ref: '#/$defs/visibility_rule'
+      represented_in_box:
+        type: boolean
+        description: True if the entity exists as a physical component.
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  state_variable:
+    type: object
+    required:
+      - id
+      - state_class
+      - value_type
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      state_class:
+        type: string
+        enum:
+          - turn_state
+          - phase_state
+          - derived_state
+          - ephemeral_resolution_state
+          - historical_state
+          - hidden_information_state
+      scope:
+        type: string
+        enum:
+          - game
+          - player
+          - side
+          - scenario
+          - zone
+          - entity
+          - action_resolution
+      value_type:
+        $ref: '#/$defs/value_type'
+      cardinality:
+        type: string
+        enum: [single, list, set, map, stack, queue]
+      initial_value:
+        description: Optional default value or initialization expression.
+      persistence:
+        type: string
+        enum: [persistent, transient, turn_scoped, phase_scoped, resolution_scoped]
+      visibility:
+        $ref: '#/$defs/visibility_rule'
+      derived_from:
+        type: array
+        items:
+          type: string
+        description: IDs of rules, entities, or variables from which this value is derived.
+      required_for:
+        type: array
+        items:
+          type: string
+        description: IDs of procedures, rules, or validations that depend on this state variable.
+      represented_physically:
+        type: boolean
+        description: False for implementation-only or inferred state.
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  attribute_definition:
+    type: object
+    required:
+      - id
+      - value_type
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      value_type:
+        $ref: '#/$defs/value_type'
+      cardinality:
+        type: string
+        enum: [single, list, set, map]
+      required:
+        type: boolean
+      default:
+        description: Optional default value.
+      mutable:
+        type: boolean
+      visibility:
+        $ref: '#/$defs/visibility_rule'
+      represented_physically:
+        type: boolean
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  value_type:
+    oneOf:
+      - type: string
+        enum:
+          - boolean
+          - integer
+          - number
+          - string
+          - text
+          - identifier
+          - direction
+          - position
+          - distance
+          - range
+          - enum
+          - record
+          - reference
+          - dice_result
+          - timestamp
+      - type: object
+        properties:
+          enum_name:
+            type: string
+          values:
+            type: array
+            items:
+              type: string
+          record_name:
+            type: string
+          fields:
+            type: array
+            items:
+              $ref: '#/$defs/attribute_definition'
+          reference_target:
+            type: string
+
+  visibility_rule:
+    oneOf:
+      - type: string
+        enum:
+          - public
+          - owner_only
+          - controller_only
+          - gm_only
+          - hidden
+          - mixed
+      - type: object
+        properties:
+          mode:
+            type: string
+            enum:
+              - public
+              - owner_only
+              - controller_only
+              - gm_only
+              - hidden
+              - mixed
+          visible_to_roles:
+            type: array
+            items:
+              type: string
+          notes:
+            type: array
+            items:
+              type: string
+
+  type_definition:
+    type: object
+    required:
+      - id
+    properties:
+      id:
+        type: string
+      description:
+        type: string
+      kind:
+        type: string
+        enum: [enum, record, alias]
+      values:
+        type: array
+        items:
+          type: string
+      fields:
+        type: array
+        items:
+          $ref: '#/$defs/attribute_definition'
+      target:
+        type: string
+
+  zone_definition:
+    type: object
+    required:
+      - id
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      kind:
+        type: string
+      capacity:
+        type: string
+      attributes:
+        type: array
+        items:
+          $ref: '#/$defs/attribute_definition'
+      source_refs:
+        type: array
+        items:
+          type: string
+
+  resource_definition:
+    type: object
+    required:
+      - id
+      - value_type
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      owner_scope:
+        type: string
+        enum: [game, player, side, scenario, entity]
+      value_type:
+        $ref: '#/$defs/value_type'
+      represented_physically:
+        type: boolean
+      source_refs:
+        type: array
+        items:
+          type: string
+
+  relation_definition:
+    type: object
+    required:
+      - id
+      - from
+      - to
+    properties:
+      id:
+        type: string
+      from:
+        type: string
+      to:
+        type: string
+      multiplicity:
+        type: string
+        enum: [one_to_one, one_to_many, many_to_one, many_to_many]
+      attributes:
+        type: array
+        items:
+          $ref: '#/$defs/attribute_definition'
+      source_refs:
+        type: array
+        items:
+          type: string
+
+  invariant:
+    type: object
+    required:
+      - id
+      - statement
+    properties:
+      id:
+        type: string
+      statement:
+        type: string
+      severity:
+        type: string
+        enum: [error, warning]
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  source_trace_entry:
+    type: object
+    required:
+      - id
+      - source_id
+      - target_ids
+    properties:
+      id:
+        type: string
+      source_id:
+        type: string
+      target_ids:
+        type: array
+        items:
+          type: string
+      trace_kind:
+        type: string
+        enum:
+          - explicit
+          - implicit
+          - inferred_for_execution
+          - inferred_for_validation
+      justification:
+        type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+example_authoring_guidance:
+  physical_state_examples:
+    - miniature position and facing
+    - token presence on board
+    - door open or closed state
+    - command point counter if physically tracked
+  supplemental_state_examples:
+    - current_player
+    - current_phase
+    - active_unit_id
+    - pending_attack_context
+    - dice_results_for_current_resolution
+    - units_activated_this_turn
+  modeling_guidelines:
+    - >-
+      Prefer physical_state when the information corresponds to something players can
+      point to on the table or among the components.
+    - >-
+      Prefer supplemental_state when the information is needed to execute or validate
+      rules but is only mentally tracked, inferred, temporary, or historical.
+    - >-
+      A value may be represented physically in some games and supplemental in others;
+      use represented_physically to record that distinction explicitly.
+    - >-
+      Use source_trace entries to justify every implicit or inferred state variable
+      introduced for digital implementation.

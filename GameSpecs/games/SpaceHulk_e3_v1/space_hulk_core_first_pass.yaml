@@ -1,0 +1,1195 @@
+spec_bundle_version: 0.1.0
+bundle_id: space_hulk_3e_core_first_pass
+bundle_kind: first_pass_extraction
+metadata:
+  game:
+    id: space_hulk_3e
+    title: Space Hulk
+    edition: 3rd_edition
+    source_version: uploaded_pdf_rulebook_core_22pp
+  scope:
+    - core_state
+    - core_rules
+    - initial_ambiguities
+  notes:
+    - Derived only from the uploaded core rulebook PDF, excluding mission-book content.
+    - Scenario-specific setup, force lists, special mission rules, and victory conditions are intentionally out of scope.
+    - OCR noise in the source may affect some wording; ambiguous or uncertain items are marked.
+
+state_spec:
+  spec_version: 0.1.0
+  game:
+    id: space_hulk_3e
+    title: Space Hulk
+    edition: 3rd_edition
+  metadata:
+    status: draft
+    description: First-pass core state extraction.
+  state_model:
+    physical_state:
+      entity_types:
+        - id: board_square
+          category: board_feature
+          represented_in_box: false
+          attributes:
+            - id: square_id
+              value_type: identifier
+              required: true
+              mutable: false
+              represented_physically: false
+            - id: board_section_id
+              value_type: identifier
+              required: true
+              mutable: false
+              represented_physically: false
+            - id: occupancy_limit
+              value_type: integer
+              required: true
+              default: 1
+              mutable: false
+              represented_physically: false
+            - id: contains_ladder_up
+              value_type: boolean
+              required: false
+              mutable: true
+              represented_physically: true
+            - id: contains_ladder_down
+              value_type: boolean
+              required: false
+              mutable: true
+              represented_physically: true
+            - id: contains_object
+              value_type: boolean
+              required: false
+              mutable: true
+              represented_physically: true
+        - id: space_marine_model
+          category: miniature
+          represented_in_box: true
+          attributes:
+            - id: model_id
+              value_type: identifier
+              required: true
+              mutable: false
+              represented_physically: false
+            - id: marine_role
+              value_type:
+                enum_name: marine_role
+                values: [sergeant_power_sword, sergeant_thunder_hammer_storm_shield, storm_bolter_marine, heavy_flamer_marine, assault_cannon_marine, lightning_claws_marine, librarian_force_axe]
+              required: true
+              mutable: false
+              represented_physically: true
+            - id: position
+              value_type: position
+              required: true
+              mutable: true
+              represented_physically: true
+            - id: facing
+              value_type: direction
+              required: true
+              mutable: true
+              represented_physically: true
+            - id: alive
+              value_type: boolean
+              required: true
+              mutable: true
+              represented_physically: true
+            - id: carries_object
+              value_type: boolean
+              required: false
+              mutable: true
+              represented_physically: true
+        - id: genestealer_model
+          category: miniature
+          represented_in_box: true
+          attributes:
+            - id: model_id
+              value_type: identifier
+              required: true
+              mutable: false
+              represented_physically: false
+            - id: subtype
+              value_type:
+                enum_name: genestealer_subtype
+                values: [genestealer, broodlord]
+              required: true
+              mutable: false
+              represented_physically: true
+            - id: position
+              value_type: position
+              required: true
+              mutable: true
+              represented_physically: true
+            - id: facing
+              value_type: direction
+              required: true
+              mutable: true
+              represented_physically: true
+            - id: alive
+              value_type: boolean
+              required: true
+              mutable: true
+              represented_physically: true
+        - id: blip_counter
+          category: token
+          represented_in_box: true
+          attributes:
+            - id: blip_id
+              value_type: identifier
+              required: true
+              mutable: false
+              represented_physically: false
+            - id: position_or_entry_area
+              value_type: position
+              required: false
+              mutable: true
+              represented_physically: true
+            - id: hidden_value
+              value_type:
+                enum_name: blip_value
+                values: [one_genestealer, two_genestealers, three_genestealers]
+              required: true
+              mutable: false
+              represented_physically: true
+            - id: on_board
+              value_type: boolean
+              required: true
+              mutable: true
+              represented_physically: true
+        - id: door
+          category: board_feature
+          represented_in_box: true
+          attributes:
+            - id: door_id
+              value_type: identifier
+              required: true
+              mutable: false
+              represented_physically: false
+            - id: position
+              value_type: position
+              required: true
+              mutable: false
+              represented_physically: true
+            - id: state
+              value_type:
+                enum_name: door_state
+                values: [closed, open, destroyed]
+              required: true
+              mutable: true
+              represented_physically: true
+        - id: carried_or_ground_object
+          category: token
+          represented_in_box: true
+          attributes:
+            - id: object_id
+              value_type: identifier
+              required: true
+              mutable: false
+              represented_physically: false
+            - id: position
+              value_type: position
+              required: false
+              mutable: true
+              represented_physically: true
+            - id: carrier_model_id
+              value_type: reference
+              required: false
+              mutable: true
+              represented_physically: true
+        - id: mission_status_counter
+          category: marker
+          represented_in_box: true
+          attributes:
+            - id: counter_kind
+              value_type:
+                enum_name: status_counter_kind
+                values: [command_points_drawn, command_points_spent, assault_cannon_ammo, assault_cannon_reloaded, psi_points_remaining, overwatch, jam, guard, flamer, force_barrier]
+              required: true
+              mutable: false
+              represented_physically: true
+            - id: linked_entity_id
+              value_type: reference
+              required: false
+              mutable: true
+              represented_physically: true
+            - id: value
+              value_type: integer
+              required: false
+              mutable: true
+              represented_physically: true
+      zones:
+        - id: board
+          kind: play_area
+        - id: off_board_entry_area
+          kind: entry_area
+        - id: blip_stack
+          kind: hidden_supply
+        - id: casualties
+          kind: out_of_play
+      resources:
+        - id: command_points_available
+          owner_scope: player
+          value_type: integer
+          represented_physically: true
+        - id: command_points_spent_this_turn
+          owner_scope: player
+          value_type: integer
+          represented_physically: true
+        - id: assault_cannon_shots_remaining
+          owner_scope: entity
+          value_type: integer
+          represented_physically: true
+        - id: librarian_psi_points_remaining
+          owner_scope: entity
+          value_type: integer
+          represented_physically: true
+      relations:
+        - id: occupies_square
+          from: entity
+          to: board_square
+          multiplicity: many_to_one
+        - id: carries_object
+          from: space_marine_model
+          to: carried_or_ground_object
+          multiplicity: one_to_many
+    supplemental_state:
+      turn_state:
+        - id: current_player
+          state_class: turn_state
+          scope: game
+          value_type:
+            enum_name: player_side
+            values: [space_marine, genestealer]
+          cardinality: single
+          persistence: persistent
+          represented_physically: false
+        - id: current_turn_sequence_step
+          state_class: turn_state
+          scope: game
+          value_type:
+            enum_name: turn_step
+            values: [space_marine_command_phase, space_marine_action_phase, genestealer_reinforcements_phase, genestealer_action_phase, mission_status_phase]
+          cardinality: single
+          persistence: persistent
+          represented_physically: false
+      phase_state:
+        - id: timer_running
+          state_class: phase_state
+          scope: game
+          value_type: boolean
+          cardinality: single
+          persistence: phase_scoped
+          represented_physically: true
+        - id: active_piece_id
+          state_class: phase_state
+          scope: game
+          value_type: reference
+          cardinality: single
+          persistence: phase_scoped
+          represented_physically: false
+        - id: remaining_ap_for_active_piece
+          state_class: phase_state
+          scope: entity
+          value_type: integer
+          cardinality: single
+          persistence: phase_scoped
+          represented_physically: false
+      derived_state:
+        - id: line_of_sight_matrix
+          state_class: derived_state
+          scope: game
+          value_type: record
+          cardinality: map
+          persistence: transient
+          represented_physically: false
+        - id: visible_blips
+          state_class: derived_state
+          scope: player
+          value_type: reference
+          cardinality: set
+          persistence: transient
+          represented_physically: false
+        - id: legal_actions_for_active_piece
+          state_class: derived_state
+          scope: action_resolution
+          value_type: reference
+          cardinality: list
+          persistence: resolution_scoped
+          represented_physically: false
+      ephemeral_resolution_state:
+        - id: current_action_context
+          state_class: ephemeral_resolution_state
+          scope: action_resolution
+          value_type: record
+          cardinality: single
+          persistence: resolution_scoped
+          represented_physically: false
+        - id: current_dice_results
+          state_class: ephemeral_resolution_state
+          scope: action_resolution
+          value_type: dice_result
+          cardinality: list
+          persistence: resolution_scoped
+          represented_physically: true
+        - id: current_target_id
+          state_class: ephemeral_resolution_state
+          scope: action_resolution
+          value_type: reference
+          cardinality: single
+          persistence: resolution_scoped
+          represented_physically: false
+        - id: sustained_fire_context
+          state_class: ephemeral_resolution_state
+          scope: entity
+          value_type: record
+          cardinality: single
+          persistence: turn_scoped
+          represented_physically: false
+      historical_state:
+        - id: pieces_activated_this_turn
+          state_class: historical_state
+          scope: game
+          value_type: reference
+          cardinality: set
+          persistence: turn_scoped
+          represented_physically: false
+        - id: blip_activated_before_reveal
+          state_class: historical_state
+          scope: entity
+          value_type: boolean
+          cardinality: single
+          persistence: turn_scoped
+          represented_physically: false
+        - id: psychic_power_used_this_space_marine_turn
+          state_class: historical_state
+          scope: game
+          value_type: boolean
+          cardinality: single
+          persistence: turn_scoped
+          represented_physically: false
+      hidden_information_state:
+        - id: hidden_command_points_value
+          state_class: hidden_information_state
+          scope: player
+          value_type: integer
+          cardinality: single
+          persistence: turn_scoped
+          represented_physically: true
+          visibility: owner_only
+        - id: unrevealed_blip_values
+          state_class: hidden_information_state
+          scope: player
+          value_type: reference
+          cardinality: map
+          persistence: persistent
+          represented_physically: true
+          visibility: owner_only
+    invariants:
+      - id: inv_one_piece_per_square
+        statement: No board square may contain more than one Space Marine, Genestealer, or blip at a time.
+        severity: error
+      - id: inv_no_diagonal_facing
+        statement: A model facing must always be one orthogonal side of its occupied square.
+        severity: error
+      - id: inv_blip_not_adjacent_to_space_marine
+        statement: A blip may not occupy a square adjacent to a Space Marine.
+        severity: error
+      - id: inv_blip_not_in_line_of_sight
+        statement: A blip may not remain in a square in Space Marine line of sight; it must immediately reveal or revert to last legal hidden position per rule context.
+        severity: warning
+      - id: inv_overwatch_and_guard_mutually_exclusive
+        statement: A Space Marine cannot be on guard and on overwatch at the same time.
+        severity: error
+
+rules_spec:
+  spec_version: 0.1.0
+  game:
+    id: space_hulk_3e
+    title: Space Hulk
+    edition: 3rd_edition
+  metadata:
+    status: draft
+    description: First-pass core rules extraction.
+  rules_model:
+    procedural_structure:
+      - id: proc_turn_loop
+        procedure_kind: round
+        scope: game
+        steps:
+          - id: step_space_marine_command
+            step_kind: invoke_procedure
+            referenced_procedure_id: proc_space_marine_command_phase
+          - id: step_space_marine_action
+            step_kind: invoke_procedure
+            referenced_procedure_id: proc_space_marine_action_phase
+          - id: step_genestealer_reinforcements
+            step_kind: invoke_procedure
+            referenced_procedure_id: proc_genestealer_reinforcements_phase
+          - id: step_genestealer_action
+            step_kind: invoke_procedure
+            referenced_procedure_id: proc_genestealer_action_phase
+          - id: step_mission_status
+            step_kind: invoke_procedure
+            referenced_procedure_id: proc_mission_status_phase
+      - id: proc_space_marine_command_phase
+        procedure_kind: phase
+        scope: player_turn
+        controlling_actor: current_player
+        preconditions:
+          - id: cond_current_player_space_marine
+            expression: current_player == space_marine
+            evaluation_scope: game
+        steps:
+          - id: cp_draw_random_counter
+            step_kind: update_state
+            effects:
+              - id: eff_set_hidden_command_points
+                effect_kind: set_state
+                target: hidden_command_points_value
+                operation: draw_random_from_command_counter_pool
+          - id: cp_optional_sergeant_redraw
+            step_kind: custom
+          - id: cp_set_spent_marker_zero
+            step_kind: update_state
+            effects:
+              - id: eff_set_command_points_spent_zero
+                effect_kind: set_state
+                target: command_points_spent_this_turn
+                operation: assign
+                value: 0
+          - id: cp_start_timer
+            step_kind: update_state
+            effects:
+              - id: eff_timer_running_true
+                effect_kind: set_state
+                target: timer_running
+                operation: assign
+                value: true
+      - id: proc_space_marine_action_phase
+        procedure_kind: phase
+        scope: player_turn
+        controlling_actor: current_player
+        steps:
+          - id: sma_activate_pieces_one_at_a_time
+            step_kind: custom
+          - id: sma_end_immediately_when_timer_expires
+            step_kind: check_end_condition
+      - id: proc_genestealer_reinforcements_phase
+        procedure_kind: phase
+        scope: player_turn
+        controlling_actor: current_player
+        preconditions:
+          - id: cond_current_player_genestealer
+            expression: current_player == genestealer
+            evaluation_scope: game
+        steps:
+          - id: gen_take_reinforcement_blips
+            step_kind: update_state
+          - id: gen_place_reinforcement_blips_by_entry_areas
+            step_kind: update_state
+      - id: proc_genestealer_action_phase
+        procedure_kind: phase
+        scope: player_turn
+        controlling_actor: current_player
+        steps:
+          - id: ga_activate_blips_and_genestealers
+            step_kind: custom
+      - id: proc_mission_status_phase
+        procedure_kind: phase
+        scope: game
+        controlling_actor: game
+        steps:
+          - id: ms_check_victory_conditions
+            step_kind: check_end_condition
+          - id: ms_reveal_command_counter
+            step_kind: update_state
+          - id: ms_validate_command_points_not_overspent
+            step_kind: check_end_condition
+          - id: ms_remove_end_of_turn_markers
+            step_kind: update_state
+    action_library:
+      - id: act_move
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase, proc_genestealer_action_phase]
+        inputs:
+          - id: inp_moving_piece
+            value_type: reference
+            required: true
+            source: state_lookup
+          - id: inp_destination_square
+            value_type: position
+            required: true
+            source: player_choice
+        preconditions:
+          - id: cond_destination_is_reachable
+            expression: destination_square is adjacent legal move per facing and piece type
+            evaluation_scope: action_resolution
+          - id: cond_destination_unoccupied
+            expression: destination square not occupied by marine, genestealer, blip, or closed door
+            evaluation_scope: action_resolution
+        costs:
+          - id: cost_spend_ap_move
+            effect_kind: modify_state
+            target: remaining_ap_for_active_piece
+            operation: decrement_by_move_cost
+        effect_sequence:
+          - id: eff_move_piece
+            effect_kind: move_entity
+            target: active_piece_id
+            operation: move_to_destination
+        generates_events: [event_piece_moved, event_action_completed]
+        
+      - id: act_turn
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase, proc_genestealer_action_phase]
+        inputs:
+          - id: inp_turn_angle
+            value_type:
+              enum_name: turn_angle
+              values: [left_90, right_90, turn_180]
+            required: true
+            source: player_choice
+        preconditions:
+          - id: cond_piece_has_facing
+            expression: active_piece has facing
+            evaluation_scope: entity
+          - id: cond_turn_allowed_by_piece_type
+            expression: requested turn angle is legal for active piece type according to action-point table
+            evaluation_scope: action_resolution
+        costs:
+          - id: cost_spend_ap_turn
+            effect_kind: modify_state
+            target: remaining_ap_for_active_piece
+            operation: decrement_by_turn_cost_from_piece_type_and_angle
+        effect_sequence:
+          - id: eff_rotate_piece
+            effect_kind: modify_state
+            target: active_piece_id.facing
+            operation: rotate
+            
+      - id: act_open_or_close_door
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase, proc_genestealer_action_phase]
+        inputs:
+          - id: inp_target_door
+            value_type: reference
+            required: true
+            source: player_choice
+        preconditions:
+          - id: cond_adjacent_and_forward_door
+            expression: acting piece is adjacent to target door and target door lies in one of its three forward squares
+            evaluation_scope: action_resolution
+        costs:
+          - id: cost_spend_ap_door
+            effect_kind: modify_state
+            target: remaining_ap_for_active_piece
+            operation: decrement
+            value: 1
+        effect_sequence:
+          - id: eff_toggle_door_state
+            effect_kind: modify_state
+            target: target_door.state
+            operation: toggle_open_closed
+      - id: act_shoot
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase, proc_genestealer_action_phase]
+        inputs:
+          - id: inp_shooter
+            value_type: reference
+            required: true
+            source: state_lookup
+          - id: inp_target
+            value_type: reference
+            required: true
+            source: player_choice
+        preconditions:
+          - id: cond_shooter_is_space_marine_with_ranged_weapon
+            expression: active_piece is space marine with storm bolter, assault cannon, or heavy flamer
+            evaluation_scope: entity
+          - id: cond_target_visible_or_weapon_allows_exception
+            expression: target legality satisfied by line of sight and weapon rules
+            evaluation_scope: action_resolution
+        costs:
+          - id: cost_spend_ap_shoot
+            effect_kind: modify_state
+            target: remaining_ap_for_active_piece
+            operation: decrement_by_weapon_cost
+        effect_sequence:
+          - id: step_resolve_shooting
+            operation_kind: custom
+            outputs: [current_dice_results]
+      - id: act_set_overwatch
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase]
+        preconditions:
+          - id: cond_overwatch_weapon_allowed
+            expression: active_piece has storm bolter or assault cannon
+            evaluation_scope: entity
+          - id: cond_not_on_guard
+            expression: active_piece not on guard
+            evaluation_scope: entity
+        costs:
+          - id: cost_spend_ap_overwatch
+            effect_kind: modify_state
+            target: remaining_ap_for_active_piece
+            operation: decrement
+            value: 2
+        effect_sequence:
+          - id: eff_apply_overwatch
+            effect_kind: set_state
+            target: active_piece_id.overwatch
+            operation: assign
+            value: true
+      - id: act_clear_jam
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase]
+        preconditions:
+          - id: cond_weapon_jammed
+            expression: active_piece storm_bolter jammed == true
+            evaluation_scope: entity
+        costs:
+          - id: cost_spend_ap_clear_jam
+            effect_kind: modify_state
+            target: remaining_ap_for_active_piece
+            operation: decrement
+            value: 1
+        effect_sequence:
+          - id: eff_clear_jam
+            effect_kind: set_state
+            target: active_piece_id.jammed
+            operation: assign
+            value: false
+      - id: act_set_guard
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase]
+        preconditions:
+          - id: cond_not_on_overwatch
+            expression: active_piece not on overwatch
+            evaluation_scope: entity
+        costs:
+          - id: cost_spend_ap_guard
+            effect_kind: modify_state
+            target: remaining_ap_for_active_piece
+            operation: decrement
+            value: 2
+        effect_sequence:
+          - id: eff_apply_guard
+            effect_kind: set_state
+            target: active_piece_id.guard
+            operation: assign
+            value: true
+      - id: act_close_assault
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase, proc_genestealer_action_phase]
+        inputs:
+          - id: inp_close_assault_target
+            value_type: reference
+            required: true
+            source: player_choice
+        preconditions:
+          - id: cond_target_directly_in_front
+            expression: target occupies square directly in front of attacker
+            evaluation_scope: action_resolution
+        costs:
+          - id: cost_spend_ap_close_assault
+            effect_kind: modify_state
+            target: remaining_ap_for_active_piece
+            operation: decrement
+            value: 1
+        effect_sequence:
+          - id: step_resolve_close_assault
+            operation_kind: custom
+      - id: act_reload_assault_cannon
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase]
+        preconditions:
+          - id: cond_has_assault_cannon_and_reload_available
+            expression: active_piece has assault cannon and not already reloaded and shots_remaining == 0 or reload desired
+            evaluation_scope: entity
+        costs:
+          - id: cost_spend_ap_reload_assault_cannon
+            effect_kind: modify_state
+            target: remaining_ap_for_active_piece
+            operation: decrement
+            value: 4
+        effect_sequence:
+          - id: eff_reload_assault_cannon
+            effect_kind: set_state
+            target: assault_cannon_shots_remaining
+            operation: assign
+            value: 10
+      - id: act_use_psychic_power
+        actor: entity
+        scope: entity
+        availability: context_limited
+        timing_contexts: [proc_space_marine_action_phase]
+        preconditions:
+          - id: cond_active_librarian_exists
+            expression: librarian on board with psi points > 0 and psychic_power_used_this_space_marine_turn == false
+            evaluation_scope: game
+        inputs:
+          - id: inp_psychic_power_choice
+            value_type:
+              enum_name: psychic_power
+              values: [prescience, force_barrier, psychic_storm]
+            required: true
+            source: player_choice
+        effect_sequence:
+          - id: step_resolve_psychic_power
+            operation_kind: custom
+      - id: act_pick_up_object
+        actor: entity
+        scope: entity
+        availability: phase_limited
+        timing_contexts: [proc_space_marine_action_phase, proc_genestealer_action_phase]
+        preconditions:
+          - id: cond_piece_enters_square_with_object
+            expression: active_piece position contains object
+            evaluation_scope: action_resolution
+        effect_sequence:
+          - id: eff_auto_pick_up_object
+            effect_kind: modify_state
+            target: object.carrier_model_id
+            operation: assign_to_active_piece
+    trigger_rules:
+      - id: trig_overwatch_fire
+        trigger:
+          event: event_action_completed
+          subject: genestealer_action
+          timing_relation: after
+        conditions:
+          - id: cond_genestealer_in_overwatch_los_and_range
+            expression: acting genestealer is within line of sight and within 12 squares of overwatching marine after completing its action
+            evaluation_scope: event_context
+        effects:
+          - id: eff_resolve_overwatch_shot
+            effect_kind: invoke_procedure
+            target: act_shoot
+            operation: resolve_free_overwatch_shot
+        timing: immediate
+        priority: 100
+      - id: trig_overlapping_overwatch
+        trigger:
+          event: event_action_completed
+          subject: genestealer_action
+          timing_relation: after
+        conditions:
+          - id: cond_multiple_marines_have_overwatch_shot
+            expression: more than one overwatching marine satisfies overwatch conditions for same completed genestealer action
+            evaluation_scope: event_context
+        effects:
+          - id: eff_each_marine_must_fire
+            effect_kind: invoke_procedure
+            target: act_shoot
+            operation: resolve_all_required_overwatch_shots_even_if_target_already_destroyed
+        timing: immediate
+        priority: 101
+      - id: trig_involuntary_blip_reveal
+        trigger:
+          event: event_visibility_changed
+          subject: blip_seen_by_space_marine
+          timing_relation: immediate
+        effects:
+          - id: eff_reveal_blip_immediately
+            effect_kind: emit_event
+            target: blip_counter
+            operation: convert_blip_to_genestealers
+        timing: immediate
+        priority: 110
+      - id: trig_overwatch_lost_by_action
+        trigger:
+          event: event_action_completed
+          subject: space_marine_action_except_clear_jam
+          timing_relation: after
+        conditions:
+          - id: cond_marine_currently_on_overwatch
+            expression: acting marine overwatch == true
+            evaluation_scope: event_context
+        effects:
+          - id: eff_remove_overwatch_after_non_clear_jam_action
+            effect_kind: set_state
+            target: acting_marine.overwatch
+            operation: assign
+            value: false
+        timing: immediate
+        priority: 90
+      - id: trig_overwatch_lost_by_close_assaulted
+        trigger:
+          event: event_close_assault_declared_against_space_marine
+          subject: target_space_marine
+          timing_relation: immediate
+        conditions:
+          - id: cond_target_marine_on_overwatch
+            expression: target marine overwatch == true
+            evaluation_scope: event_context
+        effects:
+          - id: eff_remove_overwatch_when_attacked
+            effect_kind: set_state
+            target: target_marine.overwatch
+            operation: assign
+            value: false
+        timing: immediate
+        priority: 90
+    restriction_rules:
+      - id: rest_one_piece_activated_at_a_time
+        restriction_kind: exclusivity
+        applies_to: [all_action_phases]
+        applies_when:
+          - id: cond_action_phase_running
+            expression: current_turn_sequence_step in [space_marine_action_phase, genestealer_action_phase]
+            evaluation_scope: game
+        restricted_behavior: Only one model or blip may be active at a time.
+      - id: rest_no_reactivation_without_command_points
+        restriction_kind: prohibition
+        applies_to: [space_marine_models]
+        applies_when:
+          - id: cond_piece_already_activated
+            expression: active_piece_id in pieces_activated_this_turn
+            evaluation_scope: action_resolution
+        restricted_behavior: A piece may not be activated again in the same turn except by spending command points as allowed.
+      - id: rest_blips_no_attack
+        restriction_kind: prohibition
+        applies_to: [blip_counter]
+        applies_when:
+          - id: cond_piece_is_blip
+            expression: active_piece is blip
+            evaluation_scope: entity
+        restricted_behavior: Blips may only move and open or close doors; they may not attack or perform other actions.
+      - id: rest_heavy_flamer_no_overwatch
+        restriction_kind: prohibition
+        applies_to: [heavy_flamer_marine]
+        applies_when:
+          - id: cond_attempting_overwatch_with_heavy_flamer
+            expression: active_piece has heavy flamer and action == act_set_overwatch
+            evaluation_scope: action_resolution
+        restricted_behavior: Heavy flamer marines may not enter overwatch.
+    resolution_procedures:
+      - id: res_storm_bolter_attack
+        resolution_context: ranged_attack
+        inputs:
+          - id: inp_target_for_storm_bolter
+            value_type: reference
+            required: true
+            source: previous_step
+        steps:
+          - id: sb_roll_2d6
+            operation_kind: roll_dice
+            outputs: [current_dice_results]
+          - id: sb_apply_sustained_fire_if_eligible
+            operation_kind: assign_modifiers
+          - id: sb_check_hit_threshold
+            operation_kind: compare_values
+          - id: sb_if_hit_destroy_target
+            operation_kind: apply_damage
+          - id: sb_if_overwatch_and_double_then_jam
+            operation_kind: branch_on_result
+      - id: res_assault_cannon_attack
+        resolution_context: ranged_attack
+        steps:
+          - id: ac_roll_3d6
+            operation_kind: roll_dice
+          - id: ac_apply_sustained_fire_if_eligible
+            operation_kind: assign_modifiers
+          - id: ac_check_hit_threshold_5_plus_or_4_plus_sustained
+            operation_kind: compare_values
+          - id: ac_destroy_target_if_any_success
+            operation_kind: apply_damage
+          - id: ac_decrement_ammo
+            operation_kind: update_state
+          - id: ac_check_reloaded_triple_for_malfunction
+            operation_kind: branch_on_result
+      - id: res_heavy_flamer_attack
+        resolution_context: ranged_attack
+        steps:
+          - id: hf_place_flamer_marker_in_target_section
+            operation_kind: update_state
+          - id: hf_roll_for_each_model_or_blip_in_section
+            operation_kind: roll_dice
+          - id: hf_destroy_each_piece_on_2_plus
+            operation_kind: apply_damage
+          - id: hf_mark_section_blocked_until_mission_status
+            operation_kind: update_state
+      - id: res_close_assault
+        resolution_context: melee
+        steps:
+          - id: ca_roll_attacker_and_defender_dice
+            operation_kind: roll_dice
+          - id: ca_apply_front_arc_modifiers
+            operation_kind: assign_modifiers
+          - id: ca_offer_guard_reroll_or_weapon_parry_block_effects
+            operation_kind: offer_rerolls
+          - id: ca_compare_best_results
+            operation_kind: compare_values
+          - id: ca_apply_outcome
+            operation_kind: branch_on_result
+      - id: res_psychic_storm
+        resolution_context: custom
+        steps:
+          - id: ps_choose_single_target_or_board_section
+            operation_kind: determine_targets
+          - id: ps_roll_resolution_die
+            operation_kind: roll_dice
+          - id: ps_destroy_single_target_on_2_plus_or_section_targets_on_4_plus
+            operation_kind: apply_damage
+    override_rules:    
+      - id: ov_space_marine_move_and_fire_same_action
+        override_kind: extension
+        target_ids: [act_move, act_shoot]
+        applies_when:
+          - id: cond_space_marine_with_storm_bolter_or_assault_cannon
+            expression: active_piece is space marine and weapon in [storm_bolter, assault_cannon]
+            evaluation_scope: entity
+        added_effects:
+          - id: eff_allow_fire_as_part_of_move_action
+            effect_kind: custom
+            target: action_combination
+            operation: allow_combined_move_and_fire_without_extra_ap
+
+      - id: ov_genestealer_free_90_turn_during_move
+        override_kind: extension
+        target_ids: [act_move, act_turn]
+        applies_when:
+          - id: cond_active_piece_is_genestealer
+            expression: active_piece is genestealer
+            evaluation_scope: entity
+        added_effects:
+          - id: eff_allow_single_90_turn_with_move
+            effect_kind: custom
+            target: action_combination
+            operation: allow_90_degree_turn_as_part_of_move_without_extra_ap    
+        
+      - id: ov_sergeant_command_redraw
+        override_kind: extension
+        target_ids: [proc_space_marine_command_phase]
+        applies_when:
+          - id: cond_sergeant_present_on_board
+            expression: at least one space marine sergeant alive on board
+            evaluation_scope: game
+        added_effects:
+          - id: eff_allow_one_command_counter_redraw
+            effect_kind: custom
+            target: hidden_command_points_value
+            operation: optional_redraw_must_keep_second_result
+      - id: ov_sergeant_close_assault_bonus
+        override_kind: modifying
+        target_ids: [res_close_assault]
+        applies_when:
+          - id: cond_sergeant_attacking_or_defending_to_front
+            expression: participating marine is sergeant and enemy is to marine front
+            evaluation_scope: action_resolution
+        added_effects:
+          - id: eff_sergeant_plus_one_to_close_assault_score
+            effect_kind: custom
+            target: close_assault_score
+            operation: add
+            value: 1
+      - id: ov_chainfist_vs_door
+        override_kind: replacement
+        target_ids: [res_close_assault]
+        applies_when:
+          - id: cond_chainfist_attacking_door
+            expression: attacker has chainfist and target is door
+            evaluation_scope: action_resolution
+        replacement_steps:
+          - id: eff_chainfist_auto_destroy_door
+            effect_kind: set_state
+            target: target_door.state
+            operation: assign
+            value: destroyed
+      - id: ov_lightning_claws_close_assault
+        override_kind: modifying
+        target_ids: [res_close_assault]
+        applies_when:
+          - id: cond_lightning_claws_to_front
+            expression: marine has lightning claws and enemy is to marine front
+            evaluation_scope: action_resolution
+        added_effects:
+          - id: eff_lightning_claws_roll_two_plus_one_best
+            effect_kind: custom
+            target: attacker_dice_profile
+            operation: set_profile
+      - id: ov_power_sword_parry
+        override_kind: extension
+        target_ids: [res_close_assault]
+        applies_when:
+          - id: cond_power_sword_to_front
+            expression: marine has power sword and enemy is to marine front
+            evaluation_scope: action_resolution
+        added_effects:
+          - id: eff_force_opponent_reroll_highest_die
+            effect_kind: custom
+            target: defender_or_attacker_highest_die
+            operation: reroll_highest
+      - id: ov_storm_shield_block
+        override_kind: modifying
+        target_ids: [res_close_assault]
+        applies_when:
+          - id: cond_storm_shield_to_front
+            expression: marine has storm shield and enemy is to marine front
+            evaluation_scope: action_resolution
+        added_effects:
+          - id: eff_reduce_opponent_dice_by_one
+            effect_kind: custom
+            target: opponent_dice_pool
+            operation: decrement_by_one
+      - id: ov_thunder_hammer_bonus
+        override_kind: modifying
+        target_ids: [res_close_assault]
+        applies_when:
+          - id: cond_thunder_hammer_to_front
+            expression: marine has thunder hammer and enemy is to marine front
+            evaluation_scope: action_resolution
+        added_effects:
+          - id: eff_thunder_hammer_plus_one
+            effect_kind: custom
+            target: close_assault_score
+            operation: add
+            value: 1
+      - id: ov_librarian_force_axe_bonus_from_psi
+        override_kind: modifying
+        target_ids: [res_close_assault]
+        applies_when:
+          - id: cond_librarian_spends_psi_after_roll
+            expression: participating marine is librarian using force axe and psi points committed after dice and rerolls
+            evaluation_scope: action_resolution
+        added_effects:
+          - id: eff_add_spent_psi_to_close_assault_score
+            effect_kind: custom
+            target: close_assault_score
+            operation: add_by_spent_psi
+      - id: ov_broodlord_reveal
+        override_kind: extension
+        target_ids: [trig_involuntary_blip_reveal]
+        applies_when:
+          - id: cond_mission_includes_broodlord_and_not_yet_revealed
+            expression: mission allows broodlord and broodlord not yet revealed and chosen blip designated broodlord reveal
+            evaluation_scope: game
+        added_effects:
+          - id: eff_replace_one_revealed_genestealer_with_broodlord
+            effect_kind: custom
+            target: reveal_result
+            operation: substitute_broodlord_for_one_genestealer
+      - id: ov_broodlord_hard_to_kill
+        override_kind: modifying
+        target_ids: [res_storm_bolter_attack, res_assault_cannon_attack, res_heavy_flamer_attack, res_psychic_storm]
+        applies_when:
+          - id: cond_target_is_broodlord
+            expression: target subtype == broodlord
+            evaluation_scope: action_resolution
+        added_effects:
+          - id: eff_broodlord_requires_two_hits_from_ranged_or_psychic_except_close_assault
+            effect_kind: custom
+            target: destruction_threshold
+            operation: require_two_separate_killing_results
+      - id: ov_broodlord_mighty_blow
+        override_kind: replacement
+        target_ids: [res_close_assault]
+        applies_when:
+          - id: cond_broodlord_close_assault_to_front
+            expression: attacker or defender subtype == broodlord and broodlord attacks to its front
+            evaluation_scope: action_resolution
+        replacement_steps:
+          - id: eff_broodlord_score_best_plus_lowest_of_three_or_sum_if_forced_lower
+            effect_kind: custom
+            target: broodlord_close_assault_score
+            operation: compute_mighty_blow
+      - id: ov_broodlord_immune_to_psychic_storm
+        override_kind: cancellation
+        target_ids: [res_psychic_storm]
+        applies_when:
+          - id: cond_psychic_storm_target_is_broodlord
+            expression: any psychic storm target subtype == broodlord
+            evaluation_scope: action_resolution
+        removed_effect_ids: [ps_destroy_single_target_on_2_plus_or_section_targets_on_4_plus]
+    derived_terms:
+      - id: term_front_arc
+        definition: A model's forward arc consists of the three squares directly ahead of its facing.
+        category: state_term
+      - id: term_overwatch
+        definition: A Space Marine state allowing free shoot actions during the Genestealer turn after eligible enemy actions.
+        category: timing_term
+      - id: term_guard
+        definition: A Space Marine state granting a close-assault re-roll and lasting until end of turn unless lost by acting.
+        category: timing_term
+      - id: term_lurk
+        definition: A blip remaining off-board at an entry area instead of entering play.
+        category: state_term
+    invariants:
+      - id: rinv_space_marine_loses_game_if_command_points_overspent
+        statement: If command_points_spent_this_turn exceeds hidden_command_points_value when revealed in Mission Status phase, the Space Marine player immediately loses.
+        severity: error
+      - id: rinv_timer_ends_space_marine_action_phase_immediately_after_current_action
+        statement: When the timer expires, complete the action in progress and then end the Space Marine Action phase immediately.
+        severity: error
+
+ambiguities:
+  ambiguities:
+    - id: amb_turn_180_costs
+      title: 180-degree turn AP cost
+      status: resolved
+      ambiguity_type: textual
+      severity: low
+      rule_area: movement
+      description: The printed action-point table confirms that a 180-degree turn is not available as a standalone action for Space Marines or blips, and costs 1 AP for Genestealers.
+      source_refs: [rulebook_p8_action_point_table, rulebook_p9_move_turn_actions]
+      candidate_interpretations:
+        - id: amb_turn_180_costs_i1
+          label: Use printed action-point table
+          interpretation: Space Marines and blips cannot perform a standalone 180-degree turn action; Genestealers may perform a 180-degree turn for 1 AP.
+      chosen_resolution:
+        selected_interpretation_id: amb_turn_180_costs_i1
+        resolution_status: canonical
+        resolution_summary: Normalize turn legality and cost directly from the printed action-point table.
+        confidence: high  
+    - id: amb_heavy_flamer_vs_broodlord
+      title: Heavy flamer interaction with Broodlord
+      status: resolved
+      ambiguity_type: textual
+      severity: high
+      rule_area: broodlord
+      description: Clarified text states that ranged shooting only kills the Broodlord if two or more dice individually roll high enough to kill the target, and explicitly notes that heavy flamers therefore cannot harm a Broodlord.
+      source_refs: [rulebook_p21_broodlord_hard_to_kill]
+      candidate_interpretations:
+        - id: amb_hf_broodlord_i1
+          label: Heavy flamers cannot harm Broodlord
+          interpretation: Because heavy flamer attacks resolve as single-die kill checks per target, they can never produce the two qualifying dice required by the Hard to Kill rule.
+      chosen_resolution:
+        selected_interpretation_id: amb_hf_broodlord_i1
+        resolution_status: canonical
+        resolution_summary: Heavy flamer attacks cannot kill a Broodlord; other ranged attacks must generate two or more successful kill dice in the same attack to destroy it.
+        confidence: high
+    - id: amb_guard_loss_on_attacking
+      title: Guard loss timing may be asymmetric compared with overwatch
+      status: provisionally_resolved
+      ambiguity_type: scope
+      severity: medium
+      rule_area: guard
+      description: Text clearly says a Space Marine on guard loses guard if he carries out any other action, and remains on guard when attacked, but does not separately restate all possible edge interactions.
+      source_refs: [rulebook_p13_guard_actions]
+      candidate_interpretations:
+        - id: amb_guard_i1
+          label: Guard persists through being attacked only
+          interpretation: Guard remains until end of turn unless the marine performs another action or switches to overwatch.
+      chosen_resolution:
+        selected_interpretation_id: amb_guard_i1
+        resolution_status: provisional
+        resolution_summary: Implement guard as persistent through enemy attacks, removed by own other actions or end of turn.
+        confidence: medium

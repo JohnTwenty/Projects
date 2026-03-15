@@ -1,0 +1,833 @@
+$schema_version: 0.1.0
+$id: gamespecs/rules.schema.yaml
+kind: rules_schema
+metadata:
+  name: Generic Game Rules Schema
+  purpose: >-
+    Canonical schema for representing tabletop and board game rules as structured
+    procedures, actions, triggers, conditions, effects, restrictions, and overrides.
+    Designed to work with a companion state schema and to support validation,
+    code generation, interactive adjudication, and human-readable derived rules.
+  design_principles:
+    - Separate state representation from state transitions.
+    - Support both procedural turn structure and event-driven reactions.
+    - Make overrides and exceptions explicit rather than burying them in prose.
+    - Preserve traceability to source text and interpretations.
+    - Stay generic enough for reuse across multiple games.
+
+spec_document_schema:
+  type: object
+  required:
+    - spec_version
+    - game
+    - rules_model
+  properties:
+    spec_version:
+      type: string
+      description: Version of the authored rules spec document.
+    game:
+      $ref: '#/$defs/game_identity'
+    imports:
+      type: array
+      items:
+        type: string
+      description: Optional references to shared fragments or base specs.
+    metadata:
+      $ref: '#/$defs/metadata'
+    rules_model:
+      $ref: '#/$defs/rules_model'
+    source_trace:
+      type: array
+      items:
+        $ref: '#/$defs/source_trace_entry'
+    notes:
+      type: array
+      items:
+        type: string
+
+$defs:
+  game_identity:
+    type: object
+    required:
+      - id
+      - title
+    properties:
+      id:
+        type: string
+      title:
+        type: string
+      edition:
+        type: string
+      publisher:
+        type: string
+      source_version:
+        type: string
+
+  metadata:
+    type: object
+    properties:
+      authors:
+        type: array
+        items:
+          type: string
+      status:
+        type: string
+        enum: [draft, review, stable, deprecated]
+      created_at:
+        type: string
+      updated_at:
+        type: string
+      description:
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
+
+  rules_model:
+    type: object
+    properties:
+      procedural_structure:
+        type: array
+        items:
+          $ref: '#/$defs/procedure_definition'
+      action_library:
+        type: array
+        items:
+          $ref: '#/$defs/action_definition'
+      trigger_rules:
+        type: array
+        items:
+          $ref: '#/$defs/trigger_rule'
+      restriction_rules:
+        type: array
+        items:
+          $ref: '#/$defs/restriction_rule'
+      resolution_procedures:
+        type: array
+        items:
+          $ref: '#/$defs/resolution_procedure'
+      override_rules:
+        type: array
+        items:
+          $ref: '#/$defs/override_rule'
+      derived_terms:
+        type: array
+        items:
+          $ref: '#/$defs/term_definition'
+      invariants:
+        type: array
+        items:
+          $ref: '#/$defs/rules_invariant'
+
+  actor_selector:
+    oneOf:
+      - type: string
+        enum:
+          - game
+          - current_player
+          - non_current_player
+          - active_player
+          - reacting_player
+          - player
+          - side
+          - unit
+          - model
+          - entity
+          - controller
+          - owner
+          - scenario
+          - gm
+      - type: object
+        properties:
+          selector_type:
+            type: string
+          selector_expression:
+            type: string
+          notes:
+            type: array
+            items:
+              type: string
+
+  procedure_definition:
+    type: object
+    required:
+      - id
+      - procedure_kind
+      - steps
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      procedure_kind:
+        type: string
+        enum:
+          - setup
+          - round
+          - turn
+          - phase
+          - subphase
+          - action_sequence
+          - end_condition_check
+          - cleanup
+          - custom
+      scope:
+        type: string
+        enum: [game, scenario, player_turn, entity_activation, action_resolution]
+      controlling_actor:
+        $ref: '#/$defs/actor_selector'
+      preconditions:
+        type: array
+        items:
+          $ref: '#/$defs/condition'
+      steps:
+        type: array
+        items:
+          $ref: '#/$defs/procedure_step'
+      interrupt_windows:
+        type: array
+        items:
+          $ref: '#/$defs/interrupt_window'
+      termination_conditions:
+        type: array
+        items:
+          $ref: '#/$defs/condition'
+      outputs:
+        type: array
+        items:
+          type: string
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  procedure_step:
+    type: object
+    required:
+      - id
+      - step_kind
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      step_kind:
+        type: string
+        enum:
+          - choose_actor
+          - choose_entity
+          - choose_action
+          - resolve_action
+          - apply_effect
+          - evaluate_condition
+          - open_interrupt_window
+          - invoke_procedure
+          - update_state
+          - check_end_condition
+          - custom
+      actor:
+        $ref: '#/$defs/actor_selector'
+      referenced_action_id:
+        type: string
+      referenced_procedure_id:
+        type: string
+      conditions:
+        type: array
+        items:
+          $ref: '#/$defs/condition'
+      effects:
+        type: array
+        items:
+          $ref: '#/$defs/effect'
+      outputs:
+        type: array
+        items:
+          type: string
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  action_definition:
+    type: object
+    required:
+      - id
+      - actor
+      - inputs
+      - effect_sequence
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      actor:
+        $ref: '#/$defs/actor_selector'
+      scope:
+        type: string
+        enum: [game, player, entity, model, weapon, scenario]
+      availability:
+        type: string
+        enum: [always, phase_limited, context_limited, triggered_only]
+      timing_contexts:
+        type: array
+        items:
+          type: string
+        description: IDs of procedures, phases, or timing windows where the action may occur.
+      inputs:
+        type: array
+        items:
+          $ref: '#/$defs/input_definition'
+      target_selectors:
+        type: array
+        items:
+          $ref: '#/$defs/target_selector'
+      preconditions:
+        type: array
+        items:
+          $ref: '#/$defs/condition'
+      costs:
+        type: array
+        items:
+          $ref: '#/$defs/effect'
+        description: State changes that must be paid or committed to initiate the action.
+      effect_sequence:
+        type: array
+        items:
+          $ref: '#/$defs/effect_or_step'
+      outcomes:
+        type: array
+        items:
+          $ref: '#/$defs/outcome_definition'
+      failure_conditions:
+        type: array
+        items:
+          $ref: '#/$defs/condition'
+      failure_effects:
+        type: array
+        items:
+          $ref: '#/$defs/effect'
+      generates_events:
+        type: array
+        items:
+          type: string
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  input_definition:
+    type: object
+    required:
+      - id
+      - value_type
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      value_type:
+        type: string
+      required:
+        type: boolean
+      source:
+        type: string
+        enum: [player_choice, state_lookup, previous_step, random_generator, scenario_definition]
+      notes:
+        type: array
+        items:
+          type: string
+
+  target_selector:
+    type: object
+    required:
+      - id
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      selector_expression:
+        type: string
+      legality_conditions:
+        type: array
+        items:
+          $ref: '#/$defs/condition'
+      cardinality:
+        type: string
+        enum: [single, one_or_more, zero_or_more]
+      notes:
+        type: array
+        items:
+          type: string
+
+  trigger_rule:
+    type: object
+    required:
+      - id
+      - trigger
+      - effects
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      trigger:
+        $ref: '#/$defs/trigger_definition'
+      conditions:
+        type: array
+        items:
+          $ref: '#/$defs/condition'
+      effects:
+        type: array
+        items:
+          $ref: '#/$defs/effect'
+      timing:
+        type: string
+        enum: [immediate, queued, deferred]
+      priority:
+        type: integer
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  trigger_definition:
+    type: object
+    required:
+      - event
+    properties:
+      event:
+        type: string
+      actor:
+        $ref: '#/$defs/actor_selector'
+      subject:
+        type: string
+      timing_relation:
+        type: string
+        enum: [before, during, after, instead_of]
+      notes:
+        type: array
+        items:
+          type: string
+
+  restriction_rule:
+    type: object
+    required:
+      - id
+      - restriction_kind
+      - applies_when
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      restriction_kind:
+        type: string
+        enum: [prohibition, limit, requirement, exclusivity, capacity]
+      applies_to:
+        type: array
+        items:
+          type: string
+      applies_when:
+        type: array
+        items:
+          $ref: '#/$defs/condition'
+      restricted_behavior:
+        type: string
+      enforcement_effects:
+        type: array
+        items:
+          $ref: '#/$defs/effect'
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  resolution_procedure:
+    type: object
+    required:
+      - id
+      - resolution_context
+      - steps
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      resolution_context:
+        type: string
+        enum:
+          - attack
+          - melee
+          - ranged_attack
+          - movement
+          - morale
+          - command
+          - setup
+          - reinforcement
+          - random_event
+          - custom
+      inputs:
+        type: array
+        items:
+          $ref: '#/$defs/input_definition'
+      steps:
+        type: array
+        items:
+          $ref: '#/$defs/resolution_step'
+      outputs:
+        type: array
+        items:
+          type: string
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  resolution_step:
+    type: object
+    required:
+      - id
+      - operation_kind
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      operation_kind:
+        type: string
+        enum:
+          - gather_inputs
+          - determine_targets
+          - roll_dice
+          - assign_modifiers
+          - offer_rerolls
+          - compare_values
+          - branch_on_result
+          - apply_damage
+          - update_state
+          - emit_event
+          - custom
+      conditions:
+        type: array
+        items:
+          $ref: '#/$defs/condition'
+      effects:
+        type: array
+        items:
+          $ref: '#/$defs/effect'
+      outputs:
+        type: array
+        items:
+          type: string
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  override_rule:
+    type: object
+    required:
+      - id
+      - override_kind
+      - target_ids
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      override_kind:
+        type: string
+        enum: [additive, modifying, replacement, cancellation, exception, extension]
+      target_ids:
+        type: array
+        items:
+          type: string
+      applies_when:
+        type: array
+        items:
+          $ref: '#/$defs/condition'
+      replacement_steps:
+        type: array
+        items:
+          $ref: '#/$defs/effect_or_step'
+      added_effects:
+        type: array
+        items:
+          $ref: '#/$defs/effect'
+      removed_effect_ids:
+        type: array
+        items:
+          type: string
+      precedence:
+        type: integer
+        description: Higher values take priority when multiple overrides compete.
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  term_definition:
+    type: object
+    required:
+      - id
+      - definition
+    properties:
+      id:
+        type: string
+      label:
+        type: string
+      definition:
+        type: string
+      category:
+        type: string
+        enum: [state_term, action_term, timing_term, combat_term, scenario_term, custom]
+      source_refs:
+        type: array
+        items:
+          type: string
+
+  condition:
+    type: object
+    required:
+      - id
+      - expression
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      expression:
+        type: string
+        description: >-
+          Normalized condition expression. Early versions may use controlled prose;
+          later versions may adopt a stricter expression language.
+      evaluation_scope:
+        type: string
+        enum: [game, scenario, player, entity, action_resolution, event_context]
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  effect:
+    type: object
+    required:
+      - id
+      - effect_kind
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      effect_kind:
+        type: string
+        enum:
+          - set_state
+          - modify_state
+          - consume_resource
+          - grant_resource
+          - move_entity
+          - create_entity
+          - remove_entity
+          - reveal_information
+          - hide_information
+          - emit_event
+          - invoke_procedure
+          - record_history
+          - custom
+      target:
+        type: string
+      operation:
+        type: string
+      value:
+        description: Optional literal value, expression, or reference.
+      output_binding:
+        type: string
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  effect_or_step:
+    oneOf:
+      - $ref: '#/$defs/effect'
+      - $ref: '#/$defs/resolution_step'
+      - $ref: '#/$defs/procedure_step'
+
+  outcome_definition:
+    type: object
+    required:
+      - id
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      occurs_when:
+        type: array
+        items:
+          $ref: '#/$defs/condition'
+      effects:
+        type: array
+        items:
+          $ref: '#/$defs/effect'
+      labels:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  interrupt_window:
+    type: object
+    required:
+      - id
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      opens_when:
+        type: string
+      eligible_actors:
+        type: array
+        items:
+          $ref: '#/$defs/actor_selector'
+      allowed_actions:
+        type: array
+        items:
+          type: string
+      closes_when:
+        type: string
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  rules_invariant:
+    type: object
+    required:
+      - id
+      - statement
+    properties:
+      id:
+        type: string
+      statement:
+        type: string
+      severity:
+        type: string
+        enum: [error, warning]
+      source_refs:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  source_trace_entry:
+    type: object
+    required:
+      - id
+      - source_id
+      - target_ids
+    properties:
+      id:
+        type: string
+      source_id:
+        type: string
+      target_ids:
+        type: array
+        items:
+          type: string
+      trace_kind:
+        type: string
+        enum:
+          - explicit
+          - implicit
+          - inferred_for_execution
+          - inferred_for_validation
+          - interpretation_applied
+      justification:
+        type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+example_authoring_guidance:
+  conceptual_split:
+    - procedural_structure describes when play progresses and who acts next
+    - action_library describes what actors may attempt to do
+    - trigger_rules describe reactive rules fired by events
+    - restriction_rules describe prohibitions and limits
+    - resolution_procedures describe multi-step outcome determination
+    - override_rules describe exceptions and special rules
+  modeling_guidelines:
+    - >-
+      Prefer procedure_definition for turn order, activation sequences, setup order,
+      and other stepwise control flow.
+    - >-
+      Prefer action_definition for legal player or unit choices that may be selected
+      during play.
+    - >-
+      Prefer trigger_rule for automatic reactions such as overwatch, interrupts,
+      start-of-phase effects, or aftermath effects.
+    - >-
+      Prefer override_rule whenever a special rule modifies, replaces, or cancels a
+      core rule. Do not bury exceptions inside notes.
+    - >-
+      Keep conditions and effects normalized and reusable where practical so that
+      legality checks, code generation, and tests can reference them consistently.
+    - >-
+      Use source_trace and source_refs aggressively, especially where wording has been
+      normalized or proceduralized beyond the original text.
